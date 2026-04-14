@@ -1,11 +1,31 @@
 import EmptyState from '../ui/EmptyState';
+import MaterialsList from '../materials/MaterialsList';
+import MaterialsLoadingState from '../materials/MaterialsLoadingState';
 
-export default function LibraryTabPanel({ activeTab }) {
+export default function LibraryTabPanel({
+  activeTab,
+  materials = [],
+  isHydrated = true,
+  onDeleteMaterial,
+}) {
   if (activeTab === 'materials') {
+    if (!isHydrated) {
+      return <MaterialsLoadingState />;
+    }
+
+    if (materials.length === 0) {
+      return (
+        <EmptyState
+          title="No materials yet"
+          description="Uploaded documents and videos will appear here. This is where users with permission will manage source content."
+        />
+      );
+    }
+
     return (
-      <EmptyState
-        title="No materials yet"
-        description="Uploaded documents and videos will appear here. This is where users with permission will manage source content."
+      <MaterialsList
+        materials={materials}
+        onDeleteMaterial={onDeleteMaterial}
       />
     );
   }
