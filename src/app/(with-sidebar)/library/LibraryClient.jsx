@@ -7,53 +7,61 @@ import LibraryTabs from '../../../components/library/LibraryTabs';
 import LibraryTabPanel from '../../../components/library/LibraryTabPanel';
 import UploadMaterialDialog from '../../../components/materials/UploadMaterialDialog';
 
-const MATERIALS_STORAGE_KEY = 'ai-onboarding-materials';
-
 export default function LibraryClient() {
   const [activeTab, setActiveTab] = useState('materials');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [materials, setMaterials] = useState([]);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
+  const [isSavingMaterial, setIsSavingMaterial] = useState(false);
   const [toast, setToast] = useState({
     open: false,
     message: '',
     severity: 'success',
   });
 
-  useEffect(() => {
-    try {
-      const storedMaterials = window.localStorage.getItem(MATERIALS_STORAGE_KEY);
-
-      if (storedMaterials) {
-        setMaterials(JSON.parse(storedMaterials));
-      }
-    } catch (error) {
-      console.error('Failed to load materials from localStorage:', error);
-    } finally {
-      setIsHydrated(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-
-    try {
-      window.localStorage.setItem(
-        MATERIALS_STORAGE_KEY,
-        JSON.stringify(materials)
-      );
-    } catch (error) {
-      console.error('Failed to save materials to localStorage:', error);
-    }
-  }, [materials, isHydrated]);
-
   const sortedMaterials = useMemo(() => {
     return [...materials].sort((a, b) => {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
   }, [materials]);
+
+  const loadMaterials = async () => {
+    try {
+      setIsLoadingMaterials(true);
+
+      const response = await fetch('/api/materials', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load materials.');
+      }
+
+      const normalizedMaterials = (data.materials || []).map((material) => ({
+        ...material,
+        attachments: material.attachments || [],
+      }));
+
+      setMaterials(normalizedMaterials);
+    } catch (error) {
+      console.error('Failed to load materials:', error);
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to load materials.',
+        severity: 'error',
+      });
+    } finally {
+      setIsLoadingMaterials(false);
+    }
+  };
+
+  useEffect(() => {
+    loadMaterials();
+  }, []);
 
   const handleTabChange = (_, newValue) => {
     setActiveTab(newValue);
@@ -69,34 +77,70 @@ export default function LibraryClient() {
   };
 
   const handleCloseUploadDialog = () => {
+    if (isSavingMaterial) {
+      return;
+    }
+
     setIsUploadDialogOpen(false);
   };
 
-  const handleSaveMaterial = (materialData) => {
-    const newMaterial = {
-      id: crypto.randomUUID(),
-      title: materialData.title.trim(),
-      type: materialData.type,
-      description: materialData.description.trim(),
-      source: materialData.source.trim(),
-      createdAt: new Date().toISOString(),
-    };
+  const handleSaveMaterial = async (formData) => {
+    try {
+      setIsSavingMaterial(true);
 
-    setMaterials((prev) => [newMaterial, ...prev]);
-    setIsUploadDialogOpen(false);
-    setToast({
-      open: true,
-      message: 'Material saved successfully.',
-      severity: 'success',
-    });
+      const payload = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        youtubeUrls: formData.youtubeUrls,
+        links: formData.links
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        text: formData.text.trim(),
+      };
+
+      const response = await fetch('/api/materials', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create material.');
+      }
+
+      await loadMaterials();
+      setIsUploadDialogOpen(false);
+
+      setToast({
+        open: true,
+        message: 'Material saved successfully.',
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to save material:', error);
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to save material.',
+        severity: 'error',
+      });
+    } finally {
+      setIsSavingMaterial(false);
+    }
   };
 
   const handleDeleteMaterial = (materialId) => {
     setMaterials((prev) => prev.filter((item) => item.id !== materialId));
+
     setToast({
       open: true,
-      message: 'Material deleted.',
-      severity: 'success',
+      message: 'Delete API is not connected yet. This was only removed from UI.',
+      severity: 'warning',
     });
   };
 
@@ -109,7 +153,7 @@ export default function LibraryClient() {
 
   return (
     <>
-      <Container maxWidth="xl" disableGutters>
+      <Container maxWidth={false} disableGutters>
         <Paper
           elevation={0}
           sx={{
@@ -133,7 +177,7 @@ export default function LibraryClient() {
             <LibraryTabPanel
               activeTab={activeTab}
               materials={sortedMaterials}
-              isHydrated={isHydrated}
+              isHydrated={!isLoadingMaterials}
               onDeleteMaterial={handleDeleteMaterial}
             />
           </Stack>
@@ -144,11 +188,12 @@ export default function LibraryClient() {
         open={isUploadDialogOpen}
         onClose={handleCloseUploadDialog}
         onSave={handleSaveMaterial}
+        isSaving={isSavingMaterial}
       />
 
       <Snackbar
         open={toast.open}
-        autoHideDuration={3000}
+        autoHideDuration={3500}
         onClose={handleCloseToast}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >

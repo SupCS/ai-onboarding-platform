@@ -1,5 +1,5 @@
 import EmptyState from '../ui/EmptyState';
-import MaterialsList from '../materials/MaterialsList';
+import MaterialsGrid from '../materials/MaterialsGrid';
 import MaterialsLoadingState from '../materials/MaterialsLoadingState';
 
 export default function LibraryTabPanel({
@@ -17,13 +17,13 @@ export default function LibraryTabPanel({
       return (
         <EmptyState
           title="No materials yet"
-          description="Uploaded documents and videos will appear here. This is where users with permission will manage source content."
+          description="Add YouTube videos, files, links, text notes, images, or combine several source types inside one material."
         />
       );
     }
 
     return (
-      <MaterialsList
+      <MaterialsGrid
         materials={materials}
         onDeleteMaterial={onDeleteMaterial}
       />
