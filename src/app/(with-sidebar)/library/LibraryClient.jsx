@@ -45,7 +45,29 @@ export default function LibraryClient() {
         attachments: material.attachments || [],
       }));
 
-      setMaterials(normalizedMaterials);
+      // Add preview URLs for images
+      const materialsWithPreviews = await Promise.all(
+        normalizedMaterials.map(async (material) => {
+          const attachmentsWithPreviews = await Promise.all(
+            material.attachments.map(async (attachment) => {
+              if (attachment.kind === 'image') {
+                try {
+                  const res = await fetch(`/api/files/preview?storageKey=${attachment.storageKey}`);
+                  const data = await res.json();
+                  return { ...attachment, previewUrl: data.previewUrl };
+                } catch (e) {
+                  console.error('Failed to get preview URL for', attachment.storageKey, e);
+                  return attachment;
+                }
+              }
+              return attachment;
+            })
+          );
+          return { ...material, attachments: attachmentsWithPreviews };
+        })
+      );
+
+      setMaterials(materialsWithPreviews);
     } catch (error) {
       console.error('Failed to load materials:', error);
 
@@ -84,55 +106,98 @@ export default function LibraryClient() {
     setIsUploadDialogOpen(false);
   };
 
-  const handleSaveMaterial = async (formData) => {
-    try {
-      setIsSavingMaterial(true);
+const handleSaveMaterial = async (formData) => {
+  try {
+    setIsSavingMaterial(true);
 
-      const payload = {
-        title: formData.title.trim(),
-        description: formData.description.trim(),
-        youtubeUrls: formData.youtubeUrls,
-        links: formData.links
-          .split('\n')
-          .map((item) => item.trim())
-          .filter(Boolean),
-        text: formData.text.trim(),
-      };
+    const uploadedAttachments = [];
 
-      const response = await fetch('/api/materials', {
+    for (const file of formData.attachments || []) {
+      const uploadUrlResponse = await fetch('/api/materials/upload-url', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type || 'application/octet-stream',
+          size: file.size,
+        }),
       });
 
-      const data = await response.json();
+      const uploadUrlData = await uploadUrlResponse.json();
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create material.');
+      if (!uploadUrlResponse.ok) {
+        throw new Error(uploadUrlData.error || 'Failed to prepare file upload.');
       }
 
-      await loadMaterials();
-      setIsUploadDialogOpen(false);
-
-      setToast({
-        open: true,
-        message: 'Material saved successfully.',
-        severity: 'success',
+      const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+        },
+        body: file,
       });
-    } catch (error) {
-      console.error('Failed to save material:', error);
 
-      setToast({
-        open: true,
-        message: error.message || 'Failed to save material.',
-        severity: 'error',
+      if (!uploadResponse.ok) {
+        throw new Error(`Failed to upload file: ${file.name}`);
+      }
+
+      uploadedAttachments.push({
+        originalName: file.name,
+        storageKey: uploadUrlData.storageKey,
+        mimeType: file.type || 'application/octet-stream',
+        sizeBytes: file.size,
+        kind: file.type.startsWith('image/') ? 'image' : 'file',
       });
-    } finally {
-      setIsSavingMaterial(false);
     }
-  };
+
+    const payload = {
+      title: formData.title.trim(),
+      description: formData.description.trim(),
+      youtubeUrls: formData.youtubeUrls,
+      links: formData.links
+        .split('\n')
+        .map((item) => item.trim())
+        .filter(Boolean),
+      text: formData.text.trim(),
+      attachments: uploadedAttachments,
+    };
+
+    const response = await fetch('/api/materials', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to create material.');
+    }
+
+    await loadMaterials();
+    setIsUploadDialogOpen(false);
+
+    setToast({
+      open: true,
+      message: 'Material saved successfully.',
+      severity: 'success',
+    });
+  } catch (error) {
+    console.error('Failed to save material:', error);
+
+    setToast({
+      open: true,
+      message: error.message || 'Failed to save material.',
+      severity: 'error',
+    });
+  } finally {
+    setIsSavingMaterial(false);
+  }
+};
 
   const handleDeleteMaterial = (materialId) => {
     setMaterials((prev) => prev.filter((item) => item.id !== materialId));

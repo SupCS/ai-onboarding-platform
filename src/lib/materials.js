@@ -1,5 +1,5 @@
-import { db } from './db';
 import crypto from 'crypto';
+import { db } from './db';
 
 export async function getAllMaterials() {
   const materialsResult = await db.query(`
@@ -20,6 +20,12 @@ export async function getAllMaterials() {
     ORDER BY sort_order ASC
   `);
 
+  const filesResult = await db.query(`
+    SELECT material_id, id, original_name, storage_key, mime_type, size_bytes, kind
+    FROM material_files
+    ORDER BY created_at ASC
+  `);
+
   return materialsResult.rows.map((material) => ({
     id: material.id,
     title: material.title,
@@ -33,6 +39,16 @@ export async function getAllMaterials() {
     links: linksResult.rows
       .filter((item) => item.material_id === material.id)
       .map((item) => item.url),
+    attachments: filesResult.rows
+      .filter((item) => item.material_id === material.id)
+      .map((item) => ({
+        id: item.id,
+        name: item.original_name,
+        storageKey: item.storage_key,
+        mimeType: item.mime_type,
+        size: Number(item.size_bytes || 0),
+        kind: item.kind,
+      })),
   }));
 }
 
@@ -49,15 +65,10 @@ export async function createMaterial(input) {
         INSERT INTO materials (id, title, description, text_content)
         VALUES ($1, $2, $3, $4)
       `,
-      [
-        materialId,
-        input.title,
-        input.description || '',
-        input.text || '',
-      ]
+      [materialId, input.title, input.description || '', input.text || '']
     );
 
-    for (let index = 0; index < input.youtubeUrls.length; index += 1) {
+    for (let index = 0; index < (input.youtubeUrls || []).length; index += 1) {
       await client.query(
         `
           INSERT INTO material_youtube_urls (id, material_id, url, sort_order)
@@ -67,13 +78,39 @@ export async function createMaterial(input) {
       );
     }
 
-    for (let index = 0; index < input.links.length; index += 1) {
+    for (let index = 0; index < (input.links || []).length; index += 1) {
       await client.query(
         `
           INSERT INTO material_links (id, material_id, url, sort_order)
           VALUES ($1, $2, $3, $4)
         `,
         [crypto.randomUUID(), materialId, input.links[index], index]
+      );
+    }
+
+    for (const attachment of input.attachments || []) {
+      await client.query(
+        `
+          INSERT INTO material_files (
+            id,
+            material_id,
+            original_name,
+            storage_key,
+            mime_type,
+            size_bytes,
+            kind
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `,
+        [
+          crypto.randomUUID(),
+          materialId,
+          attachment.originalName,
+          attachment.storageKey,
+          attachment.mimeType || '',
+          attachment.sizeBytes || 0,
+          attachment.kind,
+        ]
       );
     }
 
