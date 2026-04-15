@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
   Box,
   Button,
@@ -70,6 +70,13 @@ function isValidYoutubeUrl(url) {
   return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i.test(url.trim());
 }
 
+function getYoutubeCandidates(rawValue) {
+  return rawValue
+    .split(/\s+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
 export default function UploadMaterialDialog({
   open,
   onClose,
@@ -78,15 +85,6 @@ export default function UploadMaterialDialog({
 }) {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
-
-  const hasAnyContent = useMemo(() => {
-    return Boolean(
-      form.youtubeUrls.length > 0 ||
-        form.links.trim() ||
-        form.text.trim() ||
-        form.attachments.length > 0
-    );
-  }, [form]);
 
   const handleChange = (field) => (event) => {
     const value = event.target.value;
@@ -103,48 +101,55 @@ export default function UploadMaterialDialog({
     }));
   };
 
-  const handleYoutubeInputChange = (event) => {
-    const value = event.target.value;
+  const commitYoutubeInput = (rawValue, existingUrls = form.youtubeUrls) => {
+    const candidates = getYoutubeCandidates(rawValue);
 
-    setForm((prev) => ({
-      ...prev,
-      youtubeInput: value,
-    }));
-
-    setErrors((prev) => ({
-      ...prev,
-      youtubeInput: '',
-      content: '',
-    }));
-  };
-
-  const addYoutubeUrl = (rawValue) => {
-    const value = rawValue.trim();
-
-    if (!value) {
-      return;
+    if (candidates.length === 0) {
+      return {
+        nextYoutubeUrls: existingUrls,
+        didCommit: false,
+        hasError: false,
+      };
     }
 
-    if (!isValidYoutubeUrl(value)) {
+    const invalidCandidate = candidates.find((item) => !isValidYoutubeUrl(item));
+
+    if (invalidCandidate) {
       setErrors((prev) => ({
         ...prev,
         youtubeInput: 'Only valid YouTube links are allowed here.',
       }));
-      return;
+
+      return {
+        nextYoutubeUrls: existingUrls,
+        didCommit: false,
+        hasError: true,
+      };
     }
 
-    if (form.youtubeUrls.includes(value)) {
+    const uniqueCandidates = candidates.filter(
+      (item) => !existingUrls.includes(item)
+    );
+
+    if (uniqueCandidates.length === 0) {
       setErrors((prev) => ({
         ...prev,
         youtubeInput: 'This YouTube link is already added.',
       }));
-      return;
+
+      return {
+        nextYoutubeUrls: existingUrls,
+        didCommit: false,
+        hasError: true,
+      };
     }
+
+    const nextYoutubeUrls = [...existingUrls, ...uniqueCandidates];
 
     setForm((prev) => ({
       ...prev,
       youtubeInput: '',
-      youtubeUrls: [...prev.youtubeUrls, value],
+      youtubeUrls: nextYoutubeUrls,
     }));
 
     setErrors((prev) => ({
@@ -152,15 +157,25 @@ export default function UploadMaterialDialog({
       youtubeInput: '',
       content: '',
     }));
+
+    return {
+      nextYoutubeUrls,
+      didCommit: true,
+      hasError: false,
+    };
   };
 
   const handleYoutubeKeyDown = (event) => {
-    if (event.key !== 'Enter') {
+    if (event.key !== 'Enter' && event.key !== ' ') {
       return;
     }
 
     event.preventDefault();
-    addYoutubeUrl(form.youtubeInput);
+    commitYoutubeInput(form.youtubeInput);
+  };
+
+  const handleYoutubeBlur = () => {
+    commitYoutubeInput(form.youtubeInput);
   };
 
   const handleRemoveYoutubeUrl = (urlToRemove) => {
@@ -185,19 +200,31 @@ export default function UploadMaterialDialog({
     }));
   };
 
-  const validateForm = () => {
+  const validateForm = (formToValidate = form) => {
     const nextErrors = {};
 
-    if (!form.title.trim()) {
+    if (!formToValidate.title.trim()) {
       nextErrors.title = 'Title is required.';
     }
+
+    const hasAnyContent = Boolean(
+      formToValidate.youtubeUrls.length > 0 ||
+        formToValidate.links.trim() ||
+        formToValidate.text.trim() ||
+        formToValidate.attachments.length > 0
+    );
 
     if (!hasAnyContent) {
       nextErrors.content = 'Add at least one content source.';
     }
 
-    if (form.youtubeInput.trim() && !isValidYoutubeUrl(form.youtubeInput)) {
-      nextErrors.youtubeInput = 'Press Enter only with a valid YouTube link.';
+    if (
+      formToValidate.youtubeInput.trim() &&
+      getYoutubeCandidates(formToValidate.youtubeInput).some(
+        (item) => !isValidYoutubeUrl(item)
+      )
+    ) {
+      nextErrors.youtubeInput = 'Only valid YouTube links are allowed here.';
     }
 
     setErrors(nextErrors);
@@ -206,13 +233,25 @@ export default function UploadMaterialDialog({
   };
 
   const handleSubmit = () => {
-    const isValid = validateForm();
+    const { nextYoutubeUrls, hasError } = commitYoutubeInput(form.youtubeInput);
+
+    if (hasError) {
+      return;
+    }
+
+    const nextForm = {
+      ...form,
+      youtubeInput: '',
+      youtubeUrls: nextYoutubeUrls,
+    };
+
+    const isValid = validateForm(nextForm);
 
     if (!isValid) {
       return;
     }
 
-    onSave(form);
+    onSave(nextForm);
   };
 
   const handleResetForm = () => {
@@ -226,6 +265,25 @@ export default function UploadMaterialDialog({
     }
 
     onClose(...args);
+  };
+
+  const handleYoutubeInputChange = (event) => {
+    const value = event.target.value;
+
+    setForm((prev) => ({
+      ...prev,
+      youtubeInput: value,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      youtubeInput: '',
+      content: '',
+    }));
+
+    if (/\s$/.test(value) || /[\r\n]/.test(value)) {
+      commitYoutubeInput(value);
+    }
   };
 
   return (
@@ -276,10 +334,11 @@ export default function UploadMaterialDialog({
               value={form.youtubeInput}
               onChange={handleYoutubeInputChange}
               onKeyDown={handleYoutubeKeyDown}
+              onBlur={handleYoutubeBlur}
               error={Boolean(errors.youtubeInput)}
               helperText={
                 errors.youtubeInput ||
-                'Add one or multiple YouTube links. Press Enter after each.'
+                'A YouTube link will be added automatically on Enter, space, blur, or save.'
               }
             />
 

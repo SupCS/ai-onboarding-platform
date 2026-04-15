@@ -123,3 +123,78 @@ export async function createMaterial(input) {
     client.release();
   }
 }
+
+export async function deleteMaterialById(materialId) {
+  const client = await db.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const materialResult = await client.query(
+      `
+        SELECT id
+        FROM materials
+        WHERE id = $1
+      `,
+      [materialId]
+    );
+
+    if (materialResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const filesResult = await client.query(
+      `
+        SELECT storage_key
+        FROM material_files
+        WHERE material_id = $1
+      `,
+      [materialId]
+    );
+
+    await client.query(
+      `
+        DELETE FROM material_youtube_urls
+        WHERE material_id = $1
+      `,
+      [materialId]
+    );
+
+    await client.query(
+      `
+        DELETE FROM material_links
+        WHERE material_id = $1
+      `,
+      [materialId]
+    );
+
+    await client.query(
+      `
+        DELETE FROM material_files
+        WHERE material_id = $1
+      `,
+      [materialId]
+    );
+
+    await client.query(
+      `
+        DELETE FROM materials
+        WHERE id = $1
+      `,
+      [materialId]
+    );
+
+    await client.query('COMMIT');
+
+    return {
+      id: materialId,
+      storageKeys: filesResult.rows.map((item) => item.storage_key).filter(Boolean),
+    };
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}

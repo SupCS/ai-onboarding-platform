@@ -15,6 +15,7 @@ export default function LibraryClient() {
   const [materials, setMaterials] = useState([]);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
+  const [isDeletingMaterial, setIsDeletingMaterial] = useState(false);
   const [toast, setToast] = useState({
     open: false,
     message: '',
@@ -94,108 +95,140 @@ export default function LibraryClient() {
     setSelectedMaterial(null);
   };
 
-const handleSaveMaterial = async (formData) => {
-  try {
-    setIsSavingMaterial(true);
+  const handleEditMaterial = () => {
+    setToast({
+      open: true,
+      message: 'Edit material is the next step.',
+      severity: 'info',
+    });
+  };
 
-    const uploadedAttachments = [];
+  const handleSaveMaterial = async (formData) => {
+    try {
+      setIsSavingMaterial(true);
 
-    for (const file of formData.attachments || []) {
-      const uploadUrlResponse = await fetch('/api/materials/upload-url', {
+      const uploadedAttachments = [];
+
+      for (const file of formData.attachments || []) {
+        const uploadUrlResponse = await fetch('/api/materials/upload-url', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileName: file.name,
+            contentType: file.type || 'application/octet-stream',
+            size: file.size,
+          }),
+        });
+
+        const uploadUrlData = await uploadUrlResponse.json();
+
+        if (!uploadUrlResponse.ok) {
+          throw new Error(uploadUrlData.error || 'Failed to prepare file upload.');
+        }
+
+        const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': file.type || 'application/octet-stream',
+          },
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error(`Failed to upload file: ${file.name}`);
+        }
+
+        uploadedAttachments.push({
+          originalName: file.name,
+          storageKey: uploadUrlData.storageKey,
+          mimeType: file.type || 'application/octet-stream',
+          sizeBytes: file.size,
+          kind: file.type.startsWith('image/') ? 'image' : 'file',
+        });
+      }
+
+      const payload = {
+        title: formData.title.trim(),
+        description: formData.description.trim(),
+        youtubeUrls: formData.youtubeUrls,
+        links: formData.links
+          .split('\n')
+          .map((item) => item.trim())
+          .filter(Boolean),
+        text: formData.text.trim(),
+        attachments: uploadedAttachments,
+      };
+
+      const response = await fetch('/api/materials', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type || 'application/octet-stream',
-          size: file.size,
-        }),
+        body: JSON.stringify(payload),
       });
 
-      const uploadUrlData = await uploadUrlResponse.json();
+      const data = await response.json();
 
-      if (!uploadUrlResponse.ok) {
-        throw new Error(uploadUrlData.error || 'Failed to prepare file upload.');
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create material.');
       }
 
-      const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type || 'application/octet-stream',
-        },
-        body: file,
+      await loadMaterials();
+      setIsUploadDialogOpen(false);
+
+      setToast({
+        open: true,
+        message: 'Material saved successfully.',
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to save material:', error);
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to save material.',
+        severity: 'error',
+      });
+    } finally {
+      setIsSavingMaterial(false);
+    }
+  };
+
+  const handleDeleteMaterial = async (material) => {
+    try {
+      setIsDeletingMaterial(true);
+
+      const response = await fetch(`/api/materials/${material.id}`, {
+        method: 'DELETE',
       });
 
-      if (!uploadResponse.ok) {
-        throw new Error(`Failed to upload file: ${file.name}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete material.');
       }
 
-      uploadedAttachments.push({
-        originalName: file.name,
-        storageKey: uploadUrlData.storageKey,
-        mimeType: file.type || 'application/octet-stream',
-        sizeBytes: file.size,
-        kind: file.type.startsWith('image/') ? 'image' : 'file',
+      setMaterials((prev) => prev.filter((item) => item.id !== material.id));
+      setSelectedMaterial((prev) => (prev?.id === material.id ? null : prev));
+
+      setToast({
+        open: true,
+        message: 'Material deleted successfully.',
+        severity: 'success',
       });
+    } catch (error) {
+      console.error('Failed to delete material:', error);
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to delete material.',
+        severity: 'error',
+      });
+    } finally {
+      setIsDeletingMaterial(false);
     }
-
-    const payload = {
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      youtubeUrls: formData.youtubeUrls,
-      links: formData.links
-        .split('\n')
-        .map((item) => item.trim())
-        .filter(Boolean),
-      text: formData.text.trim(),
-      attachments: uploadedAttachments,
-    };
-
-    const response = await fetch('/api/materials', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.error || 'Failed to create material.');
-    }
-
-    await loadMaterials();
-    setIsUploadDialogOpen(false);
-
-    setToast({
-      open: true,
-      message: 'Material saved successfully.',
-      severity: 'success',
-    });
-  } catch (error) {
-    console.error('Failed to save material:', error);
-
-    setToast({
-      open: true,
-      message: error.message || 'Failed to save material.',
-      severity: 'error',
-    });
-  } finally {
-    setIsSavingMaterial(false);
-  }
-};
-
-  const handleDeleteMaterial = (materialId) => {
-    setMaterials((prev) => prev.filter((item) => item.id !== materialId));
-    setSelectedMaterial((prev) => (prev?.id === materialId ? null : prev));
-
-    setToast({
-      open: true,
-      message: 'Delete API is not connected yet. This was only removed from UI.',
-      severity: 'warning',
-    });
   };
 
   const handleCloseToast = () => {
@@ -232,7 +265,6 @@ const handleSaveMaterial = async (formData) => {
               activeTab={activeTab}
               materials={sortedMaterials}
               isHydrated={!isLoadingMaterials}
-              onDeleteMaterial={handleDeleteMaterial}
               onOpenMaterial={handleOpenMaterial}
             />
           </Stack>
@@ -247,9 +279,13 @@ const handleSaveMaterial = async (formData) => {
       />
 
       <MaterialDetailsDialog
+        key={selectedMaterial?.id || 'material-details'}
         open={Boolean(selectedMaterial)}
         material={selectedMaterial}
+        isDeleting={isDeletingMaterial}
         onClose={handleCloseMaterial}
+        onDelete={handleDeleteMaterial}
+        onEdit={handleEditMaterial}
       />
 
       <Snackbar

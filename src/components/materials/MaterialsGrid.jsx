@@ -3,12 +3,10 @@
 import {
   Box,
   Chip,
-  IconButton,
   Paper,
   Stack,
   Typography,
 } from '@mui/material';
-import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined';
 import SmartDisplayOutlinedIcon from '@mui/icons-material/SmartDisplayOutlined';
@@ -81,9 +79,25 @@ function getYoutubeThumbnail(url) {
   return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 }
 
+function getFilePreviewLabel(attachment) {
+  const fileName = attachment?.name || '';
+  const extension = fileName.includes('.')
+    ? fileName.split('.').pop()?.toUpperCase()
+    : '';
+
+  if (extension) {
+    return extension;
+  }
+
+  if (attachment?.mimeType) {
+    return attachment.mimeType.split('/').pop()?.toUpperCase() || 'FILE';
+  }
+
+  return 'FILE';
+}
+
 export default function MaterialsGrid({
   materials,
-  onDeleteMaterial,
   onOpenMaterial,
 }) {
   return (
@@ -102,13 +116,16 @@ export default function MaterialsGrid({
     >
       {materials.map((material) => {
         const badges = getMaterialBadges(material);
+        const firstYoutubeUrl = material.youtubeUrls?.[0] || '';
+        const youtubeThumbnail = firstYoutubeUrl
+          ? getYoutubeThumbnail(firstYoutubeUrl)
+          : null;
         const imagePreview = material.attachments?.find(
           (item) => item.kind === 'image'
         );
-        const firstYoutubeUrl = material.youtubeUrls?.[0] || '';
-        const youtubeThumbnail = firstYoutubeUrl
-            ? getYoutubeThumbnail(firstYoutubeUrl)
-            : null;
+        const filePreview = material.attachments?.find(
+          (item) => item.kind === 'file'
+        );
 
         return (
           <Paper
@@ -142,7 +159,18 @@ export default function MaterialsGrid({
                 overflow: 'hidden',
             }}
           >
-            {imagePreview ? (
+            {youtubeThumbnail ? (
+              <Box
+                component="img"
+                src={youtubeThumbnail}
+                alt={material.title}
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
+            ) : imagePreview ? (
                 <Box
                 component="img"
                 src={imagePreview.previewUrl}
@@ -153,17 +181,36 @@ export default function MaterialsGrid({
                     objectFit: 'cover',
                 }}
                 />
-            ) : youtubeThumbnail ? (
-                <Box
-                component="img"
-                src={youtubeThumbnail}
-                alt={material.title}
+            ) : filePreview ? (
+              <Stack
+                spacing={1}
                 sx={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
+                  alignItems: 'center',
+                  px: 2,
                 }}
+              >
+                <DescriptionOutlinedIcon color="action" sx={{ fontSize: 42 }} />
+                <Chip
+                  label={getFilePreviewLabel(filePreview)}
+                  size="small"
+                  color="primary"
+                  variant="outlined"
                 />
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{
+                    textAlign: 'center',
+                    display: '-webkit-box',
+                    overflow: 'hidden',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {filePreview.name}
+                </Typography>
+              </Stack>
             ) : (
                 <Stack
                 spacing={1}
@@ -191,7 +238,6 @@ export default function MaterialsGrid({
                 sx={{
                   display: 'flex',
                   alignItems: 'flex-start',
-                  justifyContent: 'space-between',
                   gap: 1,
                   mb: 1,
                 }}
@@ -209,16 +255,6 @@ export default function MaterialsGrid({
                 >
                   {material.title}
                 </Typography>
-
-                <IconButton
-                  size="small"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onDeleteMaterial(material.id);
-                  }}
-                >
-                  <DeleteOutlineOutlinedIcon fontSize="small" />
-                </IconButton>
               </Box>
 
               {material.description && (

@@ -6,7 +6,6 @@ export default function LibraryTabPanel({
   activeTab,
   materials = [],
   isHydrated = true,
-  onDeleteMaterial,
   onOpenMaterial,
 }) {
   if (activeTab === 'materials') {
@@ -26,7 +25,6 @@ export default function LibraryTabPanel({
     return (
       <MaterialsGrid
         materials={materials}
-        onDeleteMaterial={onDeleteMaterial}
         onOpenMaterial={onOpenMaterial}
       />
     );

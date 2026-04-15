@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Box,
   Button,
   Chip,
   Dialog,
+  DialogActions,
   DialogContent,
   DialogTitle,
   Divider,
@@ -15,6 +17,8 @@ import {
   Typography,
 } from '@mui/material';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import SmartDisplayOutlinedIcon from '@mui/icons-material/SmartDisplayOutlined';
@@ -92,8 +96,13 @@ function Section({ icon, title, children }) {
 export default function MaterialDetailsDialog({
   material,
   open,
+  isDeleting = false,
   onClose,
+  onDelete,
+  onEdit,
 }) {
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+
   if (!material) {
     return null;
   }
@@ -104,10 +113,18 @@ export default function MaterialDetailsDialog({
   const fileAttachments = material.attachments?.filter(
     (item) => item.kind === 'file'
   ) || [];
+  const handleDialogClose = (...args) => {
+    if (isDeleting) {
+      return;
+    }
+
+    setIsConfirmDialogOpen(false);
+    onClose(...args);
+  };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="lg">
-      <DialogTitle sx={{ pr: 7 }}>
+    <Dialog open={open} onClose={handleDialogClose} fullWidth maxWidth="lg">
+      <DialogTitle sx={{ pr: 16 }}>
         <Stack spacing={1}>
           <Typography variant="h4" sx={{ fontWeight: 800, lineHeight: 1.15 }}>
             {material.title}
@@ -137,13 +154,35 @@ export default function MaterialDetailsDialog({
           )}
         </Stack>
 
-        <IconButton
-          aria-label="Close material details"
-          onClick={onClose}
+        <Stack
+          direction="row"
+          spacing={0.5}
           sx={{ position: 'absolute', right: 16, top: 16 }}
         >
-          <CloseOutlinedIcon />
-        </IconButton>
+          <IconButton
+            aria-label="Edit material"
+            onClick={onEdit}
+            disabled={isDeleting}
+            color="default"
+          >
+            <EditOutlinedIcon />
+          </IconButton>
+          <IconButton
+            aria-label="Delete material"
+            onClick={() => setIsConfirmDialogOpen(true)}
+            disabled={isDeleting}
+            color="error"
+          >
+            <DeleteOutlineOutlinedIcon />
+          </IconButton>
+          <IconButton
+            aria-label="Close material details"
+            onClick={handleDialogClose}
+            disabled={isDeleting}
+          >
+            <CloseOutlinedIcon />
+          </IconButton>
+        </Stack>
       </DialogTitle>
 
       <DialogContent dividers>
@@ -408,6 +447,52 @@ export default function MaterialDetailsDialog({
           )}
         </Stack>
       </DialogContent>
+
+      <DialogActions sx={{ px: 3, py: 2 }}>
+        <Button onClick={handleDialogClose} color="inherit" disabled={isDeleting}>
+          Close
+        </Button>
+      </DialogActions>
+
+      <Dialog
+        open={isConfirmDialogOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setIsConfirmDialogOpen(false);
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Delete material?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 1 }}>
+            <Typography variant="body1">
+              This action will permanently remove <strong>{material.title}</strong>.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              All related videos, links, text references, and uploaded files will be removed from the library.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={() => setIsConfirmDialogOpen(false)}
+            color="inherit"
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={() => onDelete(material)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete permanently'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 }
