@@ -11,6 +11,7 @@ import MaterialDetailsDialog from '../../../components/materials/MaterialDetails
 export default function LibraryClient() {
   const [activeTab, setActiveTab] = useState('materials');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [editingMaterial, setEditingMaterial] = useState(null);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
@@ -72,6 +73,7 @@ export default function LibraryClient() {
 
   const handlePrimaryAction = () => {
     if (activeTab === 'materials') {
+      setEditingMaterial(null);
       setIsUploadDialogOpen(true);
       return;
     }
@@ -84,6 +86,7 @@ export default function LibraryClient() {
       return;
     }
 
+    setEditingMaterial(null);
     setIsUploadDialogOpen(false);
   };
 
@@ -95,59 +98,78 @@ export default function LibraryClient() {
     setSelectedMaterial(null);
   };
 
-  const handleEditMaterial = () => {
-    setToast({
-      open: true,
-      message: 'Edit material is the next step.',
-      severity: 'info',
-    });
+  const handleEditMaterial = (material) => {
+    if (!material) {
+      return;
+    }
+
+    setEditingMaterial(material);
+    setSelectedMaterial(null);
+    setIsUploadDialogOpen(true);
+  };
+
+  const uploadNewAttachments = async (files = []) => {
+    const uploadedAttachments = [];
+
+    for (const file of files) {
+      const uploadUrlResponse = await fetch('/api/materials/upload-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type || 'application/octet-stream',
+          size: file.size,
+        }),
+      });
+
+      const uploadUrlData = await uploadUrlResponse.json();
+
+      if (!uploadUrlResponse.ok) {
+        throw new Error(uploadUrlData.error || 'Failed to prepare file upload.');
+      }
+
+      const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Failed to upload file: ${file.name}`);
+      }
+
+      uploadedAttachments.push({
+        originalName: file.name,
+        storageKey: uploadUrlData.storageKey,
+        mimeType: file.type || 'application/octet-stream',
+        sizeBytes: file.size,
+        kind: file.type.startsWith('image/') ? 'image' : 'file',
+      });
+    }
+
+    return uploadedAttachments;
   };
 
   const handleSaveMaterial = async (formData) => {
     try {
       setIsSavingMaterial(true);
-
-      const uploadedAttachments = [];
-
-      for (const file of formData.attachments || []) {
-        const uploadUrlResponse = await fetch('/api/materials/upload-url', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fileName: file.name,
-            contentType: file.type || 'application/octet-stream',
-            size: file.size,
-          }),
-        });
-
-        const uploadUrlData = await uploadUrlResponse.json();
-
-        if (!uploadUrlResponse.ok) {
-          throw new Error(uploadUrlData.error || 'Failed to prepare file upload.');
-        }
-
-        const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': file.type || 'application/octet-stream',
-          },
-          body: file,
-        });
-
-        if (!uploadResponse.ok) {
-          throw new Error(`Failed to upload file: ${file.name}`);
-        }
-
-        uploadedAttachments.push({
-          originalName: file.name,
-          storageKey: uploadUrlData.storageKey,
-          mimeType: file.type || 'application/octet-stream',
-          sizeBytes: file.size,
-          kind: file.type.startsWith('image/') ? 'image' : 'file',
-        });
-      }
+      const uploadedAttachments = await uploadNewAttachments(
+        formData.newAttachments || []
+      );
+      const retainedAttachments = (formData.existingAttachments || []).map(
+        (attachment) => ({
+          id: attachment.id,
+          originalName: attachment.name,
+          storageKey: attachment.storageKey,
+          mimeType: attachment.mimeType || '',
+          sizeBytes: attachment.size || 0,
+          kind: attachment.kind,
+        })
+      );
 
       const payload = {
         title: formData.title.trim(),
@@ -158,29 +180,40 @@ export default function LibraryClient() {
           .map((item) => item.trim())
           .filter(Boolean),
         text: formData.text.trim(),
-        attachments: uploadedAttachments,
+        attachments: [...retainedAttachments, ...uploadedAttachments],
       };
 
-      const response = await fetch('/api/materials', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      const response = await fetch(
+        editingMaterial ? `/api/materials/${editingMaterial.id}` : '/api/materials',
+        {
+          method: editingMaterial ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create material.');
+        throw new Error(
+          data.error ||
+            (editingMaterial
+              ? 'Failed to update material.'
+              : 'Failed to create material.')
+        );
       }
 
       await loadMaterials();
+      setEditingMaterial(null);
       setIsUploadDialogOpen(false);
 
       setToast({
         open: true,
-        message: 'Material saved successfully.',
+        message: editingMaterial
+          ? 'Material updated successfully.'
+          : 'Material saved successfully.',
         severity: 'success',
       });
     } catch (error) {
@@ -272,10 +305,13 @@ export default function LibraryClient() {
       </Container>
 
       <UploadMaterialDialog
+        key={editingMaterial ? `edit-${editingMaterial.id}` : 'create-material'}
         open={isUploadDialogOpen}
         onClose={handleCloseUploadDialog}
         onSave={handleSaveMaterial}
         isSaving={isSavingMaterial}
+        mode={editingMaterial ? 'edit' : 'create'}
+        initialMaterial={editingMaterial}
       />
 
       <MaterialDetailsDialog
@@ -285,7 +321,7 @@ export default function LibraryClient() {
         isDeleting={isDeletingMaterial}
         onClose={handleCloseMaterial}
         onDelete={handleDeleteMaterial}
-        onEdit={handleEditMaterial}
+        onEdit={() => handleEditMaterial(selectedMaterial)}
       />
 
       <Snackbar

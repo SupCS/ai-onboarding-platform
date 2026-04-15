@@ -96,6 +96,52 @@ function getFilePreviewLabel(attachment) {
   return 'FILE';
 }
 
+function getMaterialMetaItems(material) {
+  const items = [];
+
+  if (material.youtubeUrls?.length > 0) {
+    items.push({
+      key: 'youtube',
+      icon: <SmartDisplayOutlinedIcon fontSize="small" color="action" />,
+      label: `${material.youtubeUrls.length} YouTube video(s)`,
+    });
+  }
+
+  if (material.links?.length > 0) {
+    items.push({
+      key: 'links',
+      icon: <LinkOutlinedIcon fontSize="small" color="action" />,
+      label: `${material.links.length} link(s)`,
+    });
+  }
+
+  if (material.text) {
+    items.push({
+      key: 'text',
+      icon: <TextSnippetOutlinedIcon fontSize="small" color="action" />,
+      label: 'Text included',
+    });
+  }
+
+  if (material.attachments?.some((item) => item.kind === 'file')) {
+    items.push({
+      key: 'files',
+      icon: <DescriptionOutlinedIcon fontSize="small" color="action" />,
+      label: 'File attached',
+    });
+  }
+
+  if (material.attachments?.some((item) => item.kind === 'image')) {
+    items.push({
+      key: 'images',
+      icon: <ImageOutlinedIcon fontSize="small" color="action" />,
+      label: 'Image attached',
+    });
+  }
+
+  return items;
+}
+
 export default function MaterialsGrid({
   materials,
   onOpenMaterial,
@@ -116,6 +162,7 @@ export default function MaterialsGrid({
     >
       {materials.map((material) => {
         const badges = getMaterialBadges(material);
+        const metaItems = getMaterialMetaItems(material);
         const firstYoutubeUrl = material.youtubeUrls?.[0] || '';
         const youtubeThumbnail = firstYoutubeUrl
           ? getYoutubeThumbnail(firstYoutubeUrl)
@@ -265,74 +312,45 @@ export default function MaterialsGrid({
                     mb: 1.5,
                     display: '-webkit-box',
                     overflow: 'hidden',
-                    WebkitLineClamp: 3,
+                    WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',
-                    minHeight: 60,
                   }}
                 >
                   {material.description}
                 </Typography>
               )}
 
-              <Stack
-                direction="row"
-                spacing={1}
-                useFlexGap
-                sx={{
+              {badges.length > 0 && (
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  useFlexGap
+                  sx={{
                     flexWrap: 'wrap',
                     mb: 1.5,
-                }}
-              >
-                {badges.map((badge) => (
-                  <Chip key={badge} label={badge} size="small" />
-                ))}
-              </Stack>
+                  }}
+                >
+                  {badges.map((badge) => (
+                    <Chip key={badge} label={badge} size="small" />
+                  ))}
+                </Stack>
+              )}
 
-              <Stack spacing={0.75} sx={{ mb: 2 }}>
-                {material.youtubeUrls?.length > 0 && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <SmartDisplayOutlinedIcon fontSize="small" color="action" />
-                    <Typography variant="caption" color="text.secondary" noWrap>
-                    {material.youtubeUrls.length} YouTube video(s)
-                    </Typography>
-                </Box>
-                )}
-                {material.links?.length > 0 && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <LinkOutlinedIcon fontSize="small" color="action" />
-                    <Typography variant="caption" color="text.secondary" noWrap>
-                      {material.links.length} link(s)
-                    </Typography>
-                  </Box>
-                )}
-
-                {material.text && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <TextSnippetOutlinedIcon fontSize="small" color="action" />
-                    <Typography variant="caption" color="text.secondary" noWrap>
-                      Text included
-                    </Typography>
-                  </Box>
-                )}
-
-                {material.attachments?.some((item) => item.kind === 'file') && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <DescriptionOutlinedIcon fontSize="small" color="action" />
-                    <Typography variant="caption" color="text.secondary" noWrap>
-                      File attached
-                    </Typography>
-                  </Box>
-                )}
-
-                {material.attachments?.some((item) => item.kind === 'image') && (
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <ImageOutlinedIcon fontSize="small" color="action" />
-                    <Typography variant="caption" color="text.secondary" noWrap>
-                      Image attached
-                    </Typography>
-                  </Box>
-                )}
-              </Stack>
+              {metaItems.length > 0 && (
+                <Stack spacing={0.75} sx={{ mb: 2 }}>
+                  {metaItems.map((item) => (
+                    <Box
+                      key={item.key}
+                      sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
+                    >
+                      {item.icon}
+                      <Typography variant="caption" color="text.secondary" noWrap>
+                        {item.label}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
 
               <Box sx={{ mt: 'auto' }}>
                 <Typography variant="caption" color="text.secondary">

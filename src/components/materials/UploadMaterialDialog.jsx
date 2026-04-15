@@ -14,16 +14,6 @@ import {
   Typography,
 } from '@mui/material';
 
-const initialForm = {
-  title: '',
-  description: '',
-  youtubeInput: '',
-  youtubeUrls: [],
-  links: '',
-  text: '',
-  attachments: [],
-};
-
 const acceptedFileTypes = [
   '.doc',
   '.docx',
@@ -62,6 +52,19 @@ const youtubeChipSx = {
   },
 };
 
+function buildInitialForm(material) {
+  return {
+    title: material?.title || '',
+    description: material?.description || '',
+    youtubeInput: '',
+    youtubeUrls: material?.youtubeUrls || [],
+    links: (material?.links || []).join('\n'),
+    text: material?.text || '',
+    existingAttachments: material?.attachments || [],
+    newAttachments: [],
+  };
+}
+
 function isValidYoutubeUrl(url) {
   if (!url.trim()) {
     return false;
@@ -82,9 +85,13 @@ export default function UploadMaterialDialog({
   onClose,
   onSave,
   isSaving = false,
+  mode = 'create',
+  initialMaterial = null,
 }) {
-  const [form, setForm] = useState(initialForm);
+  const [form, setForm] = useState(buildInitialForm(initialMaterial));
   const [errors, setErrors] = useState({});
+
+  const isEditMode = mode === 'edit';
 
   const handleChange = (field) => (event) => {
     const value = event.target.value;
@@ -107,7 +114,6 @@ export default function UploadMaterialDialog({
     if (candidates.length === 0) {
       return {
         nextYoutubeUrls: existingUrls,
-        didCommit: false,
         hasError: false,
       };
     }
@@ -122,7 +128,6 @@ export default function UploadMaterialDialog({
 
       return {
         nextYoutubeUrls: existingUrls,
-        didCommit: false,
         hasError: true,
       };
     }
@@ -139,7 +144,6 @@ export default function UploadMaterialDialog({
 
       return {
         nextYoutubeUrls: existingUrls,
-        didCommit: false,
         hasError: true,
       };
     }
@@ -160,9 +164,27 @@ export default function UploadMaterialDialog({
 
     return {
       nextYoutubeUrls,
-      didCommit: true,
       hasError: false,
     };
+  };
+
+  const handleYoutubeInputChange = (event) => {
+    const value = event.target.value;
+
+    setForm((prev) => ({
+      ...prev,
+      youtubeInput: value,
+    }));
+
+    setErrors((prev) => ({
+      ...prev,
+      youtubeInput: '',
+      content: '',
+    }));
+
+    if (/\s$/.test(value) || /[\r\n]/.test(value)) {
+      commitYoutubeInput(value);
+    }
   };
 
   const handleYoutubeKeyDown = (event) => {
@@ -190,13 +212,31 @@ export default function UploadMaterialDialog({
 
     setForm((prev) => ({
       ...prev,
-      attachments: selectedFiles,
+      newAttachments: [...prev.newAttachments, ...selectedFiles],
     }));
 
     setErrors((prev) => ({
       ...prev,
       attachments: '',
       content: '',
+    }));
+
+    event.target.value = '';
+  };
+
+  const handleRemoveExistingAttachment = (storageKey) => {
+    setForm((prev) => ({
+      ...prev,
+      existingAttachments: prev.existingAttachments.filter(
+        (attachment) => attachment.storageKey !== storageKey
+      ),
+    }));
+  };
+
+  const handleRemoveNewAttachment = (fileToRemove) => {
+    setForm((prev) => ({
+      ...prev,
+      newAttachments: prev.newAttachments.filter((file) => file !== fileToRemove),
     }));
   };
 
@@ -211,7 +251,8 @@ export default function UploadMaterialDialog({
       formToValidate.youtubeUrls.length > 0 ||
         formToValidate.links.trim() ||
         formToValidate.text.trim() ||
-        formToValidate.attachments.length > 0
+        formToValidate.existingAttachments.length > 0 ||
+        formToValidate.newAttachments.length > 0
     );
 
     if (!hasAnyContent) {
@@ -254,11 +295,6 @@ export default function UploadMaterialDialog({
     onSave(nextForm);
   };
 
-  const handleResetForm = () => {
-    setForm(initialForm);
-    setErrors({});
-  };
-
   const handleDialogClose = (...args) => {
     if (isSaving) {
       return;
@@ -267,38 +303,11 @@ export default function UploadMaterialDialog({
     onClose(...args);
   };
 
-  const handleYoutubeInputChange = (event) => {
-    const value = event.target.value;
-
-    setForm((prev) => ({
-      ...prev,
-      youtubeInput: value,
-    }));
-
-    setErrors((prev) => ({
-      ...prev,
-      youtubeInput: '',
-      content: '',
-    }));
-
-    if (/\s$/.test(value) || /[\r\n]/.test(value)) {
-      commitYoutubeInput(value);
-    }
-  };
-
   return (
-    <Dialog
-      open={open}
-      onClose={handleDialogClose}
-      fullWidth
-      maxWidth="md"
-      slotProps={{
-        transition: {
-          onExited: handleResetForm,
-        },
-      }}
-    >
-      <DialogTitle>Add Material</DialogTitle>
+    <Dialog open={open} onClose={handleDialogClose} fullWidth maxWidth="md">
+      <DialogTitle>
+        {isEditMode ? 'Edit Material' : 'Add Material'}
+      </DialogTitle>
 
       <DialogContent sx={{ pt: 2 }}>
         <Stack spacing={3} sx={{ mt: 1 }}>
@@ -401,7 +410,7 @@ export default function UploadMaterialDialog({
             </Typography>
 
             <Button variant="outlined" component="label">
-              Choose Files
+              {isEditMode ? 'Add More Files' : 'Choose Files'}
               <input
                 hidden
                 type="file"
@@ -415,13 +424,38 @@ export default function UploadMaterialDialog({
               Supported: doc, docx, xls, xlsx, pdf, png, jpg, jpeg, webp
             </Typography>
 
-            {form.attachments.length > 0 && (
-              <Stack spacing={0.5} sx={{ mt: 1.5 }}>
-                {form.attachments.map((file) => (
-                  <Typography key={`${file.name}-${file.size}`} variant="body2">
-                    {file.name}
-                  </Typography>
-                ))}
+            {form.existingAttachments.length > 0 && (
+              <Stack spacing={1} sx={{ mt: 1.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  Existing attachments
+                </Typography>
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                  {form.existingAttachments.map((attachment) => (
+                    <Chip
+                      key={attachment.id || attachment.storageKey}
+                      label={attachment.name}
+                      onDelete={() => handleRemoveExistingAttachment(attachment.storageKey)}
+                      variant="outlined"
+                    />
+                  ))}
+                </Stack>
+              </Stack>
+            )}
+
+            {form.newAttachments.length > 0 && (
+              <Stack spacing={1} sx={{ mt: 1.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  New attachments
+                </Typography>
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                  {form.newAttachments.map((file) => (
+                    <Chip
+                      key={`${file.name}-${file.size}-${file.lastModified}`}
+                      label={file.name}
+                      onDelete={() => handleRemoveNewAttachment(file)}
+                    />
+                  ))}
+                </Stack>
               </Stack>
             )}
           </Box>
@@ -440,7 +474,13 @@ export default function UploadMaterialDialog({
         </Button>
 
         <Button variant="contained" onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? 'Saving...' : 'Save Material'}
+          {isSaving
+            ? isEditMode
+              ? 'Saving changes...'
+              : 'Saving...'
+            : isEditMode
+              ? 'Save Changes'
+              : 'Save Material'}
         </Button>
       </DialogActions>
     </Dialog>
