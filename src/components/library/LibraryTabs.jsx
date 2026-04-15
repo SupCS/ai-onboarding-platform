@@ -29,6 +29,11 @@ export default function LibraryTabs({ activeTab, onTabChange }) {
             textTransform: 'none',
             fontWeight: 600,
             minHeight: 48,
+            transition: 'all 0.3s ease',
+          },
+          '& .MuiTab-root:hover': {
+            color: 'primary.main',
+            textShadow: '0 0 8px rgba(25, 118, 210, 0.4)',
           },
         }}
       >

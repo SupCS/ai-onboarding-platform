@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
 import {
   Avatar,
   Box,
@@ -110,17 +111,20 @@ export default function Sidebar() {
             justifyContent: 'center',
             alignItems: 'center',
             flexShrink: 0,
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              filter: 'drop-shadow(0 0 12px rgba(25, 118, 210, 0.6))',
+            },
           }}
         >
-          <Avatar
-            sx={{
-              width: 40,
-              height: 40,
-              fontSize: 16,
-            }}
-          >
-            A
-          </Avatar>
+          <Image
+            src="/aidlogo.png"
+            alt="AI Onboarding Logo"
+            width={40}
+            height={40}
+            priority
+            style={{ objectFit: 'contain', borderRadius: '8px' }}
+          />
         </Box>
 
         <Box
