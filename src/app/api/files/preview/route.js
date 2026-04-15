@@ -1,6 +1,4 @@
-import { GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { bucketName, storage } from '../../../../lib/storage';
+import { getPreviewUrl } from '../../../../lib/storage';
 
 export const runtime = 'nodejs';
 
@@ -16,14 +14,7 @@ export async function GET(request) {
       );
     }
 
-    const command = new GetObjectCommand({
-      Bucket: bucketName,
-      Key: storageKey,
-    });
-
-    const previewUrl = await getSignedUrl(storage, command, {
-      expiresIn: 60 * 60 * 24, // 24 hours
-    });
+    const previewUrl = await getPreviewUrl(storageKey);
 
     return Response.json({ previewUrl });
   } catch (error) {

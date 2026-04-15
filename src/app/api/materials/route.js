@@ -1,12 +1,44 @@
 import { createMaterial, getAllMaterials } from '../../../lib/materials';
+import { getObjectUrl } from '../../../lib/storage';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
   try {
     const materials = await getAllMaterials();
+    const materialsWithPreviews = await Promise.all(
+      materials.map(async (material) => {
+        const attachments = await Promise.all(
+          (material.attachments || []).map(async (attachment) => {
+            if (attachment.kind !== 'image' || !attachment.storageKey) {
+              if (!attachment.storageKey) {
+                return attachment;
+              }
 
-    return Response.json({ materials });
+              return {
+                ...attachment,
+                fileUrl: await getObjectUrl(attachment.storageKey),
+              };
+            }
+
+            const fileUrl = await getObjectUrl(attachment.storageKey);
+
+            return {
+              ...attachment,
+              previewUrl: fileUrl,
+              fileUrl,
+            };
+          })
+        );
+
+        return {
+          ...material,
+          attachments,
+        };
+      })
+    );
+
+    return Response.json({ materials: materialsWithPreviews });
   } catch (error) {
     console.error('GET /api/materials failed:', error);
 

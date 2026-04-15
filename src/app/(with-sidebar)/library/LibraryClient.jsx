@@ -6,10 +6,12 @@ import LibraryToolbar from '../../../components/library/LibraryToolbar';
 import LibraryTabs from '../../../components/library/LibraryTabs';
 import LibraryTabPanel from '../../../components/library/LibraryTabPanel';
 import UploadMaterialDialog from '../../../components/materials/UploadMaterialDialog';
+import MaterialDetailsDialog from '../../../components/materials/MaterialDetailsDialog';
 
 export default function LibraryClient() {
   const [activeTab, setActiveTab] = useState('materials');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
@@ -45,29 +47,7 @@ export default function LibraryClient() {
         attachments: material.attachments || [],
       }));
 
-      // Add preview URLs for images
-      const materialsWithPreviews = await Promise.all(
-        normalizedMaterials.map(async (material) => {
-          const attachmentsWithPreviews = await Promise.all(
-            material.attachments.map(async (attachment) => {
-              if (attachment.kind === 'image') {
-                try {
-                  const res = await fetch(`/api/files/preview?storageKey=${attachment.storageKey}`);
-                  const data = await res.json();
-                  return { ...attachment, previewUrl: data.previewUrl };
-                } catch (e) {
-                  console.error('Failed to get preview URL for', attachment.storageKey, e);
-                  return attachment;
-                }
-              }
-              return attachment;
-            })
-          );
-          return { ...material, attachments: attachmentsWithPreviews };
-        })
-      );
-
-      setMaterials(materialsWithPreviews);
+      setMaterials(normalizedMaterials);
     } catch (error) {
       console.error('Failed to load materials:', error);
 
@@ -104,6 +84,14 @@ export default function LibraryClient() {
     }
 
     setIsUploadDialogOpen(false);
+  };
+
+  const handleOpenMaterial = (material) => {
+    setSelectedMaterial(material);
+  };
+
+  const handleCloseMaterial = () => {
+    setSelectedMaterial(null);
   };
 
 const handleSaveMaterial = async (formData) => {
@@ -201,6 +189,7 @@ const handleSaveMaterial = async (formData) => {
 
   const handleDeleteMaterial = (materialId) => {
     setMaterials((prev) => prev.filter((item) => item.id !== materialId));
+    setSelectedMaterial((prev) => (prev?.id === materialId ? null : prev));
 
     setToast({
       open: true,
@@ -244,6 +233,7 @@ const handleSaveMaterial = async (formData) => {
               materials={sortedMaterials}
               isHydrated={!isLoadingMaterials}
               onDeleteMaterial={handleDeleteMaterial}
+              onOpenMaterial={handleOpenMaterial}
             />
           </Stack>
         </Paper>
@@ -254,6 +244,12 @@ const handleSaveMaterial = async (formData) => {
         onClose={handleCloseUploadDialog}
         onSave={handleSaveMaterial}
         isSaving={isSavingMaterial}
+      />
+
+      <MaterialDetailsDialog
+        open={Boolean(selectedMaterial)}
+        material={selectedMaterial}
+        onClose={handleCloseMaterial}
       />
 
       <Snackbar

@@ -1,4 +1,5 @@
-import { S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 export const storage = new S3Client({
   region: process.env.RAILWAY_BUCKET_REGION || process.env.REGION || 'auto',
@@ -13,3 +14,18 @@ export const storage = new S3Client({
 
 export const bucketName =
   process.env.RAILWAY_BUCKET_BUCKET || process.env.BUCKET;
+
+export async function getObjectUrl(storageKey, options = {}) {
+  const command = new GetObjectCommand({
+    Bucket: bucketName,
+    Key: storageKey,
+  });
+
+  return getSignedUrl(storage, command, {
+    expiresIn: options.expiresIn ?? 60 * 60 * 24,
+  });
+}
+
+export async function getPreviewUrl(storageKey, options = {}) {
+  return getObjectUrl(storageKey, options);
+}

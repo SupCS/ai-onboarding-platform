@@ -81,7 +81,11 @@ function getYoutubeThumbnail(url) {
   return `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
 }
 
-export default function MaterialsGrid({ materials, onDeleteMaterial }) {
+export default function MaterialsGrid({
+  materials,
+  onDeleteMaterial,
+  onOpenMaterial,
+}) {
   return (
     <Box
       sx={{
@@ -110,6 +114,7 @@ export default function MaterialsGrid({ materials, onDeleteMaterial }) {
           <Paper
             key={material.id}
             elevation={0}
+            onClick={() => onOpenMaterial(material)}
             sx={{
               borderRadius: 4,
               border: '1px solid #e5e7eb',
@@ -118,6 +123,12 @@ export default function MaterialsGrid({ materials, onDeleteMaterial }) {
               minHeight: 320,
               display: 'flex',
               flexDirection: 'column',
+              cursor: 'pointer',
+              transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: '0 18px 40px rgba(15, 23, 42, 0.08)',
+              },
             }}
           >
           <Box
@@ -201,7 +212,10 @@ export default function MaterialsGrid({ materials, onDeleteMaterial }) {
 
                 <IconButton
                   size="small"
-                  onClick={() => onDeleteMaterial(material.id)}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDeleteMaterial(material.id);
+                  }}
                 >
                   <DeleteOutlineOutlinedIcon fontSize="small" />
                 </IconButton>

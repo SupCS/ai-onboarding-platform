@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -70,16 +70,14 @@ function isValidYoutubeUrl(url) {
   return /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i.test(url.trim());
 }
 
-export default function UploadMaterialDialog({   open, onClose, onSave, isSaving = false, }) {
+export default function UploadMaterialDialog({
+  open,
+  onClose,
+  onSave,
+  isSaving = false,
+}) {
   const [form, setForm] = useState(initialForm);
   const [errors, setErrors] = useState({});
-
-  useEffect(() => {
-    if (!open) {
-      setForm(initialForm);
-      setErrors({});
-    }
-  }, [open]);
 
   const hasAnyContent = useMemo(() => {
     return Boolean(
@@ -217,8 +215,31 @@ export default function UploadMaterialDialog({   open, onClose, onSave, isSaving
     onSave(form);
   };
 
+  const handleResetForm = () => {
+    setForm(initialForm);
+    setErrors({});
+  };
+
+  const handleDialogClose = (...args) => {
+    if (isSaving) {
+      return;
+    }
+
+    onClose(...args);
+  };
+
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
+    <Dialog
+      open={open}
+      onClose={handleDialogClose}
+      fullWidth
+      maxWidth="md"
+      slotProps={{
+        transition: {
+          onExited: handleResetForm,
+        },
+      }}
+    >
       <DialogTitle>Add Material</DialogTitle>
 
       <DialogContent sx={{ pt: 2 }}>
@@ -355,12 +376,12 @@ export default function UploadMaterialDialog({   open, onClose, onSave, isSaving
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={onClose} color="inherit" disabled={isSaving}>
-        Cancel
+        <Button onClick={handleDialogClose} color="inherit" disabled={isSaving}>
+          Cancel
         </Button>
 
         <Button variant="contained" onClick={handleSubmit} disabled={isSaving}>
-        {isSaving ? 'Saving...' : 'Save Material'}
+          {isSaving ? 'Saving...' : 'Save Material'}
         </Button>
       </DialogActions>
     </Dialog>
