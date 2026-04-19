@@ -1,0 +1,156 @@
+Quizlets - if you fail a question - moderate the lesson based on your answers / provide recommendations based on personal problems and knowledge gaps
+Si-game
+Library of trainings recorded, categorized by departments. Custom curriculums (e.g. help me to build DV360 curriculum)
+
+AI Lesson Builder
+
+Goal:
+User selects source materials, adds extra instructions, and AI turns them into a clear theoretical internal knowledge article / lesson that combines all materials into one coherent learning flow.
+
+Key principle:
+The lesson should not be a simple summary and should not become a generic course template. It should merge the selected materials structurally, explain concepts clearly where the source lacks context, remove duplication, preserve source-specific caveats, avoid unsupported filler, and produce useful Markdown for digital marketing agency employees.
+
+Phase 1 - Product shape and UX
+[x] Define lesson creation flow:
+    [x] Select source materials from library.
+    [x] Add extra user instructions.
+    [x] Add optional lesson settings: depth, tone, desired format.
+    [x] Preview selected material titles before generation.
+    [x] Start lesson generation and show progress/status.
+[x] Decide lesson output structure:
+    [x] Title.
+    [x] Direct main content sections.
+    [x] Prerequisites only if truly necessary.
+    [x] Examples and analogies only when they clarify source material.
+    [x] Key terms / definitions only if useful and not already explained inline.
+    [x] Summary.
+[x] Define MVP limits:
+    [x] Maximum number of selected materials: 8.
+    [x] Maximum combined extracted text size: 80,000 characters.
+    [x] Supported material types for first version: library material title, description, text content, links, YouTube URLs, and attachment metadata. File text extraction can be added later.
+
+Phase 2 - Data model
+[x] Add lesson entity:
+    [x] id, title, description, status.
+    [x] selected material ids through lesson_materials.
+    [x] user instructions.
+    [x] generated lesson content.
+    [x] generation metadata: model, prompt version, token usage, provider response id, createdBy, createdAt, updatedAt.
+[x] Add lesson draft/generation states:
+    [x] draft.
+    [x] generating.
+    [x] ready.
+    [x] failed.
+[x] Decide how to store generated content:
+    [x] Markdown for MVP.
+    [x] Structured JSON blocks later if editing/reordering sections is needed.
+
+Phase 3 - Material preparation
+[x] Build material aggregation step:
+    [x] Load selected materials.
+    [x] Normalize titles, descriptions, links, YouTube URLs, attachment metadata, and text content.
+    [x] Keep source references so the generated lesson can cite where ideas came from.
+[x] Add preprocessing:
+    [x] Trim irrelevant whitespace and duplicate URLs.
+    [x] Chunk large materials if needed later; for MVP, block generation above the size limit.
+    [x] Detect duplicate titles and repeated URLs.
+    [x] Extract candidate terms, examples, and caveats/warnings with basic text signals.
+[x] Add validation:
+    [x] No selected materials.
+    [x] Materials too large.
+    [x] Empty material content.
+
+Phase 4 - AI lesson generation prompt
+[x] Design the main prompt:
+    [x] Explain that AI must synthesize materials, not just summarize them.
+    [x] Require a coherent lesson flow with smooth transitions.
+    [x] Require useful theoretical explanation without formal course scaffolding.
+    [x] Require explicit handling of contradictions, missing context, and uncertainty.
+    [x] Respect user instructions, depth, tone, and desired format.
+    [x] Prevent generic filler like unsupported "why this matters" sections.
+    [x] Ask AI to add concise background explanations for underexplained concepts when needed.
+[x] Create a strict output format:
+    [x] Free Markdown for MVP.
+    [x] Do not require Short Description, Learning Objectives, or Lesson Outline.
+    [x] Optional JSON schema later for editable blocks.
+[x] Add prompt versioning:
+    [x] Store prompt version on each generated lesson.
+    [x] Keep prompts in a dedicated file/module.
+    [x] Current prompt version: theoretical-lesson-v2.
+
+Phase 5 - Backend API
+[x] Add temporary endpoint/action to build and inspect the lesson prompt before real generation.
+[x] Add endpoint/action to create lesson generation request.
+[ ] Add endpoint/action to fetch lesson by id as a separate route.
+[x] Add endpoint/action to list generated lessons.
+[x] Add error handling for failed generation.
+[x] Add basic logging for selected materials, prompt version, token usage, and failures.
+[x] Save generated Markdown to lessons.content_markdown.
+[x] Save generation metadata: provider, model, prompt version, response id, usage, prepared materials.
+[x] Fix lesson_materials.material_id type to match materials.id UUID.
+
+Phase 6 - Frontend implementation
+[x] Build temporary lesson creation form:
+    [x] Temporary material picker for prompt preview.
+    [x] Temporary instruction textarea for prompt preview.
+    [x] Temporary depth/tone/format controls for prompt preview.
+    [x] Temporary button that builds prompt and logs it to browser console.
+    [x] Final generation button.
+    [x] Log generated lesson markdown to browser console.
+[ ] Polish lesson creation UX:
+    [ ] Hide or remove Build prompt button outside debug/admin mode.
+    [ ] Show generated lesson status in UI instead of only console.
+    [ ] Refresh lessons list after generation.
+[ ] Build lesson result page:
+    [ ] Generated lesson viewer.
+    [ ] Source materials list.
+    [ ] Regenerate button.
+    [ ] Copy/export action if useful.
+[ ] Add loading and empty states:
+    [x] Generation button loading state.
+    [ ] Generation in progress state for saved lessons.
+    [ ] Generation failed state for saved lessons.
+    [ ] No lessons yet.
+
+Phase 7 - Quality loop
+[ ] Add lesson quality checklist:
+    [ ] Does it combine all selected materials?
+    [ ] Is the structure logical?
+    [ ] Are explanations understandable for digital marketing agency employees?
+    [ ] Are key concepts explained clearly?
+    [ ] Are examples used where they help understanding?
+    [ ] Are important caveats preserved?
+[ ] Add regeneration/improvement options:
+    [ ] Make simpler.
+    [ ] Make deeper.
+    [ ] Add more examples.
+    [ ] Make more structured.
+    [ ] Shorten.
+[ ] Consider user feedback:
+    [ ] Rate generated lesson.
+    [ ] Add feedback before regeneration.
+
+Phase 8 - Testing
+[ ] Unit test material aggregation and validation.
+[ ] Unit test prompt builder with sample materials and instructions.
+[ ] Integration test lesson generation happy path.
+[ ] Test failure cases:
+    [x] No materials handled in frontend and backend validation.
+    [ ] Oversized materials.
+    [x] AI/API failure saves failed lesson and returns error.
+    [ ] Invalid/empty AI output.
+[x] Manual prompt inspection through Build prompt button.
+[ ] Manual QA with 2-3 real onboarding material sets.
+    [x] First QA found prompt was too course-like and had too much filler.
+    [x] Prompt v2 adjusted to remove Short Description, Learning Objectives, Lesson Outline, and unsupported filler.
+    [ ] Re-test prompt v2 on Google Ads launch / naming convention material.
+
+Phase 9 - Future upgrades
+[ ] Editable lesson blocks.
+[ ] Lesson version history.
+[ ] Source citations inside lesson sections.
+[ ] Separate practical tasks module.
+[ ] Separate knowledge checks / quizlets module.
+[ ] Auto-generated slides.
+[ ] Personalized lesson adaptation based on quiz results and knowledge gaps.
+[ ] Curriculum builder that chains multiple theoretical lessons into a course.

@@ -1,5 +1,5 @@
 import crypto from 'crypto';
-import { db } from './db';
+import { db } from './db.js';
 
 export async function getAllMaterials() {
   const materialsResult = await db.query(`
@@ -50,6 +50,21 @@ export async function getAllMaterials() {
         kind: item.kind,
       })),
   }));
+}
+
+export async function getMaterialsByIds(materialIds = []) {
+  const uniqueIds = [...new Set(materialIds.filter(Boolean))];
+
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+
+  const materials = await getAllMaterials();
+  const materialById = new Map(materials.map((material) => [material.id, material]));
+
+  return uniqueIds
+    .map((materialId) => materialById.get(materialId))
+    .filter(Boolean);
 }
 
 export async function createMaterial(input) {

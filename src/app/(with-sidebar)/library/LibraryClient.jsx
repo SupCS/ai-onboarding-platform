@@ -78,6 +78,15 @@ export default function LibraryClient() {
       return;
     }
 
+    if (activeTab === 'lessons') {
+      setToast({
+        open: true,
+        message: 'Use the lesson prompt form below for now.',
+        severity: 'info',
+      });
+      return;
+    }
+
     window.alert(`Action for "${activeTab}" will be added next.`);
   };
 
