@@ -100,11 +100,14 @@ export default function LessonPromptForm({ materials = [], onLessonGenerated }) 
 
       console.group('Theoretical lesson prompt');
       console.log('Prompt version:', data.prompt.version);
-      console.log('Messages:', data.prompt.messages);
+      console.log('Prompt cache key:', data.prompt.cacheKey);
+      console.log('Instructions first:', data.prompt.instructions);
+      console.log('Dynamic input second:', data.prompt.input);
+      console.log('Legacy messages preview:', data.prompt.messages);
       console.log('Prepared materials:', data.preparedMaterials);
       if (data.lesson) {
         console.log('Lesson:', data.lesson);
-        console.log('Generated lesson markdown:', data.lesson.contentMarkdown);
+        console.log('Generated lesson HTML:', data.lesson.contentHtml);
       }
       console.log('Full response:', data);
       console.groupEnd();
@@ -155,7 +158,7 @@ export default function LessonPromptForm({ materials = [], onLessonGenerated }) 
             Generate theoretical lesson
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Select source materials or describe the lesson topic in extra instructions, then generate a saved Markdown lesson.
+            Select source materials or describe the lesson topic in extra instructions, then generate a saved rich-text lesson.
           </Typography>
         </Box>
 

@@ -11,6 +11,21 @@
   color: var(--tt-theme-text);
 }
 
+.simple-editor-wrapper.lesson-details-editor {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+}
+
+.simple-editor-wrapper.lesson-details-editor .simple-editor-content {
+  min-height: 0;
+}
+
+.simple-editor-wrapper.lesson-details-editor .tiptap.ProseMirror.simple-editor {
+  min-height: 100%;
+}
+
 .simple-editor-wrapper .tiptap-toolbar[data-variant="fixed"] {
   position: sticky;
   top: 0;

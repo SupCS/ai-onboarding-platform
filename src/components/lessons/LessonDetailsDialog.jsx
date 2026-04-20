@@ -122,11 +122,14 @@ export default function LessonDetailsDialog({
           sx: {
             height: '92vh',
             borderRadius: 4,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
           },
         },
       }}
     >
-      <DialogTitle sx={{ pr: 7 }}>
+      <DialogTitle sx={{ pr: 7, flex: '0 0 auto' }}>
         <Stack spacing={1.5}>
           <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.12 }}>
             {lesson.title}
@@ -171,13 +174,25 @@ export default function LessonDetailsDialog({
         </IconButton>
       </DialogTitle>
 
-      <DialogContent dividers>
+      <DialogContent
+        dividers
+        sx={{
+          flex: '1 1 auto',
+          minHeight: 0,
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
         <Box
           sx={{
             display: 'grid',
             gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 320px' },
             gap: 3,
-            alignItems: 'start',
+            alignItems: 'stretch',
+            flex: '1 1 auto',
+            minHeight: 0,
+            overflow: 'hidden',
           }}
         >
           <Paper
@@ -187,8 +202,10 @@ export default function LessonDetailsDialog({
               borderRadius: 3,
               border: '1px solid #e5e7eb',
               backgroundColor: '#fff',
-              minHeight: 420,
+              minHeight: 0,
               overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
             }}
           >
             {lesson.status === 'failed' ? (
@@ -208,11 +225,19 @@ export default function LessonDetailsDialog({
                 content={draftHtml}
                 editable={isEditing}
                 onChange={(nextHtml) => setDraftHtml(nextHtml)}
+                className="lesson-details-editor"
               />
             )}
           </Paper>
 
-          <Stack spacing={2}>
+          <Stack
+            spacing={2}
+            sx={{
+              minHeight: 0,
+              overflow: 'auto',
+              pr: 0.5,
+            }}
+          >
             <Paper
               elevation={0}
               sx={{
@@ -315,7 +340,7 @@ export default function LessonDetailsDialog({
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 2 }}>
+      <DialogActions sx={{ px: 3, py: 2, flex: '0 0 auto' }}>
         {isEditing ? (
           <>
             <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving}>

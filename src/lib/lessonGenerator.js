@@ -19,7 +19,7 @@ function extractResponseText(data) {
   return textParts.join('\n').trim();
 }
 
-export async function generateLessonMarkdown(prompt) {
+export async function generateLessonContent(prompt) {
   const apiKey = process.env.OPENAI_API_KEY;
   const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
@@ -35,7 +35,9 @@ export async function generateLessonMarkdown(prompt) {
     },
     body: JSON.stringify({
       model,
-      input: prompt.messages,
+      instructions: prompt.instructions,
+      input: prompt.input,
+      prompt_cache_key: prompt.cacheKey || prompt.version,
     }),
   });
 
@@ -57,8 +59,11 @@ export async function generateLessonMarkdown(prompt) {
       provider: 'openai',
       model,
       promptVersion: prompt.version,
+      promptCacheKey: prompt.cacheKey || prompt.version,
       responseId: data.id || '',
       usage: data.usage || null,
     },
   };
 }
+
+export const generateLessonMarkdown = generateLessonContent;

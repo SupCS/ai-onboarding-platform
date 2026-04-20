@@ -1,5 +1,5 @@
 import { buildTheoreticalLessonPrompt } from '../../../lib/lessonPrompt';
-import { generateLessonMarkdown } from '../../../lib/lessonGenerator';
+import { generateLessonContent } from '../../../lib/lessonGenerator';
 import {
   createLessonDraft,
   getAllLessons,
@@ -7,7 +7,7 @@ import {
   markLessonGenerating,
   markLessonReady,
 } from '../../../lib/lessons';
-import { markdownToHtml } from '../../../lib/lessonContent';
+import { extractHtmlTitle, looksLikeHtml, markdownToHtml } from '../../../lib/lessonContent';
 import { loadAndPrepareMaterialsForLesson } from '../../../lib/materialPreparation';
 import { requireApiUser } from '../../../lib/apiAuth';
 
@@ -124,11 +124,17 @@ export async function POST(request) {
       });
 
       try {
-        const generatedLesson = await generateLessonMarkdown(prompt);
+        const generatedLesson = await generateLessonContent(prompt);
+        const generatedContent = generatedLesson.content;
+        const generatedHtml = looksLikeHtml(generatedContent)
+          ? generatedContent
+          : markdownToHtml(generatedContent);
         const readyLesson = await markLessonReady(lesson.id, {
-          title: extractMarkdownTitle(generatedLesson.content),
-          contentMarkdown: generatedLesson.content,
-          contentHtml: markdownToHtml(generatedLesson.content),
+          title:
+            extractHtmlTitle(generatedHtml) ||
+            extractMarkdownTitle(generatedContent),
+          contentMarkdown: generatedContent,
+          contentHtml: generatedHtml,
           generationMetadata: {
             ...generatedLesson.metadata,
             preparedMaterials: serializePreparedMaterials(preparedMaterials),
@@ -138,7 +144,7 @@ export async function POST(request) {
         console.log('Generated theoretical lesson:', {
           lessonId: readyLesson.id,
           promptVersion: prompt.version,
-          contentMarkdown: readyLesson.contentMarkdown,
+          contentHtml: readyLesson.contentHtml,
         });
 
         return Response.json({

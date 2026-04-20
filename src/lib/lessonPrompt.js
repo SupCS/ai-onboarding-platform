@@ -1,4 +1,82 @@
-export const LESSON_PROMPT_VERSION = 'theoretical-lesson-v2';
+export const LESSON_PROMPT_VERSION = 'theoretical-lesson-v4-instructions-html';
+
+const TIPTAP_HTML_GUIDE = [
+  'Output format:',
+  '- Return HTML only. Do not wrap it in Markdown fences. Do not include explanations outside the HTML.',
+  '- The HTML must be compatible with a Tiptap rich text editor.',
+  '- Start with exactly one <h1> containing a concise natural title. Do not copy the user instructions verbatim as the title.',
+  '- Then write the lesson directly as clear sections and subsections.',
+  '- Do not include Short Description, Learning Objectives, or Lesson Outline.',
+  '- Include Prerequisites only if the lesson truly cannot be understood without them.',
+  '- Include Key Terms only if definitions are genuinely useful and not already explained in the main sections.',
+  '- End with an <h2>Summary</h2> section.',
+  '',
+  'Allowed HTML structure:',
+  '- Headings: <h1>, <h2>, <h3>, <h4>.',
+  '- Paragraphs: <p>.',
+  '- Lists: <ul>, <ol>, <li>. Put paragraph text inside list items as <p>...</p> when useful.',
+  '- Emphasis: <strong>, <em>, <u>, <s>, <code>.',
+  '- Quotes/callouts: <blockquote><p>...</p></blockquote>. Blockquotes are already styled as colored callout blocks by the app.',
+  '- Code blocks only for actual code/templates/syntax: <pre><code>...</code></pre>.',
+  '- Links: <a href="https://example.com">descriptive text</a>. Use only real source URLs or clearly relevant URLs from the provided materials.',
+  '',
+  'Tiptap highlight colors available:',
+  '- Yellow: <mark data-color="var(--tt-color-highlight-yellow)" style="background-color: var(--tt-color-highlight-yellow); color: inherit;">...</mark>',
+  '- Green: <mark data-color="var(--tt-color-highlight-green)" style="background-color: var(--tt-color-highlight-green); color: inherit;">...</mark>',
+  '- Blue: <mark data-color="var(--tt-color-highlight-blue)" style="background-color: var(--tt-color-highlight-blue); color: inherit;">...</mark>',
+  '- Purple: <mark data-color="var(--tt-color-highlight-purple)" style="background-color: var(--tt-color-highlight-purple); color: inherit;">...</mark>',
+  '- Red: <mark data-color="var(--tt-color-highlight-red)" style="background-color: var(--tt-color-highlight-red); color: inherit;">...</mark>',
+  '',
+  'Formatting rules:',
+  '- Use formatting intentionally and sparingly. Do not highlight whole paragraphs.',
+  '- Use <strong> for important terms, decisions, settings, and warnings.',
+  '- Use <em> for nuance or short clarifying emphasis.',
+  '- Use <u> rarely, only when a distinction must stand out.',
+  '- Use <s> only when explaining what not to use or an outdated/wrong option.',
+  '- Use inline <code> for UI labels, naming patterns, UTM parameters, match type names, platform settings, or short syntax-like values.',
+  '- Use <blockquote> for important caveats, warnings, or source-specific notes.',
+  '- Do not put <mark> highlights inside <blockquote>. The blockquote already has visual color and emphasis.',
+  '- Do not write labels like "Blue note:", "Yellow note:", or "Red warning:" in normal text.',
+  '- If something is a note/warning/caveat, make the whole note a <blockquote><p>...</p></blockquote> instead of highlighting only the label.',
+  '- If using <mark>, wrap the whole important phrase or sentence fragment, not just a label such as "Blue note".',
+  '- Use yellow highlight for key definitions or concepts.',
+  '- Use blue highlight for process/setting details.',
+  '- Use green highlight for recommended choices.',
+  '- Use red highlight for warnings or things to avoid.',
+  '- Use purple highlight only for memorable nuance or agency-specific rules.',
+  '- Never use color just to decorate the lesson.',
+  '- Do not use unsupported HTML, inline scripts, iframes, images, tables, or custom classes.',
+].join('\n');
+
+export const LESSON_INSTRUCTIONS = [
+  'You create theoretical lessons for employees of a digital marketing agency.',
+  'The lesson must be a useful internal knowledge article, not a generic course template.',
+  'Use provided source materials as the factual basis when sources are present.',
+  'If no source materials are provided, use the user instructions as the lesson topic and do not pretend that source materials exist.',
+  'You may add concise background explanations only when they are necessary to understand a source statement.',
+  'Do not add motivational filler, generic best-practice paragraphs, or sections that are not supported by the sources.',
+  '',
+  'Core behavior:',
+  '- Synthesize sources instead of summarizing them one by one.',
+  '- Merge overlapping ideas and remove repetition.',
+  '- Preserve important caveats, warnings, and source-specific nuance.',
+  '- Resolve contradictions by explaining the difference or noting uncertainty.',
+  '- Make the conceptual order easy to follow for digital marketing agency employees.',
+  '- Use examples or analogies only when they are present in the sources or directly clarify a source statement.',
+  '- If a source mentions a concept without enough context, add a short explanation of that concept. For example, if the source says keywords need appropriate match types, briefly explain broad, phrase, and exact match.',
+  '- Prefer useful explanation over formal course scaffolding.',
+  '- Do not write generic sections like "Why this matters" unless the source provides specific reasons.',
+  '- Do not inflate short source notes into broad strategic advice.',
+  '- Do not include practical tasks, exercises, quizzes, tests, or knowledge checks.',
+  '',
+  TIPTAP_HTML_GUIDE,
+  '',
+  'Writing style:',
+  '- Be concise and dense with useful information.',
+  '- Keep source-specific checklists as checklists when that is clearer than prose.',
+  '- Avoid obvious statements, filler, and corporate-sounding padding.',
+  '- When adding background context, keep it short and label uncertainty if the source does not specify details.',
+].join('\n');
 
 function formatSourceMaterial(material) {
   const sections = [
@@ -78,80 +156,44 @@ export function buildTheoreticalLessonPrompt({
     ? preparedMaterials.extractedTerms.join(', ')
     : 'No candidate terms extracted.';
 
+  const input = [
+    hasSourceMaterials
+      ? 'Create one coherent theoretical lesson from the selected materials.'
+      : 'Create one coherent theoretical lesson from the user-provided topic/instructions.',
+    '',
+    'Request-specific settings:',
+    `- Source mode: ${hasSourceMaterials ? 'selected materials provided' : 'prompt-only topic'}`,
+    `- Depth: ${depth}`,
+    `- Tone: ${tone}`,
+    `- Desired format: ${desiredFormat}`,
+    userInstructions ? `- Extra user instructions: ${userInstructions}` : '- Extra user instructions: none',
+    '',
+    'Preparation notes:',
+    `- Materials count: ${preparedMaterials.stats.materialCount}`,
+    `- Combined extracted text characters: ${preparedMaterials.stats.combinedTextCharacters}`,
+    `- Candidate key terms: ${extractedTerms}`,
+    `- Overlap check: ${formatOverlaps(preparedMaterials.overlaps)}`,
+    `- Lesson signals: ${formatSignals(preparedMaterials.signals)}`,
+    '',
+    hasSourceMaterials
+      ? 'Selected source materials:'
+      : 'Selected source materials: none. Use the extra user instructions as the topic.',
+    hasSourceMaterials ? sourceText : '',
+  ].join('\n');
+
   return {
     version: LESSON_PROMPT_VERSION,
+    cacheKey: LESSON_PROMPT_VERSION,
+    instructions: LESSON_INSTRUCTIONS,
+    input,
     messages: [
       {
         role: 'system',
-        content: [
-          'You create theoretical lessons for employees of a digital marketing agency.',
-          'The lesson must be a useful internal knowledge article, not a generic course template.',
-          hasSourceMaterials
-            ? 'Use the provided source materials as the factual basis. You may add concise background explanations only when they are necessary to understand a source statement.'
-            : 'No source materials were provided. Use the user instructions as the lesson topic and create a concise, generally useful theoretical lesson. Do not pretend that source materials exist.',
-          'Do not add motivational filler, generic best-practice paragraphs, or sections that are not supported by the sources.',
-        ].join('\n'),
+        content: LESSON_INSTRUCTIONS,
       },
       {
         role: 'user',
-        content: [
-          hasSourceMaterials
-            ? 'Create one coherent theoretical lesson from the selected materials.'
-            : 'Create one coherent theoretical lesson from the user-provided topic/instructions.',
-          '',
-          'Core behavior:',
-          hasSourceMaterials
-            ? '- Synthesize the sources instead of summarizing them one by one.'
-            : '- Build the lesson around the topic from the extra user instructions.',
-          hasSourceMaterials
-            ? '- Merge overlapping ideas and remove repetition.'
-            : '- Keep the lesson practical for digital marketing agency employees without requiring source citations.',
-          hasSourceMaterials
-            ? '- Preserve important caveats, warnings, and source-specific nuance.'
-            : '- Include important caveats where they are generally relevant.',
-          hasSourceMaterials
-            ? '- Resolve contradictions by explaining the difference or noting uncertainty.'
-            : '- If the topic is underspecified, state reasonable assumptions briefly and avoid overclaiming.',
-          '- Make the conceptual order easy to follow for digital marketing agency employees.',
-          '- Use examples or analogies only when they are present in the sources or directly clarify a source statement.',
-          '- If a source mentions a concept without enough context, add a short explanation of that concept. For example, if the source says keywords need appropriate match types, briefly explain broad, phrase, and exact match.',
-          '- Prefer useful explanation over formal course scaffolding.',
-          '- Do not write generic sections like "Why this matters" unless the source provides specific reasons.',
-          '- Do not inflate short source notes into broad strategic advice.',
-          '- Do not include practical tasks, exercises, quizzes, tests, or knowledge checks.',
-          '',
-          'Markdown structure:',
-          '# Title',
-          'Create a concise natural title for the lesson. Do not copy the user instructions verbatim as the title.',
-          'Then write the lesson directly as clear sections and subsections.',
-          'Do not include Short Description, Learning Objectives, or Lesson Outline.',
-          'Include Prerequisites only if the lesson truly cannot be understood without them.',
-          'Include Key Terms only if definitions are genuinely useful and not already explained in the main sections.',
-          '## Summary',
-          '',
-          'Writing style:',
-          '- Be concise and dense with useful information.',
-          '- Keep source-specific checklists as checklists when that is clearer than prose.',
-          '- Avoid obvious statements, filler, and corporate-sounding padding.',
-          '- When adding background context, keep it short and label uncertainty if the source does not specify details.',
-          '',
-          `Depth: ${depth}`,
-          `Tone: ${tone}`,
-          `Desired format: ${desiredFormat}`,
-          userInstructions ? `Extra user instructions: ${userInstructions}` : 'Extra user instructions: none',
-          '',
-          'Preparation notes:',
-          `- Materials count: ${preparedMaterials.stats.materialCount}`,
-          `- Combined extracted text characters: ${preparedMaterials.stats.combinedTextCharacters}`,
-          `- Candidate key terms: ${extractedTerms}`,
-          `- Overlap check: ${formatOverlaps(preparedMaterials.overlaps)}`,
-          `- Lesson signals: ${formatSignals(preparedMaterials.signals)}`,
-          '',
-          hasSourceMaterials
-            ? 'Selected source materials:'
-            : 'Selected source materials: none. Use the extra user instructions as the topic.',
-          hasSourceMaterials ? sourceText : '',
-        ].join('\n'),
+        content: input,
       },
     ],
   };

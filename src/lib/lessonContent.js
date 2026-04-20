@@ -99,3 +99,22 @@ export function markdownToHtml(markdown = '') {
 
   return output.join('\n');
 }
+
+export function extractHtmlTitle(html = '') {
+  const headingMatch = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+
+  if (!headingMatch) {
+    return '';
+  }
+
+  const title = headingMatch[1]
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  return title.length > 120 ? `${title.slice(0, 117)}...` : title;
+}
+
+export function looksLikeHtml(value = '') {
+  return /<\/?[a-z][\s\S]*>/i.test(value);
+}
