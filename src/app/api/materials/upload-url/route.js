@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { requireApiUser } from '../../../../lib/apiAuth';
 import { bucketName, storage } from '../../../../lib/storage';
 
 export const runtime = 'nodejs';
@@ -11,6 +12,12 @@ function sanitizeFileName(fileName) {
 
 export async function POST(request) {
   try {
+    const { response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
     const body = await request.json();
 
     const fileName = (body.fileName || '').trim();

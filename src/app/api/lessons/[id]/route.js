@@ -1,9 +1,16 @@
+import { requireApiUser } from '../../../../lib/apiAuth';
 import { updateLessonContent } from '../../../../lib/lessons';
 
 export const runtime = 'nodejs';
 
 export async function PUT(request, { params }) {
   try {
+    const { response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
     const { id } = await params;
     const body = await request.json();
     const contentHtml = (body.contentHtml || '').trim();

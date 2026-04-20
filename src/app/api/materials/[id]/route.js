@@ -1,10 +1,17 @@
 import { deleteMaterialById, updateMaterialById } from '../../../../lib/materials';
 import { deleteStorageObjects } from '../../../../lib/storage';
+import { requireApiUser } from '../../../../lib/apiAuth';
 
 export const runtime = 'nodejs';
 
 export async function PUT(request, { params }) {
   try {
+    const { response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
     const { id } = await params;
     const body = await request.json();
 
@@ -77,6 +84,12 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(_request, { params }) {
   try {
+    const { response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
     const { id } = await params;
 
     if (!id) {

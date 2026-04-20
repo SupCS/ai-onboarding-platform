@@ -1,10 +1,18 @@
+import { redirect } from 'next/navigation';
 import { Box } from '@mui/material';
 import Sidebar from '../../components/layout/Sidebar';
+import { getCurrentUser } from '../../lib/currentUser';
 
-export default function WithSidebarLayout({ children }) {
+export default async function WithSidebarLayout({ children }) {
+  const currentUser = await getCurrentUser();
+
+  if (!currentUser) {
+    redirect('/login');
+  }
+
   return (
     <>
-      <Sidebar />
+      <Sidebar currentUser={currentUser} />
 
       <Box
         sx={{

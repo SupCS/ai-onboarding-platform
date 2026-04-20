@@ -1,9 +1,16 @@
+import { requireApiUser } from '../../../../lib/apiAuth';
 import { getPreviewUrl } from '../../../../lib/storage';
 
 export const runtime = 'nodejs';
 
 export async function GET(request) {
   try {
+    const { response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
     const { searchParams } = new URL(request.url);
     const storageKey = searchParams.get('storageKey');
 

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import {
   Avatar,
@@ -42,13 +42,23 @@ const sidebarItems = [
   },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ currentUser }) {
   const pathname = usePathname();
+  const router = useRouter();
 
-  const currentUser = {
-    name: 'Dmytro Asparian',
-    email: 'dmytro@example.com',
-    role: 'Admin',
+  const user = currentUser || {
+    name: 'User',
+    email: '',
+    role: 'member',
+  };
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+    });
+
+    router.replace('/login');
+    router.refresh();
   };
 
   return (
@@ -231,7 +241,7 @@ export default function Sidebar() {
             flexShrink: 0,
           }}
         >
-          <Avatar>{currentUser.name.charAt(0)}</Avatar>
+          <Avatar>{user.name.charAt(0)}</Avatar>
         </Box>
 
         <Box
@@ -249,7 +259,7 @@ export default function Sidebar() {
           }}
         >
           <Typography variant="body2" sx={{ fontWeight: 700 }}>
-            {currentUser.name}
+            {user.name}
           </Typography>
 
           <Typography
@@ -257,11 +267,11 @@ export default function Sidebar() {
             color="text.secondary"
             sx={{ display: 'block' }}
           >
-            {currentUser.email}
+            {user.email}
           </Typography>
 
           <Typography variant="caption" color="primary.main">
-            {currentUser.role}
+            {user.role}
           </Typography>
         </Box>
       </Box>
@@ -270,6 +280,7 @@ export default function Sidebar() {
         <Button
           variant="outlined"
           color="inherit"
+          onClick={handleLogout}
           sx={{
             mt: 1,
             borderRadius: 3,

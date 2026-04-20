@@ -9,6 +9,7 @@ import {
 } from '../../../lib/lessons';
 import { markdownToHtml } from '../../../lib/lessonContent';
 import { loadAndPrepareMaterialsForLesson } from '../../../lib/materialPreparation';
+import { requireApiUser } from '../../../lib/apiAuth';
 
 export const runtime = 'nodejs';
 
@@ -51,6 +52,12 @@ function serializePreparedMaterials(preparedMaterials) {
 
 export async function GET() {
   try {
+    const { response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
     const lessons = await getAllLessons();
 
     return Response.json({ lessons });
@@ -66,6 +73,12 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const { user, response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
     const body = await request.json();
     const action = body.action || 'build-prompt';
     const materialIds = Array.isArray(body.materialIds) ? body.materialIds : [];
@@ -102,6 +115,7 @@ export async function POST(request) {
         depth,
         tone,
         desiredFormat,
+        createdBy: user.name,
       });
 
       await markLessonGenerating(lesson.id, {

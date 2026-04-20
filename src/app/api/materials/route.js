@@ -1,10 +1,17 @@
 import { createMaterial, getAllMaterials } from '../../../lib/materials';
 import { getObjectUrl } from '../../../lib/storage';
+import { requireApiUser } from '../../../lib/apiAuth';
 
 export const runtime = 'nodejs';
 
 export async function GET() {
   try {
+    const { response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
     const materials = await getAllMaterials();
     const materialsWithPreviews = await Promise.all(
       materials.map(async (material) => {
@@ -51,6 +58,12 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const { response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
     const body = await request.json();
 
     const title = (body.title || '').trim();
