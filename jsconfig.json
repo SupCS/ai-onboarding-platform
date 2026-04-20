@@ -1,6 +1,16 @@
 {
   "compilerOptions": {
     "paths": {
+      "@/components/tiptap-extension/*": ["./src/components/tiptap/tiptap-extension/*"],
+      "@/components/tiptap-icons/*": ["./src/components/tiptap/tiptap-icons/*"],
+      "@/components/tiptap-node/*": ["./src/components/tiptap/tiptap-node/*"],
+      "@/components/tiptap-templates/*": ["./src/components/tiptap/tiptap-templates/*"],
+      "@/components/tiptap-ui/*": ["./src/components/tiptap/tiptap-ui/*"],
+      "@/components/tiptap-ui-primitive/*": ["./src/components/tiptap/tiptap-ui-primitive/*"],
+      "@/hooks/*": ["./src/components/tiptap/hooks/*"],
+      "@/lib/tiptap-utils": ["./src/components/tiptap/lib/tiptap-utils.js"],
+      "@/lib/tiptap-utils.js": ["./src/components/tiptap/lib/tiptap-utils.js"],
+      "@/styles/*": ["./src/components/tiptap/styles/*"],
       "@/*": ["./src/*"]
     }
   }

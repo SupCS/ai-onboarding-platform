@@ -184,6 +184,21 @@ export default function LibraryClient() {
     });
   };
 
+  const handleLessonUpdated = async (updatedLesson) => {
+    setLessons((prev) =>
+      prev.map((lesson) =>
+        lesson.id === updatedLesson.id ? updatedLesson : lesson
+      )
+    );
+    setSelectedLesson(updatedLesson);
+
+    setToast({
+      open: true,
+      message: 'Lesson updated successfully.',
+      severity: 'success',
+    });
+  };
+
   const handleEditMaterial = (material) => {
     if (!material) {
       return;
@@ -444,6 +459,7 @@ export default function LibraryClient() {
         lesson={selectedLesson}
         onClose={handleCloseLesson}
         onOpenSourceMaterial={handleOpenSourceMaterial}
+        onLessonUpdated={handleLessonUpdated}
       />
 
       <Snackbar

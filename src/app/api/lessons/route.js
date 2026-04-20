@@ -7,6 +7,7 @@ import {
   markLessonGenerating,
   markLessonReady,
 } from '../../../lib/lessons';
+import { markdownToHtml } from '../../../lib/lessonContent';
 import { loadAndPrepareMaterialsForLesson } from '../../../lib/materialPreparation';
 
 export const runtime = 'nodejs';
@@ -113,6 +114,7 @@ export async function POST(request) {
         const readyLesson = await markLessonReady(lesson.id, {
           title: extractMarkdownTitle(generatedLesson.content),
           contentMarkdown: generatedLesson.content,
+          contentHtml: markdownToHtml(generatedLesson.content),
           generationMetadata: {
             ...generatedLesson.metadata,
             preparedMaterials: serializePreparedMaterials(preparedMaterials),

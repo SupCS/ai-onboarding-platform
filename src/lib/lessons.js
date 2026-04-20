@@ -20,6 +20,7 @@ export async function ensureLessonsSchema(client = db) {
       desired_format TEXT NOT NULL DEFAULT 'structured theoretical lesson',
       content_format TEXT NOT NULL DEFAULT 'markdown',
       content_markdown TEXT NOT NULL DEFAULT '',
+      content_html TEXT NOT NULL DEFAULT '',
       generation_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
       error_message TEXT NOT NULL DEFAULT '',
       created_by TEXT NOT NULL DEFAULT '',
@@ -30,6 +31,11 @@ export async function ensureLessonsSchema(client = db) {
       CONSTRAINT lessons_content_format_check
         CHECK (content_format IN ('markdown'))
     )
+  `);
+
+  await client.query(`
+    ALTER TABLE lessons
+    ADD COLUMN IF NOT EXISTS content_html TEXT NOT NULL DEFAULT ''
   `);
 
   await client.query(`
@@ -56,6 +62,7 @@ function mapLesson(row, materialIds = []) {
     desiredFormat: row.desired_format,
     contentFormat: row.content_format,
     contentMarkdown: row.content_markdown,
+    contentHtml: row.content_html || '',
     generationMetadata: row.generation_metadata,
     errorMessage: row.error_message,
     createdBy: row.created_by,
@@ -177,6 +184,7 @@ export async function markLessonReady(lessonId, input) {
         status = 'ready',
         content_markdown = $2,
         generation_metadata = $3,
+        content_html = $5,
         error_message = '',
         updated_at = NOW()
       WHERE id = $1
@@ -187,6 +195,7 @@ export async function markLessonReady(lessonId, input) {
       input.contentMarkdown || '',
       JSON.stringify(input.generationMetadata || {}),
       input.title || null,
+      input.contentHtml || '',
     ]
   );
 
@@ -215,6 +224,33 @@ export async function markLessonFailed(lessonId, input) {
       lessonId,
       JSON.stringify(input.generationMetadata || {}),
       input.errorMessage || 'Lesson generation failed.',
+    ]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return getLessonById(lessonId);
+}
+
+export async function updateLessonContent(lessonId, input) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      UPDATE lessons
+      SET
+        title = COALESCE($2, title),
+        content_html = $3,
+        updated_at = NOW()
+      WHERE id = $1
+      RETURNING *
+    `,
+    [
+      lessonId,
+      input.title || null,
+      input.contentHtml || '',
     ]
   );
 

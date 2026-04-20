@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -16,6 +17,8 @@ import {
 } from '@mui/material';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
+import { SimpleEditor } from '../tiptap/tiptap-templates/simple/simple-editor';
+import { markdownToHtml } from '../../lib/lessonContent';
 
 function formatDateTime(isoString) {
   try {
@@ -52,7 +55,20 @@ export default function LessonDetailsDialog({
   open,
   onClose,
   onOpenSourceMaterial,
+  onLessonUpdated,
 }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const initialHtml = useMemo(() => {
+    return lesson?.contentHtml || markdownToHtml(lesson?.contentMarkdown || '');
+  }, [lesson]);
+  const [draftHtml, setDraftHtml] = useState(initialHtml);
+
+  useEffect(() => {
+    setIsEditing(false);
+    setDraftHtml(initialHtml);
+  }, [initialHtml, lesson?.id]);
+
   if (!lesson) {
     return null;
   }
@@ -61,16 +77,52 @@ export default function LessonDetailsDialog({
   const preparedMaterials = metadata.preparedMaterials || {};
   const sourceReferences = preparedMaterials.sourceReferences || [];
 
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+
+      const response = await fetch(`/api/lessons/${lesson.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contentHtml: draftHtml,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save lesson.');
+      }
+
+      setIsEditing(false);
+      await onLessonUpdated?.(data.lesson);
+    } catch (error) {
+      console.error('Failed to save lesson:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setDraftHtml(initialHtml);
+    setIsEditing(false);
+  };
+
   return (
     <Dialog
       open={open}
       onClose={onClose}
       fullWidth
       maxWidth="xl"
-      PaperProps={{
-        sx: {
-          height: '92vh',
-          borderRadius: 4,
+      slotProps={{
+        paper: {
+          sx: {
+            height: '92vh',
+            borderRadius: 4,
+          },
         },
       }}
     >
@@ -136,6 +188,7 @@ export default function LessonDetailsDialog({
               border: '1px solid #e5e7eb',
               backgroundColor: '#fff',
               minHeight: 420,
+              overflow: 'hidden',
             }}
           >
             {lesson.status === 'failed' ? (
@@ -151,18 +204,11 @@ export default function LessonDetailsDialog({
                 </Typography>
               </Stack>
             ) : (
-              <Typography
-                component="pre"
-                variant="body1"
-                sx={{
-                  whiteSpace: 'pre-wrap',
-                  wordBreak: 'break-word',
-                  fontFamily: 'inherit',
-                  lineHeight: 1.75,
-                }}
-              >
-                {lesson.contentMarkdown || 'This lesson does not have content yet.'}
-              </Typography>
+              <SimpleEditor
+                content={draftHtml}
+                editable={isEditing}
+                onChange={(nextHtml) => setDraftHtml(nextHtml)}
+              />
             )}
           </Paper>
 
@@ -270,7 +316,23 @@ export default function LessonDetailsDialog({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 2 }}>
-        <Button onClick={onClose} color="inherit">
+        {isEditing ? (
+          <>
+            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} variant="contained" disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save changes'}
+            </Button>
+          </>
+        ) : (
+          lesson.status !== 'failed' && (
+            <Button onClick={() => setIsEditing(true)} variant="contained">
+              Edit lesson
+            </Button>
+          )
+        )}
+        <Button onClick={onClose} color="inherit" disabled={isSaving}>
           Close
         </Button>
       </DialogActions>

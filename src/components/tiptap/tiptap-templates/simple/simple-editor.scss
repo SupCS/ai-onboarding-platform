@@ -1,0 +1,81 @@
+.simple-editor-wrapper {
+  --tt-toolbar-height: 44px;
+  --tt-theme-text: var(--tt-gray-light-900);
+
+  width: 100%;
+  max-height: calc(92vh - 190px);
+  min-height: 520px;
+  overflow: auto;
+  border-radius: 0.75rem;
+  background-color: var(--tt-bg-color);
+  color: var(--tt-theme-text);
+}
+
+.simple-editor-wrapper .tiptap-toolbar[data-variant="fixed"] {
+  position: sticky;
+  top: 0;
+  z-index: 1500;
+}
+
+.simple-editor-content {
+  width: 100%;
+  min-height: 420px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor {
+  flex: 1;
+  min-height: 420px;
+  padding: 2rem;
+  outline: none;
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.75;
+  color: #111827;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor h1,
+.simple-editor-content .tiptap.ProseMirror.simple-editor h2,
+.simple-editor-content .tiptap.ProseMirror.simple-editor h3,
+.simple-editor-content .tiptap.ProseMirror.simple-editor h4 {
+  margin: 1.4em 0 0.55em;
+  line-height: 1.2;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor h1 {
+  font-size: 2rem;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor h2 {
+  font-size: 1.5rem;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor h3 {
+  font-size: 1.25rem;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor p {
+  margin: 0.75em 0;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor ul,
+.simple-editor-content .tiptap.ProseMirror.simple-editor ol {
+  padding-left: 1.6rem;
+  margin: 0.75em 0;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor blockquote {
+  border-left: 4px solid #93c5fd;
+  margin: 1rem 0;
+  padding: 0.25rem 0 0.25rem 1rem;
+  color: #374151;
+  background: #eff6ff;
+  border-radius: 0.5rem;
+}
+
+@media screen and (max-width: 480px) {
+  .simple-editor-content .tiptap.ProseMirror.simple-editor {
+    padding: 1rem;
+  }
+}

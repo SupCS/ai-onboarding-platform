@@ -1,3 +1,5 @@
+import '../components/tiptap/styles/_variables.scss';
+import '../components/tiptap/styles/_keyframe-animations.scss';
 import './globals.css';
 import AppProviders from '../components/providers/AppProviders';
 

@@ -41,6 +41,19 @@ function getStatusColor(status) {
 }
 
 function getLessonPreview(lesson) {
+  if (lesson.contentHtml) {
+    const plainHtmlText = lesson.contentHtml
+      .replace(/<style[\s\S]*?<\/style>/gi, '')
+      .replace(/<script[\s\S]*?<\/script>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (plainHtmlText) {
+      return plainHtmlText;
+    }
+  }
+
   const markdown = lesson.contentMarkdown || '';
   const withoutHeadings = markdown
     .replace(/^#+\s+/gm, '')

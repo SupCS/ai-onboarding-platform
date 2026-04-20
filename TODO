@@ -114,11 +114,19 @@ Phase 6 - Frontend implementation
     [x] Show status.
 [x] Build lesson result modal:
     [x] Large near-full-screen lesson viewer.
-    [x] Generated lesson Markdown viewer.
+    [x] Rich lesson viewer based on Tiptap Simple Editor.
     [x] Source materials list.
     [x] Clickable source materials open the original material details.
     [x] Generation metadata chips.
     [x] Failed lesson error display.
+[x] Add lesson editing:
+    [x] Install Tiptap Simple Editor template.
+    [x] Adapt Simple Editor for lesson modal instead of standalone demo page.
+    [x] Add Edit / Save / Cancel flow.
+    [x] Store edited rich content as lessons.content_html.
+    [x] Keep generated Markdown as original fallback in lessons.content_markdown.
+    [x] Convert generated Markdown to initial HTML for the editor.
+    [x] Disable demo image upload until lesson image storage is implemented.
 [ ] Add lesson result actions:
     [ ] Regenerate button.
     [ ] Copy/export action if useful.
@@ -165,6 +173,11 @@ Phase 9 - Future upgrades
 [ ] Editable lesson blocks.
 [ ] Lesson version history.
 [ ] Source citations inside lesson sections.
+[ ] Text color toolbar separate from the current highlight toolbar.
+[ ] Image upload inside the editor after a separate storage flow is designed.
+[ ] Tables.
+[ ] Sanitizer for lesson HTML before display/save.
+[ ] Slash command / block insert menu.
 [ ] Separate practical tasks module.
 [ ] Separate knowledge checks / quizlets module.
 [ ] Auto-generated slides.
