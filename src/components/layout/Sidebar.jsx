@@ -32,7 +32,7 @@ const sidebarItems = [
   },
   {
     label: 'Lessons',
-    href: '/library',
+    href: '/lessons',
     icon: <SchoolOutlinedIcon />,
   },
   {

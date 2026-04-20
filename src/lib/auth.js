@@ -8,7 +8,28 @@ const PASSWORD_ITERATIONS = 310000;
 const PASSWORD_KEY_LENGTH = 32;
 const PASSWORD_DIGEST = 'sha256';
 
+const globalForAuth = globalThis;
+
 export async function ensureAuthSchema(client = db) {
+  if (client === db && globalForAuth.authSchemaPromise) {
+    return globalForAuth.authSchemaPromise;
+  }
+
+  const schemaPromise = ensureAuthSchemaUncached(client);
+
+  if (client === db) {
+    globalForAuth.authSchemaPromise = schemaPromise.catch((error) => {
+      globalForAuth.authSchemaPromise = null;
+      throw error;
+    });
+
+    return globalForAuth.authSchemaPromise;
+  }
+
+  return schemaPromise;
+}
+
+async function ensureAuthSchemaUncached(client = db) {
   await client.query(`
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY,

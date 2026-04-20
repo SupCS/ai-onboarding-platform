@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { db } from './db.js';
+import { ensureAuthSchema } from './auth.js';
 import { LESSON_MVP_LIMITS } from './lessonConstants.js';
 export {
   LESSON_CONTENT_FORMAT,
@@ -8,6 +9,29 @@ export {
 } from './lessonConstants.js';
 
 export async function ensureLessonsSchema(client = db) {
+  const globalForLessons = globalThis;
+
+  if (client === db && globalForLessons.lessonsSchemaPromise) {
+    return globalForLessons.lessonsSchemaPromise;
+  }
+
+  const schemaPromise = ensureLessonsSchemaUncached(client);
+
+  if (client === db) {
+    globalForLessons.lessonsSchemaPromise = schemaPromise.catch((error) => {
+      globalForLessons.lessonsSchemaPromise = null;
+      throw error;
+    });
+
+    return globalForLessons.lessonsSchemaPromise;
+  }
+
+  return schemaPromise;
+}
+
+async function ensureLessonsSchemaUncached(client = db) {
+  await ensureAuthSchema(client);
+
   await client.query(`
     CREATE TABLE IF NOT EXISTS lessons (
       id TEXT PRIMARY KEY,
@@ -47,9 +71,23 @@ export async function ensureLessonsSchema(client = db) {
       PRIMARY KEY (lesson_id, material_id)
     )
   `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS user_lessons (
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+      enrolled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, lesson_id)
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS user_lessons_lesson_id_idx
+    ON user_lessons(lesson_id)
+  `);
 }
 
-function mapLesson(row, materialIds = []) {
+function mapLesson(row, materialIds = [], extra = {}) {
   return {
     id: row.id,
     title: row.title,
@@ -68,6 +106,7 @@ function mapLesson(row, materialIds = []) {
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    ...extra,
   };
 }
 
@@ -261,7 +300,66 @@ export async function updateLessonContent(lessonId, input) {
   return getLessonById(lessonId);
 }
 
-export async function getAllLessons() {
+export async function getEnrolledLessonIdsForUser(userId) {
+  await ensureLessonsSchema();
+
+  if (!userId) {
+    return new Set();
+  }
+
+  const result = await db.query(
+    `
+      SELECT lesson_id
+      FROM user_lessons
+      WHERE user_id = $1
+    `,
+    [userId]
+  );
+
+  return new Set(result.rows.map((row) => row.lesson_id));
+}
+
+export async function enrollUserInLesson(userId, lessonId) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      INSERT INTO user_lessons (user_id, lesson_id)
+      SELECT $1, lessons.id
+      FROM lessons
+      WHERE lessons.id = $2
+        AND lessons.status = 'ready'
+      ON CONFLICT (user_id, lesson_id) DO UPDATE
+        SET enrolled_at = user_lessons.enrolled_at
+      RETURNING enrolled_at
+    `,
+    [userId, lessonId]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return {
+    lessonId,
+    enrolledAt: result.rows[0]?.enrolled_at || null,
+  };
+}
+
+export async function unenrollUserFromLesson(userId, lessonId) {
+  await ensureLessonsSchema();
+
+  await db.query(
+    `
+      DELETE FROM user_lessons
+      WHERE user_id = $1
+        AND lesson_id = $2
+    `,
+    [userId, lessonId]
+  );
+}
+
+export async function getAllLessons(userId = null) {
   await ensureLessonsSchema();
 
   const lessonsResult = await db.query(`
@@ -276,12 +374,58 @@ export async function getAllLessons() {
     ORDER BY sort_order ASC
   `);
 
+  const enrolledLessonIds = await getEnrolledLessonIdsForUser(userId);
+
   return lessonsResult.rows.map((lesson) => {
     const materialIds = lessonMaterialsResult.rows
       .filter((item) => item.lesson_id === lesson.id)
       .map((item) => item.material_id);
 
-    return mapLesson(lesson, materialIds);
+    return mapLesson(lesson, materialIds, {
+      isEnrolled: enrolledLessonIds.has(lesson.id),
+    });
+  });
+}
+
+export async function getLessonsForUser(userId) {
+  await ensureLessonsSchema();
+
+  const lessonsResult = await db.query(
+    `
+      SELECT lessons.*, user_lessons.enrolled_at
+      FROM user_lessons
+      JOIN lessons ON lessons.id = user_lessons.lesson_id
+      WHERE user_lessons.user_id = $1
+      ORDER BY user_lessons.enrolled_at DESC
+    `,
+    [userId]
+  );
+
+  const lessonIds = lessonsResult.rows.map((lesson) => lesson.id);
+
+  if (lessonIds.length === 0) {
+    return [];
+  }
+
+  const lessonMaterialsResult = await db.query(
+    `
+      SELECT lesson_id, material_id
+      FROM lesson_materials
+      WHERE lesson_id = ANY($1::text[])
+      ORDER BY sort_order ASC
+    `,
+    [lessonIds]
+  );
+
+  return lessonsResult.rows.map((lesson) => {
+    const materialIds = lessonMaterialsResult.rows
+      .filter((item) => item.lesson_id === lesson.id)
+      .map((item) => item.material_id);
+
+    return mapLesson(lesson, materialIds, {
+      isEnrolled: true,
+      enrolledAt: lesson.enrolled_at,
+    });
   });
 }
 

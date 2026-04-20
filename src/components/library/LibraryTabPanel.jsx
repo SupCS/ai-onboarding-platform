@@ -10,6 +10,8 @@ export default function LibraryTabPanel({
   isHydrated = true,
   onOpenMaterial,
   onOpenLesson,
+  onEnrollLesson,
+  onUnenrollLesson,
 }) {
   if (activeTab === 'materials') {
     if (!isHydrated) {
@@ -51,6 +53,9 @@ export default function LibraryTabPanel({
       <LessonsGrid
         lessons={lessons}
         onOpenLesson={onOpenLesson}
+        onEnrollLesson={onEnrollLesson}
+        onUnenrollLesson={onUnenrollLesson}
+        showEnrollmentAction
       />
     );
   }

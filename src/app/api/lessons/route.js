@@ -52,13 +52,13 @@ function serializePreparedMaterials(preparedMaterials) {
 
 export async function GET() {
   try {
-    const { response } = await requireApiUser();
+    const { user, response } = await requireApiUser();
 
     if (response) {
       return response;
     }
 
-    const lessons = await getAllLessons();
+    const lessons = await getAllLessons(user.id);
 
     return Response.json({ lessons });
   } catch (error) {

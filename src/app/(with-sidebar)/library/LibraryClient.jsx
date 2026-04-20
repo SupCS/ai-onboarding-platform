@@ -199,6 +199,86 @@ export default function LibraryClient() {
     });
   };
 
+  const handleEnrollLesson = async (lesson) => {
+    setLessons((prev) =>
+      prev.map((item) =>
+        item.id === lesson.id ? { ...item, isEnrolled: true } : item
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/lessons/${lesson.id}/enrollment`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add lesson to My Lessons.');
+      }
+
+      setToast({
+        open: true,
+        message: 'Lesson added to My Lessons.',
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to add lesson to My Lessons:', error);
+
+      setLessons((prev) =>
+        prev.map((item) =>
+          item.id === lesson.id ? { ...item, isEnrolled: false } : item
+        )
+      );
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to add lesson to My Lessons.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleUnenrollLesson = async (lesson) => {
+    setLessons((prev) =>
+      prev.map((item) =>
+        item.id === lesson.id ? { ...item, isEnrolled: false } : item
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/lessons/${lesson.id}/enrollment`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to remove lesson from My Lessons.');
+      }
+
+      setToast({
+        open: true,
+        message: 'Lesson removed from My Lessons.',
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to remove lesson from My Lessons:', error);
+
+      setLessons((prev) =>
+        prev.map((item) =>
+          item.id === lesson.id ? { ...item, isEnrolled: true } : item
+        )
+      );
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to remove lesson from My Lessons.',
+        severity: 'error',
+      });
+    }
+  };
+
   const handleEditMaterial = (material) => {
     if (!material) {
       return;
@@ -404,6 +484,8 @@ export default function LibraryClient() {
               }
               onOpenMaterial={handleOpenMaterial}
               onOpenLesson={handleOpenLesson}
+              onEnrollLesson={handleEnrollLesson}
+              onUnenrollLesson={handleUnenrollLesson}
             />
           </Stack>
         </Paper>

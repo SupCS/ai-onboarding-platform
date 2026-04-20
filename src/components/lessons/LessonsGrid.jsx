@@ -2,14 +2,19 @@
 
 import {
   Box,
+  Button,
   Chip,
   Paper,
   Stack,
   Typography,
 } from '@mui/material';
+import Link from 'next/link';
 import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
+import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
+import PlaylistAddOutlinedIcon from '@mui/icons-material/PlaylistAddOutlined';
+import RemoveCircleOutlineOutlinedIcon from '@mui/icons-material/RemoveCircleOutlineOutlined';
 import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
 
 function formatDate(isoString) {
@@ -63,7 +68,16 @@ function getLessonPreview(lesson) {
   return withoutHeadings || lesson.description || 'Generated lesson preview will appear here.';
 }
 
-export default function LessonsGrid({ lessons = [], onOpenLesson }) {
+export default function LessonsGrid({
+  lessons = [],
+  onOpenLesson,
+  onEnrollLesson,
+  onUnenrollLesson,
+  showEnrollmentAction = false,
+  showUnenrollAction = false,
+  isOpenEnabled = true,
+  getLessonHref,
+}) {
   return (
     <Box
       sx={{
@@ -81,8 +95,14 @@ export default function LessonsGrid({ lessons = [], onOpenLesson }) {
       {lessons.map((lesson) => (
         <Paper
           key={lesson.id}
+          component={getLessonHref ? Link : 'div'}
+          href={getLessonHref ? getLessonHref(lesson) : undefined}
           elevation={0}
-          onClick={() => onOpenLesson(lesson)}
+          onClick={
+            isOpenEnabled && onOpenLesson && !getLessonHref
+              ? () => onOpenLesson(lesson)
+              : undefined
+          }
           sx={{
             borderRadius: 4,
             border: '1px solid #e5e7eb',
@@ -91,12 +111,20 @@ export default function LessonsGrid({ lessons = [], onOpenLesson }) {
             minHeight: 340,
             display: 'flex',
             flexDirection: 'column',
-            cursor: 'pointer',
+            color: 'inherit',
+            textDecoration: 'none',
+            cursor:
+              getLessonHref || (isOpenEnabled && onOpenLesson)
+                ? 'pointer'
+                : 'default',
             transition: 'transform 0.18s ease, box-shadow 0.18s ease',
-            '&:hover': {
-              transform: 'translateY(-2px)',
-              boxShadow: '0 18px 40px rgba(15, 23, 42, 0.08)',
-            },
+            '&:hover':
+              getLessonHref || (isOpenEnabled && onOpenLesson)
+                ? {
+                    transform: 'translateY(-2px)',
+                    boxShadow: '0 18px 40px rgba(15, 23, 42, 0.08)',
+                  }
+                : undefined,
           }}
         >
           <Box
@@ -190,6 +218,64 @@ export default function LessonsGrid({ lessons = [], onOpenLesson }) {
                   Created {formatDate(lesson.createdAt)}
                 </Typography>
               </Stack>
+
+              {showEnrollmentAction && (
+                <Button
+                  variant={lesson.isEnrolled ? 'outlined' : 'contained'}
+                  size="small"
+                  startIcon={
+                    lesson.isEnrolled ? (
+                      <CheckCircleOutlineOutlinedIcon />
+                    ) : (
+                      <PlaylistAddOutlinedIcon />
+                    )
+                  }
+                  color={lesson.isEnrolled ? 'inherit' : 'primary'}
+                  disabled={lesson.status !== 'ready'}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    if (lesson.isEnrolled) {
+                      onUnenrollLesson?.(lesson);
+                      return;
+                    }
+
+                    onEnrollLesson?.(lesson);
+                  }}
+                  sx={{
+                    mt: 1,
+                    alignSelf: 'flex-start',
+                    borderRadius: 999,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                  }}
+                >
+                  {lesson.isEnrolled ? 'Remove from My Lessons' : 'Add to My Lessons'}
+                </Button>
+              )}
+
+              {showUnenrollAction && (
+                <Button
+                  variant="outlined"
+                  color="inherit"
+                  size="small"
+                  startIcon={<RemoveCircleOutlineOutlinedIcon />}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    onUnenrollLesson?.(lesson);
+                  }}
+                  sx={{
+                    mt: 1,
+                    alignSelf: 'flex-start',
+                    borderRadius: 999,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                  }}
+                >
+                  Remove from My Lessons
+                </Button>
+              )}
             </Stack>
           </Box>
         </Paper>
