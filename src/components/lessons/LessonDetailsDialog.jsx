@@ -55,9 +55,11 @@ export default function LessonDetailsDialog({
   open,
   onClose,
   onOpenSourceMaterial,
+  onLessonDeleted,
   onLessonUpdated,
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const initialHtml = useMemo(() => {
     return lesson?.contentHtml || markdownToHtml(lesson?.contentMarkdown || '');
@@ -109,6 +111,36 @@ export default function LessonDetailsDialog({
   const handleCancelEdit = () => {
     setDraftHtml(initialHtml);
     setIsEditing(false);
+  };
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      `Delete lesson "${lesson.title}"? This removes it from the whole library and from every user's My Lessons.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+
+      const response = await fetch(`/api/lessons/${lesson.id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete lesson.');
+      }
+
+      await onLessonDeleted?.(lesson.id);
+    } catch (error) {
+      console.error('Failed to delete lesson:', error);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -341,23 +373,32 @@ export default function LessonDetailsDialog({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, py: 2, flex: '0 0 auto' }}>
+        <Button
+          onClick={handleDelete}
+          color="error"
+          disabled={isSaving || isDeleting}
+          sx={{ mr: 'auto' }}
+        >
+          {isDeleting ? 'Deleting...' : 'Delete lesson'}
+        </Button>
+
         {isEditing ? (
           <>
-            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving}>
+            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isDeleting}>
               Cancel
             </Button>
-            <Button onClick={handleSave} variant="contained" disabled={isSaving}>
+            <Button onClick={handleSave} variant="contained" disabled={isSaving || isDeleting}>
               {isSaving ? 'Saving...' : 'Save changes'}
             </Button>
           </>
         ) : (
           lesson.status !== 'failed' && (
-            <Button onClick={() => setIsEditing(true)} variant="contained">
+            <Button onClick={() => setIsEditing(true)} variant="contained" disabled={isDeleting}>
               Edit lesson
             </Button>
           )
         )}
-        <Button onClick={onClose} color="inherit" disabled={isSaving}>
+        <Button onClick={onClose} color="inherit" disabled={isSaving || isDeleting}>
           Close
         </Button>
       </DialogActions>

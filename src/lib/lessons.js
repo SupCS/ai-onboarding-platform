@@ -300,6 +300,27 @@ export async function updateLessonContent(lessonId, input) {
   return getLessonById(lessonId);
 }
 
+export async function deleteLessonById(lessonId) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      DELETE FROM lessons
+      WHERE id = $1
+      RETURNING id
+    `,
+    [lessonId]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return {
+    id: result.rows[0].id,
+  };
+}
+
 export async function getEnrolledLessonIdsForUser(userId) {
   await ensureLessonsSchema();
 

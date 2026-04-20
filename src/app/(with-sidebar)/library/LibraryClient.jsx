@@ -199,6 +199,17 @@ export default function LibraryClient() {
     });
   };
 
+  const handleLessonDeleted = async (lessonId) => {
+    setLessons((prev) => prev.filter((lesson) => lesson.id !== lessonId));
+    setSelectedLesson(null);
+
+    setToast({
+      open: true,
+      message: 'Lesson deleted successfully.',
+      severity: 'success',
+    });
+  };
+
   const handleEnrollLesson = async (lesson) => {
     setLessons((prev) =>
       prev.map((item) =>
@@ -541,6 +552,7 @@ export default function LibraryClient() {
         lesson={selectedLesson}
         onClose={handleCloseLesson}
         onOpenSourceMaterial={handleOpenSourceMaterial}
+        onLessonDeleted={handleLessonDeleted}
         onLessonUpdated={handleLessonUpdated}
       />
 

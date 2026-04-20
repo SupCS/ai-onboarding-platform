@@ -1,5 +1,5 @@
 import { requireApiUser } from '../../../../lib/apiAuth';
-import { updateLessonContent } from '../../../../lib/lessons';
+import { deleteLessonById, updateLessonContent } from '../../../../lib/lessons';
 
 export const runtime = 'nodejs';
 
@@ -48,6 +48,43 @@ export async function PUT(request, { params }) {
 
     return Response.json(
       { error: error.message || 'Failed to update lesson.' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(_request, { params }) {
+  try {
+    const { response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
+    const { id } = await params;
+
+    if (!id) {
+      return Response.json(
+        { error: 'Lesson id is required.' },
+        { status: 400 }
+      );
+    }
+
+    const deletedLesson = await deleteLessonById(id);
+
+    if (!deletedLesson) {
+      return Response.json(
+        { error: 'Lesson not found.' },
+        { status: 404 }
+      );
+    }
+
+    return Response.json({ ok: true, id });
+  } catch (error) {
+    console.error('DELETE /api/lessons/[id] failed:', error);
+
+    return Response.json(
+      { error: error.message || 'Failed to delete lesson.' },
       { status: 500 }
     );
   }
