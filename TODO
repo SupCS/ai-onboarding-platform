@@ -5,15 +5,16 @@ Library of trainings recorded, categorized by departments. Custom curriculums (e
 AI Lesson Builder
 
 Goal:
-User selects source materials, adds extra instructions, and AI turns them into a clear theoretical internal knowledge article / lesson that combines all materials into one coherent learning flow.
+User selects source materials or describes a topic in extra instructions, and AI turns it into a clear theoretical internal knowledge article / lesson. If materials are selected, AI combines them into one coherent learning flow.
 
 Key principle:
 The lesson should not be a simple summary and should not become a generic course template. It should merge the selected materials structurally, explain concepts clearly where the source lacks context, remove duplication, preserve source-specific caveats, avoid unsupported filler, and produce useful Markdown for digital marketing agency employees.
 
 Phase 1 - Product shape and UX
 [x] Define lesson creation flow:
-    [x] Select source materials from library.
+    [x] Select source materials from library, optional.
     [x] Add extra user instructions.
+    [x] Allow prompt-only lesson generation when no materials are selected.
     [x] Add optional lesson settings: depth, tone, desired format.
     [x] Preview selected material titles before generation.
     [x] Start lesson generation and show progress/status.
@@ -56,7 +57,8 @@ Phase 3 - Material preparation
     [x] Detect duplicate titles and repeated URLs.
     [x] Extract candidate terms, examples, and caveats/warnings with basic text signals.
 [x] Add validation:
-    [x] No selected materials.
+    [x] No selected materials allowed if extra instructions describe the lesson topic.
+    [x] Block generation when both selected materials and instructions are empty.
     [x] Materials too large.
     [x] Empty material content.
 
@@ -88,29 +90,43 @@ Phase 5 - Backend API
 [x] Save generated Markdown to lessons.content_markdown.
 [x] Save generation metadata: provider, model, prompt version, response id, usage, prepared materials.
 [x] Fix lesson_materials.material_id type to match materials.id UUID.
+[x] Support prompt-only lesson generation without lesson_materials rows.
 
 Phase 6 - Frontend implementation
 [x] Build temporary lesson creation form:
-    [x] Temporary material picker for prompt preview.
+    [x] Temporary optional material picker for prompt preview.
     [x] Temporary instruction textarea for prompt preview.
     [x] Temporary depth/tone/format controls for prompt preview.
     [x] Temporary button that builds prompt and logs it to browser console.
     [x] Final generation button.
     [x] Log generated lesson markdown to browser console.
-[ ] Polish lesson creation UX:
+[x] Polish lesson creation UX:
+    [x] Move creation form into modal opened by Create Lesson button.
+    [x] Show generated lesson status in UI instead of only console.
+    [x] Refresh lessons list after generation.
     [ ] Hide or remove Build prompt button outside debug/admin mode.
-    [ ] Show generated lesson status in UI instead of only console.
-    [ ] Refresh lessons list after generation.
-[ ] Build lesson result page:
-    [ ] Generated lesson viewer.
-    [ ] Source materials list.
+[x] Build lesson cards grid:
+    [x] Show lesson cover placeholder.
+    [x] Show title.
+    [x] Show preview from generated Markdown / description.
+    [x] Show creator.
+    [x] Show created date.
+    [x] Show status.
+[x] Build lesson result modal:
+    [x] Large near-full-screen lesson viewer.
+    [x] Generated lesson Markdown viewer.
+    [x] Source materials list.
+    [x] Clickable source materials open the original material details.
+    [x] Generation metadata chips.
+    [x] Failed lesson error display.
+[ ] Add lesson result actions:
     [ ] Regenerate button.
     [ ] Copy/export action if useful.
 [ ] Add loading and empty states:
     [x] Generation button loading state.
-    [ ] Generation in progress state for saved lessons.
-    [ ] Generation failed state for saved lessons.
-    [ ] No lessons yet.
+    [x] Generation failed state for saved lessons.
+    [x] No lessons yet.
+    [ ] Better skeleton loading for lessons grid.
 
 Phase 7 - Quality loop
 [ ] Add lesson quality checklist:

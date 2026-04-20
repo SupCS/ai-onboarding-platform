@@ -73,6 +73,7 @@ export function buildTheoreticalLessonPrompt({
   desiredFormat = 'structured theoretical lesson',
 }) {
   const sourceText = preparedMaterials.materials.map(formatSourceMaterial).join('\n\n---\n\n');
+  const hasSourceMaterials = preparedMaterials.materials.length > 0;
   const extractedTerms = preparedMaterials.extractedTerms.length
     ? preparedMaterials.extractedTerms.join(', ')
     : 'No candidate terms extracted.';
@@ -85,20 +86,32 @@ export function buildTheoreticalLessonPrompt({
         content: [
           'You create theoretical lessons for employees of a digital marketing agency.',
           'The lesson must be a useful internal knowledge article, not a generic course template.',
-          'Use the provided source materials as the factual basis. You may add concise background explanations only when they are necessary to understand a source statement.',
+          hasSourceMaterials
+            ? 'Use the provided source materials as the factual basis. You may add concise background explanations only when they are necessary to understand a source statement.'
+            : 'No source materials were provided. Use the user instructions as the lesson topic and create a concise, generally useful theoretical lesson. Do not pretend that source materials exist.',
           'Do not add motivational filler, generic best-practice paragraphs, or sections that are not supported by the sources.',
         ].join('\n'),
       },
       {
         role: 'user',
         content: [
-          'Create one coherent theoretical lesson from the selected materials.',
+          hasSourceMaterials
+            ? 'Create one coherent theoretical lesson from the selected materials.'
+            : 'Create one coherent theoretical lesson from the user-provided topic/instructions.',
           '',
           'Core behavior:',
-          '- Synthesize the sources instead of summarizing them one by one.',
-          '- Merge overlapping ideas and remove repetition.',
-          '- Preserve important caveats, warnings, and source-specific nuance.',
-          '- Resolve contradictions by explaining the difference or noting uncertainty.',
+          hasSourceMaterials
+            ? '- Synthesize the sources instead of summarizing them one by one.'
+            : '- Build the lesson around the topic from the extra user instructions.',
+          hasSourceMaterials
+            ? '- Merge overlapping ideas and remove repetition.'
+            : '- Keep the lesson practical for digital marketing agency employees without requiring source citations.',
+          hasSourceMaterials
+            ? '- Preserve important caveats, warnings, and source-specific nuance.'
+            : '- Include important caveats where they are generally relevant.',
+          hasSourceMaterials
+            ? '- Resolve contradictions by explaining the difference or noting uncertainty.'
+            : '- If the topic is underspecified, state reasonable assumptions briefly and avoid overclaiming.',
           '- Make the conceptual order easy to follow for digital marketing agency employees.',
           '- Use examples or analogies only when they are present in the sources or directly clarify a source statement.',
           '- If a source mentions a concept without enough context, add a short explanation of that concept. For example, if the source says keywords need appropriate match types, briefly explain broad, phrase, and exact match.',
@@ -109,6 +122,7 @@ export function buildTheoreticalLessonPrompt({
           '',
           'Markdown structure:',
           '# Title',
+          'Create a concise natural title for the lesson. Do not copy the user instructions verbatim as the title.',
           'Then write the lesson directly as clear sections and subsections.',
           'Do not include Short Description, Learning Objectives, or Lesson Outline.',
           'Include Prerequisites only if the lesson truly cannot be understood without them.',
@@ -133,8 +147,10 @@ export function buildTheoreticalLessonPrompt({
           `- Overlap check: ${formatOverlaps(preparedMaterials.overlaps)}`,
           `- Lesson signals: ${formatSignals(preparedMaterials.signals)}`,
           '',
-          'Selected source materials:',
-          sourceText,
+          hasSourceMaterials
+            ? 'Selected source materials:'
+            : 'Selected source materials: none. Use the extra user instructions as the topic.',
+          hasSourceMaterials ? sourceText : '',
         ].join('\n'),
       },
     ],

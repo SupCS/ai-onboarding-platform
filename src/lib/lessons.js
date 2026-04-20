@@ -67,10 +67,6 @@ function mapLesson(row, materialIds = []) {
 function validateMaterialIds(materialIds) {
   const uniqueIds = [...new Set(materialIds.filter(Boolean))];
 
-  if (uniqueIds.length === 0) {
-    throw new Error('Select at least one material.');
-  }
-
   if (uniqueIds.length > LESSON_MVP_LIMITS.maxSelectedMaterials) {
     throw new Error(
       `Select up to ${LESSON_MVP_LIMITS.maxSelectedMaterials} materials for the MVP.`
@@ -177,6 +173,7 @@ export async function markLessonReady(lessonId, input) {
     `
       UPDATE lessons
       SET
+        title = COALESCE($4, title),
         status = 'ready',
         content_markdown = $2,
         generation_metadata = $3,
@@ -189,6 +186,7 @@ export async function markLessonReady(lessonId, input) {
       lessonId,
       input.contentMarkdown || '',
       JSON.stringify(input.generationMetadata || {}),
+      input.title || null,
     ]
   );
 

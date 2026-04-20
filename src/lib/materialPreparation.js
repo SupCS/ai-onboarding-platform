@@ -199,10 +199,6 @@ function buildSourceReferences(materials) {
 }
 
 function validatePreparedMaterials(materials) {
-  if (materials.length === 0) {
-    throw new Error('Select at least one material.');
-  }
-
   if (materials.length > LESSON_MVP_LIMITS.maxSelectedMaterials) {
     throw new Error(
       `Select up to ${LESSON_MVP_LIMITS.maxSelectedMaterials} materials for one lesson.`

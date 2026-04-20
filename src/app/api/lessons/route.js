@@ -12,6 +12,10 @@ import { loadAndPrepareMaterialsForLesson } from '../../../lib/materialPreparati
 export const runtime = 'nodejs';
 
 function buildLessonTitle(sourceReferences) {
+  if (sourceReferences.length === 0) {
+    return 'Generating theoretical lesson';
+  }
+
   if (sourceReferences.length === 1) {
     return sourceReferences[0].title;
   }
@@ -21,6 +25,17 @@ function buildLessonTitle(sourceReferences) {
   }
 
   return `${sourceReferences[0].title} and ${sourceReferences.length - 1} more materials`;
+}
+
+function extractMarkdownTitle(markdown = '') {
+  const headingMatch = markdown.match(/^#\s+(.+)$/m);
+  const title = headingMatch?.[1]?.trim();
+
+  if (!title) {
+    return '';
+  }
+
+  return title.length > 120 ? `${title.slice(0, 117)}...` : title;
 }
 
 function serializePreparedMaterials(preparedMaterials) {
@@ -58,6 +73,13 @@ export async function POST(request) {
     const tone = (body.tone || 'clear').trim();
     const desiredFormat = (body.desiredFormat || 'structured theoretical lesson').trim();
 
+    if (materialIds.length === 0 && !userInstructions) {
+      return Response.json(
+        { error: 'Select at least one material or describe what the lesson should be about.' },
+        { status: 400 }
+      );
+    }
+
     const preparedMaterials = await loadAndPrepareMaterialsForLesson(materialIds);
     const prompt = buildTheoreticalLessonPrompt({
       preparedMaterials,
@@ -70,7 +92,10 @@ export async function POST(request) {
     if (action === 'generate') {
       const lesson = await createLessonDraft({
         title: buildLessonTitle(preparedMaterials.sourceReferences),
-        description: `Generated theoretical lesson from ${preparedMaterials.stats.materialCount} material(s).`,
+        description:
+          preparedMaterials.stats.materialCount > 0
+            ? `Generated theoretical lesson from ${preparedMaterials.stats.materialCount} material(s).`
+            : 'Generated theoretical lesson from prompt instructions.',
         materialIds,
         userInstructions,
         depth,
@@ -86,6 +111,7 @@ export async function POST(request) {
       try {
         const generatedLesson = await generateLessonMarkdown(prompt);
         const readyLesson = await markLessonReady(lesson.id, {
+          title: extractMarkdownTitle(generatedLesson.content),
           contentMarkdown: generatedLesson.content,
           generationMetadata: {
             ...generatedLesson.metadata,

@@ -1,20 +1,27 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Container, Paper, Snackbar, Stack } from '@mui/material';
+import { Alert, Container, Dialog, DialogContent, DialogTitle, IconButton, Paper, Snackbar, Stack } from '@mui/material';
+import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import LibraryToolbar from '../../../components/library/LibraryToolbar';
 import LibraryTabs from '../../../components/library/LibraryTabs';
 import LibraryTabPanel from '../../../components/library/LibraryTabPanel';
+import LessonDetailsDialog from '../../../components/lessons/LessonDetailsDialog';
+import LessonPromptForm from '../../../components/lessons/LessonPromptForm';
 import UploadMaterialDialog from '../../../components/materials/UploadMaterialDialog';
 import MaterialDetailsDialog from '../../../components/materials/MaterialDetailsDialog';
 
 export default function LibraryClient() {
   const [activeTab, setActiveTab] = useState('materials');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState(null);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
+  const [selectedLesson, setSelectedLesson] = useState(null);
   const [materials, setMaterials] = useState([]);
+  const [lessons, setLessons] = useState([]);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
+  const [isLoadingLessons, setIsLoadingLessons] = useState(true);
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
   const [isDeletingMaterial, setIsDeletingMaterial] = useState(false);
   const [toast, setToast] = useState({
@@ -28,6 +35,12 @@ export default function LibraryClient() {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
   }, [materials]);
+
+  const sortedLessons = useMemo(() => {
+    return [...lessons].sort((a, b) => {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, [lessons]);
 
   const loadMaterials = async () => {
     try {
@@ -63,8 +76,38 @@ export default function LibraryClient() {
     }
   };
 
+  const loadLessons = async () => {
+    try {
+      setIsLoadingLessons(true);
+
+      const response = await fetch('/api/lessons', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load lessons.');
+      }
+
+      setLessons(data.lessons || []);
+    } catch (error) {
+      console.error('Failed to load lessons:', error);
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to load lessons.',
+        severity: 'error',
+      });
+    } finally {
+      setIsLoadingLessons(false);
+    }
+  };
+
   useEffect(() => {
     loadMaterials();
+    loadLessons();
   }, []);
 
   const handleTabChange = (_, newValue) => {
@@ -79,11 +122,7 @@ export default function LibraryClient() {
     }
 
     if (activeTab === 'lessons') {
-      setToast({
-        open: true,
-        message: 'Use the lesson prompt form below for now.',
-        severity: 'info',
-      });
+      setIsLessonDialogOpen(true);
       return;
     }
 
@@ -105,6 +144,44 @@ export default function LibraryClient() {
 
   const handleCloseMaterial = () => {
     setSelectedMaterial(null);
+  };
+
+  const handleOpenLesson = (lesson) => {
+    setSelectedLesson(lesson);
+  };
+
+  const handleCloseLesson = () => {
+    setSelectedLesson(null);
+  };
+
+  const handleCloseLessonDialog = () => {
+    setIsLessonDialogOpen(false);
+  };
+
+  const handleOpenSourceMaterial = (materialId) => {
+    const material = materials.find((item) => item.id === materialId);
+
+    if (!material) {
+      setToast({
+        open: true,
+        message: 'Source material is no longer available.',
+        severity: 'warning',
+      });
+      return;
+    }
+
+    setSelectedMaterial(material);
+  };
+
+  const handleLessonGenerated = async () => {
+    await loadLessons();
+    setIsLessonDialogOpen(false);
+
+    setToast({
+      open: true,
+      message: 'Lesson generated successfully.',
+      severity: 'success',
+    });
   };
 
   const handleEditMaterial = (material) => {
@@ -306,8 +383,12 @@ export default function LibraryClient() {
             <LibraryTabPanel
               activeTab={activeTab}
               materials={sortedMaterials}
-              isHydrated={!isLoadingMaterials}
+              lessons={sortedLessons}
+              isHydrated={
+                activeTab === 'lessons' ? !isLoadingLessons : !isLoadingMaterials
+              }
               onOpenMaterial={handleOpenMaterial}
+              onOpenLesson={handleOpenLesson}
             />
           </Stack>
         </Paper>
@@ -323,6 +404,30 @@ export default function LibraryClient() {
         initialMaterial={editingMaterial}
       />
 
+      <Dialog
+        open={isLessonDialogOpen}
+        onClose={handleCloseLessonDialog}
+        fullWidth
+        maxWidth="lg"
+      >
+        <DialogTitle sx={{ pr: 7 }}>
+          Create lesson
+          <IconButton
+            aria-label="Close create lesson dialog"
+            onClick={handleCloseLessonDialog}
+            sx={{ position: 'absolute', right: 16, top: 12 }}
+          >
+            <CloseOutlinedIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent dividers>
+          <LessonPromptForm
+            materials={sortedMaterials}
+            onLessonGenerated={handleLessonGenerated}
+          />
+        </DialogContent>
+      </Dialog>
+
       <MaterialDetailsDialog
         key={selectedMaterial?.id || 'material-details'}
         open={Boolean(selectedMaterial)}
@@ -331,6 +436,14 @@ export default function LibraryClient() {
         onClose={handleCloseMaterial}
         onDelete={handleDeleteMaterial}
         onEdit={() => handleEditMaterial(selectedMaterial)}
+      />
+
+      <LessonDetailsDialog
+        key={selectedLesson?.id || 'lesson-details'}
+        open={Boolean(selectedLesson)}
+        lesson={selectedLesson}
+        onClose={handleCloseLesson}
+        onOpenSourceMaterial={handleOpenSourceMaterial}
       />
 
       <Snackbar

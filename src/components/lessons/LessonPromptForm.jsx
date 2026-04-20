@@ -36,7 +36,7 @@ const formatOptions = [
   { value: 'internal wiki page', label: 'Internal Wiki Page' },
 ];
 
-export default function LessonPromptForm({ materials = [] }) {
+export default function LessonPromptForm({ materials = [], onLessonGenerated }) {
   const [selectedMaterialIds, setSelectedMaterialIds] = useState([]);
   const [userInstructions, setUserInstructions] = useState('');
   const [depth, setDepth] = useState('standard');
@@ -52,6 +52,7 @@ export default function LessonPromptForm({ materials = [] }) {
 
     return materials.filter((material) => selectedIds.has(material.id));
   }, [materials, selectedMaterialIds]);
+  const canSubmit = selectedMaterialIds.length > 0 || userInstructions.trim().length > 0;
 
   const handleMaterialToggle = (materialId) => {
     setSelectedMaterialIds((prev) => {
@@ -67,8 +68,8 @@ export default function LessonPromptForm({ materials = [] }) {
     setStatusMessage('');
     setErrorMessage('');
 
-    if (selectedMaterialIds.length === 0) {
-      setErrorMessage('Select at least one material.');
+    if (!canSubmit) {
+      setErrorMessage('Select at least one material or describe what the lesson should be about.');
       return;
     }
 
@@ -110,9 +111,13 @@ export default function LessonPromptForm({ materials = [] }) {
 
       setStatusMessage(
         action === 'generate'
-          ? 'Lesson generated and saved. Check the browser console.'
+          ? 'Lesson generated and saved.'
           : 'Prompt built successfully. Check the browser console.'
       );
+
+      if (action === 'generate' && data.lesson && onLessonGenerated) {
+        await onLessonGenerated(data.lesson);
+      }
     } catch (error) {
       console.error('Lesson request failed:', error);
       setErrorMessage(error.message || 'Lesson request failed.');
@@ -147,10 +152,10 @@ export default function LessonPromptForm({ materials = [] }) {
       <Stack spacing={3}>
         <Box>
           <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.75 }}>
-            Build theoretical lesson prompt
+            Generate theoretical lesson
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Temporary MVP: select materials and generate the prompt only. The lesson itself is not created yet.
+            Select source materials or describe the lesson topic in extra instructions, then generate a saved Markdown lesson.
           </Typography>
         </Box>
 
@@ -159,7 +164,7 @@ export default function LessonPromptForm({ materials = [] }) {
 
         <Stack spacing={1.5}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            Source materials
+            Source materials optional
           </Typography>
 
           <Box
@@ -237,7 +242,7 @@ export default function LessonPromptForm({ materials = [] }) {
           label="Extra instructions"
           value={userInstructions}
           onChange={(event) => setUserInstructions(event.target.value)}
-          placeholder="Example: make it beginner-friendly, explain abbreviations, keep it concise..."
+          placeholder="Example: create a beginner-friendly lesson about Google Ads match types. Explain abbreviations and keep it concise..."
           minRows={4}
           multiline
           fullWidth
@@ -303,7 +308,7 @@ export default function LessonPromptForm({ materials = [] }) {
               type="submit"
               variant="outlined"
               size="large"
-              disabled={isSubmitting || selectedMaterialIds.length === 0}
+              disabled={isSubmitting || !canSubmit}
             >
               {isSubmitting && submitAction === 'build-prompt'
                 ? 'Building prompt...'
@@ -315,7 +320,7 @@ export default function LessonPromptForm({ materials = [] }) {
               variant="contained"
               size="large"
               onClick={handleGenerateLesson}
-              disabled={isSubmitting || selectedMaterialIds.length === 0}
+              disabled={isSubmitting || !canSubmit}
             >
               {isSubmitting && submitAction === 'generate'
                 ? 'Generating lesson...'
