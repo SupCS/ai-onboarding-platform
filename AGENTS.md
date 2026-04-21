@@ -38,6 +38,27 @@ Main goals:
 - Prefer `sx` for styling
 - Keep UI clean and minimal
 
+## Brand colors
+
+Use the AI Digital brand palette for generated UI, visual assets, lesson visuals, presentation-style materials, and design suggestions.
+
+Primary colors:
+- Yves Klein Blue `#0009DC` is the main hero color and should be treated as the strongest brand anchor.
+- Lime `#AEF33E`
+- Pink `#FF7CF5`
+- Silver Haze `#F9F9F9`
+- Midnight Charcoal `#080808`
+
+Secondary colors are for accents, demographics, highlights, charts, and extra energy. Use them sparingly; do not use them as main background floods or primary typography colors.
+- Bright Aqua `#8EE7F1`
+- Digital Lilac `#DDA7EF`
+- Skywave `#A9BEF8`
+- Neon Azure `#3AB6FF`
+- Violet Pulse `#8263FF`
+- Cool Gray `#231F20`
+
+When choosing colors without further direction, start from Yves Klein Blue `#0009DC`, then support it with neutrals and only small accents from Lime, Pink, or the secondary palette.
+
 ## Code style
 
 - Simple and readable code

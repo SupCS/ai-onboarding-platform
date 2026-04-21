@@ -19,7 +19,8 @@ export default async function MyLessonsPage() {
           p: 3,
           borderRadius: 4,
           border: '1px solid #e5e7eb',
-          backgroundColor: '#f8fafc',
+          background:
+            'radial-gradient(circle at 8% 0%, rgba(0, 9, 220, 0.08), transparent 28%), radial-gradient(circle at 92% 4%, rgba(142, 231, 241, 0.28), transparent 30%), linear-gradient(180deg, #F9F9F9 0%, #EEF3FF 100%)',
         }}
       >
         <Stack spacing={3}>
@@ -31,8 +32,8 @@ export default async function MyLessonsPage() {
               My Lessons
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Lessons you add from the library will appear here. Cards are not
-              clickable yet while we design the learning flow.
+              Lessons you add from the library will appear here. Open any card to
+              continue reading.
             </Typography>
           </Stack>
 

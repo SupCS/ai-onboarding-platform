@@ -16,6 +16,7 @@ import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined
 import PlaylistAddOutlinedIcon from '@mui/icons-material/PlaylistAddOutlined';
 import RemoveCircleOutlineOutlinedIcon from '@mui/icons-material/RemoveCircleOutlineOutlined';
 import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
+import { getLessonCoverBackground } from '../../lib/brandColors';
 
 function formatDate(isoString) {
   try {
@@ -131,8 +132,7 @@ export default function LessonsGrid({
             sx={{
               height: 160,
               borderBottom: '1px solid #eef2f7',
-              background:
-                'linear-gradient(135deg, #0f766e 0%, #2563eb 48%, #f59e0b 100%)',
+              background: getLessonCoverBackground(lesson),
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',

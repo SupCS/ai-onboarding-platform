@@ -73,8 +73,8 @@ export default async function LessonReadPage({ params }) {
               sx={{
                 alignSelf: { xs: 'flex-start', sm: 'center' },
                 fontWeight: 800,
-                backgroundColor: '#ccfbf1',
-                color: '#115e59',
+                backgroundColor: 'rgba(0, 9, 220, 0.1)',
+                color: '#0009DC',
               }}
             />
           </Stack>

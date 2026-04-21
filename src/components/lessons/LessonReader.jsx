@@ -50,10 +50,10 @@ export default function LessonReader({ html }) {
           my: 3,
           mx: 0,
           p: { xs: 2, md: 3 },
-          borderLeft: '5px solid #0f766e',
+          borderLeft: '5px solid #0009DC',
           borderRadius: 3,
-          backgroundColor: '#ecfdf5',
-          color: '#064e3b',
+          backgroundColor: '#eef3ff',
+          color: '#172033',
           fontWeight: 600,
         },
         '& code': {
@@ -78,7 +78,7 @@ export default function LessonReader({ html }) {
           color: 'inherit',
         },
         '& a': {
-          color: '#0f766e',
+          color: '#0009DC',
           fontWeight: 700,
           textDecoration: 'underline',
           textUnderlineOffset: 4,
