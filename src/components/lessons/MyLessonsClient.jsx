@@ -1,7 +1,18 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Alert, Box, Snackbar, Stack, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Snackbar,
+  Stack,
+  Typography,
+} from '@mui/material';
 import LessonsGrid from './LessonsGrid';
 import EmptyState from '../ui/EmptyState';
 
@@ -12,6 +23,7 @@ export default function MyLessonsClient({ initialLessons = [] }) {
     message: '',
     severity: 'success',
   });
+  const [lessonPendingRemoval, setLessonPendingRemoval] = useState(null);
   const { completedLessons, incompleteLessons } = useMemo(() => {
     return lessons.reduce(
       (groups, lesson) => {
@@ -30,7 +42,7 @@ export default function MyLessonsClient({ initialLessons = [] }) {
     );
   }, [lessons]);
 
-  const handleUnenrollLesson = async (lesson) => {
+  const removeLesson = async (lesson) => {
     setLessons((prev) => prev.filter((item) => item.id !== lesson.id));
 
     try {
@@ -64,6 +76,30 @@ export default function MyLessonsClient({ initialLessons = [] }) {
         severity: 'error',
       });
     }
+  };
+
+  const handleUnenrollLesson = async (lesson) => {
+    if (lesson.isCompleted) {
+      setLessonPendingRemoval(lesson);
+      return;
+    }
+
+    await removeLesson(lesson);
+  };
+
+  const handleCancelRemoveCompletedLesson = () => {
+    setLessonPendingRemoval(null);
+  };
+
+  const handleConfirmRemoveCompletedLesson = async () => {
+    const lesson = lessonPendingRemoval;
+
+    if (!lesson) {
+      return;
+    }
+
+    setLessonPendingRemoval(null);
+    await removeLesson(lesson);
   };
 
   return (
@@ -160,6 +196,43 @@ export default function MyLessonsClient({ initialLessons = [] }) {
           {toast.message}
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={Boolean(lessonPendingRemoval)}
+        onClose={handleCancelRemoveCompletedLesson}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Remove completed lesson?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5}>
+            <Typography variant="body1">
+              This lesson is already completed.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              If you remove it from My Lessons, its completion status will be removed too.
+              Roadmaps that include this lesson will roll back their progress.
+            </Typography>
+            {lessonPendingRemoval?.title && (
+              <Typography variant="body2" sx={{ fontWeight: 800 }}>
+                {lessonPendingRemoval.title}
+              </Typography>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button color="inherit" onClick={handleCancelRemoveCompletedLesson}>
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            color="error"
+            onClick={handleConfirmRemoveCompletedLesson}
+          >
+            Remove lesson
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 }

@@ -37,7 +37,7 @@ const sidebarItems = [
   },
   {
     label: 'Roadmaps',
-    href: '/library',
+    href: '/roadmaps',
     icon: <RouteOutlinedIcon />,
   },
 ];
@@ -163,7 +163,8 @@ export default function Sidebar({ currentUser }) {
 
       <List sx={{ p: 0 }}>
         {sidebarItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive =
+            pathname === item.href || pathname.startsWith(`${item.href}/`);
 
           return (
             <Tooltip key={item.label} title={item.label} placement="right" arrow>

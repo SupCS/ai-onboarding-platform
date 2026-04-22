@@ -1,10 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Box, Button, Snackbar } from '@mui/material';
 import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import RadioButtonUncheckedOutlinedIcon from '@mui/icons-material/RadioButtonUncheckedOutlined';
+import ConfettiBurst from '../roadmaps/ConfettiBurst';
+import RoadmapCompletionCelebration from '../roadmaps/RoadmapCompletionCelebration';
 
 export default function LessonCompletionButton({
   lessonId,
@@ -18,6 +20,32 @@ export default function LessonCompletionButton({
     message: '',
     severity: 'success',
   });
+  const [isConfettiActive, setIsConfettiActive] = useState(false);
+  const [completedRoadmapsCelebration, setCompletedRoadmapsCelebration] = useState([]);
+
+  useEffect(() => {
+    if (!isConfettiActive) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsConfettiActive(false);
+    }, 2600);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isConfettiActive]);
+
+  useEffect(() => {
+    if (completedRoadmapsCelebration.length === 0) {
+      return undefined;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setCompletedRoadmapsCelebration([]);
+    }, 6200);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [completedRoadmapsCelebration]);
 
   const handleToggleCompletion = async () => {
     const nextIsCompleted = !isCompleted;
@@ -42,13 +70,25 @@ export default function LessonCompletionButton({
 
       setIsCompleted(Boolean(data.enrollment?.isCompleted));
       router.refresh();
-      setToast({
-        open: true,
-        message: nextIsCompleted
-          ? 'Lesson marked as completed.'
-          : 'Lesson marked as not completed.',
-        severity: 'success',
-      });
+      const completedRoadmaps = data.completedRoadmaps || [];
+
+      if (nextIsCompleted) {
+        setIsConfettiActive(false);
+        window.setTimeout(() => setIsConfettiActive(true), 20);
+      }
+
+      if (completedRoadmaps.length > 0) {
+        setToast((prev) => ({ ...prev, open: false }));
+        setCompletedRoadmapsCelebration(completedRoadmaps);
+      } else {
+        setToast({
+          open: true,
+          message: nextIsCompleted
+            ? 'Lesson marked as completed.'
+            : 'Lesson marked as not completed.',
+          severity: 'success',
+        });
+      }
     } catch (error) {
       console.error('Failed to update lesson progress:', error);
       setIsCompleted(!nextIsCompleted);
@@ -64,6 +104,12 @@ export default function LessonCompletionButton({
 
   return (
     <>
+      <ConfettiBurst active={isConfettiActive} />
+      <RoadmapCompletionCelebration
+        active={completedRoadmapsCelebration.length > 0}
+        roadmaps={completedRoadmapsCelebration}
+      />
+
       <Box sx={{ display: 'flex', justifyContent: 'center', mt: { xs: 5, md: 7 } }}>
         <Button
           variant={isCompleted ? 'outlined' : 'contained'}
@@ -97,7 +143,7 @@ export default function LessonCompletionButton({
 
       <Snackbar
         open={toast.open}
-        autoHideDuration={3000}
+        autoHideDuration={toast.message.includes('Roadmap') ? 5200 : 3000}
         onClose={() => setToast((prev) => ({ ...prev, open: false }))}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
       >

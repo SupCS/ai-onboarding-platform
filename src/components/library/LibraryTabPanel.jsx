@@ -2,16 +2,20 @@ import EmptyState from '../ui/EmptyState';
 import LessonsGrid from '../lessons/LessonsGrid';
 import MaterialsGrid from '../materials/MaterialsGrid';
 import MaterialsLoadingState from '../materials/MaterialsLoadingState';
+import RoadmapsGrid from '../roadmaps/RoadmapsGrid';
 
 export default function LibraryTabPanel({
   activeTab,
   materials = [],
   lessons = [],
+  roadmaps = [],
   isHydrated = true,
   onOpenMaterial,
   onOpenLesson,
   onEnrollLesson,
   onUnenrollLesson,
+  onEnrollRoadmap,
+  onUnenrollRoadmap,
 }) {
   if (activeTab === 'materials') {
     if (!isHydrated) {
@@ -60,10 +64,33 @@ export default function LibraryTabPanel({
     );
   }
 
+  if (activeTab === 'roadmaps') {
+    if (!isHydrated) {
+      return <MaterialsLoadingState />;
+    }
+
+    if (roadmaps.length === 0) {
+      return (
+        <EmptyState
+          title="No roadmaps yet"
+          description="Click Create Roadmap to assemble a learning path from existing lessons."
+        />
+      );
+    }
+
+    return (
+      <RoadmapsGrid
+        roadmaps={roadmaps}
+        onEnrollRoadmap={onEnrollRoadmap}
+        onUnenrollRoadmap={onUnenrollRoadmap}
+      />
+    );
+  }
+
   return (
     <EmptyState
-      title="No roadmaps yet"
-      description="Roadmaps built from multiple lessons will appear here."
+      title="Nothing here yet"
+      description="Choose another library tab to continue."
     />
   );
 }

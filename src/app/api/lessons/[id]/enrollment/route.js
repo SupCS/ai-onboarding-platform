@@ -4,6 +4,7 @@ import {
   setLessonCompletionForUser,
   unenrollUserFromLesson,
 } from '../../../../../lib/lessons';
+import { getCompletedRoadmapsForUserLesson } from '../../../../../lib/roadmaps';
 
 export const runtime = 'nodejs';
 
@@ -108,9 +109,14 @@ export async function PATCH(request, { params }) {
       );
     }
 
+    const completedRoadmaps = enrollment.isCompleted
+      ? await getCompletedRoadmapsForUserLesson(user.id, id)
+      : [];
+
     return Response.json({
       ok: true,
       enrollment,
+      completedRoadmaps,
     });
   } catch (error) {
     console.error('PATCH /api/lessons/[id]/enrollment failed:', error);

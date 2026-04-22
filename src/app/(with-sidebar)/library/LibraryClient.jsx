@@ -10,19 +10,24 @@ import LessonDetailsDialog from '../../../components/lessons/LessonDetailsDialog
 import LessonPromptForm from '../../../components/lessons/LessonPromptForm';
 import UploadMaterialDialog from '../../../components/materials/UploadMaterialDialog';
 import MaterialDetailsDialog from '../../../components/materials/MaterialDetailsDialog';
+import RoadmapFormDialog from '../../../components/roadmaps/RoadmapFormDialog';
 
 export default function LibraryClient() {
   const [activeTab, setActiveTab] = useState('materials');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
+  const [isRoadmapDialogOpen, setIsRoadmapDialogOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState(null);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [materials, setMaterials] = useState([]);
   const [lessons, setLessons] = useState([]);
+  const [roadmaps, setRoadmaps] = useState([]);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
   const [isLoadingLessons, setIsLoadingLessons] = useState(true);
+  const [isLoadingRoadmaps, setIsLoadingRoadmaps] = useState(true);
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
+  const [isSavingRoadmap, setIsSavingRoadmap] = useState(false);
   const [isDeletingMaterial, setIsDeletingMaterial] = useState(false);
   const [toast, setToast] = useState({
     open: false,
@@ -41,6 +46,12 @@ export default function LibraryClient() {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
   }, [lessons]);
+
+  const sortedRoadmaps = useMemo(() => {
+    return [...roadmaps].sort((a, b) => {
+      return new Date(b.createdAt) - new Date(a.createdAt);
+    });
+  }, [roadmaps]);
 
   const loadMaterials = async () => {
     try {
@@ -105,9 +116,39 @@ export default function LibraryClient() {
     }
   };
 
+  const loadRoadmaps = async () => {
+    try {
+      setIsLoadingRoadmaps(true);
+
+      const response = await fetch('/api/roadmaps', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load roadmaps.');
+      }
+
+      setRoadmaps(data.roadmaps || []);
+    } catch (error) {
+      console.error('Failed to load roadmaps:', error);
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to load roadmaps.',
+        severity: 'error',
+      });
+    } finally {
+      setIsLoadingRoadmaps(false);
+    }
+  };
+
   useEffect(() => {
     loadMaterials();
     loadLessons();
+    loadRoadmaps();
   }, []);
 
   const handleTabChange = (_, newValue) => {
@@ -126,7 +167,9 @@ export default function LibraryClient() {
       return;
     }
 
-    window.alert(`Action for "${activeTab}" will be added next.`);
+    if (activeTab === 'roadmaps') {
+      setIsRoadmapDialogOpen(true);
+    }
   };
 
   const handleCloseUploadDialog = () => {
@@ -156,6 +199,14 @@ export default function LibraryClient() {
 
   const handleCloseLessonDialog = () => {
     setIsLessonDialogOpen(false);
+  };
+
+  const handleCloseRoadmapDialog = () => {
+    if (isSavingRoadmap) {
+      return;
+    }
+
+    setIsRoadmapDialogOpen(false);
   };
 
   const handleOpenSourceMaterial = (materialId) => {
@@ -285,6 +336,125 @@ export default function LibraryClient() {
       setToast({
         open: true,
         message: error.message || 'Failed to remove lesson from My Lessons.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleSaveRoadmap = async (formData) => {
+    try {
+      setIsSavingRoadmap(true);
+
+      const response = await fetch('/api/roadmaps', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create roadmap.');
+      }
+
+      setRoadmaps((prev) => [data.roadmap, ...prev]);
+      setIsRoadmapDialogOpen(false);
+
+      setToast({
+        open: true,
+        message: 'Roadmap created successfully.',
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to create roadmap:', error);
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to create roadmap.',
+        severity: 'error',
+      });
+    } finally {
+      setIsSavingRoadmap(false);
+    }
+  };
+
+  const handleEnrollRoadmap = async (roadmap) => {
+    setRoadmaps((prev) =>
+      prev.map((item) =>
+        item.id === roadmap.id ? { ...item, isEnrolled: true } : item
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/roadmaps/${roadmap.id}/enrollment`, {
+        method: 'POST',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to subscribe to roadmap.');
+      }
+
+      setToast({
+        open: true,
+        message: 'Roadmap added to your learning plan.',
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to subscribe to roadmap:', error);
+
+      setRoadmaps((prev) =>
+        prev.map((item) =>
+          item.id === roadmap.id ? { ...item, isEnrolled: false } : item
+        )
+      );
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to subscribe to roadmap.',
+        severity: 'error',
+      });
+    }
+  };
+
+  const handleUnenrollRoadmap = async (roadmap) => {
+    setRoadmaps((prev) =>
+      prev.map((item) =>
+        item.id === roadmap.id ? { ...item, isEnrolled: false } : item
+      )
+    );
+
+    try {
+      const response = await fetch(`/api/roadmaps/${roadmap.id}/enrollment`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to unsubscribe from roadmap.');
+      }
+
+      setToast({
+        open: true,
+        message: 'Roadmap removed from your learning plan.',
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error('Failed to unsubscribe from roadmap:', error);
+
+      setRoadmaps((prev) =>
+        prev.map((item) =>
+          item.id === roadmap.id ? { ...item, isEnrolled: true } : item
+        )
+      );
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to unsubscribe from roadmap.',
         severity: 'error',
       });
     }
@@ -490,13 +660,20 @@ export default function LibraryClient() {
               activeTab={activeTab}
               materials={sortedMaterials}
               lessons={sortedLessons}
+              roadmaps={sortedRoadmaps}
               isHydrated={
-                activeTab === 'lessons' ? !isLoadingLessons : !isLoadingMaterials
+                activeTab === 'lessons'
+                  ? !isLoadingLessons
+                  : activeTab === 'roadmaps'
+                    ? !isLoadingRoadmaps
+                    : !isLoadingMaterials
               }
               onOpenMaterial={handleOpenMaterial}
               onOpenLesson={handleOpenLesson}
               onEnrollLesson={handleEnrollLesson}
               onUnenrollLesson={handleUnenrollLesson}
+              onEnrollRoadmap={handleEnrollRoadmap}
+              onUnenrollRoadmap={handleUnenrollRoadmap}
             />
           </Stack>
         </Paper>
@@ -535,6 +712,14 @@ export default function LibraryClient() {
           />
         </DialogContent>
       </Dialog>
+
+      <RoadmapFormDialog
+        open={isRoadmapDialogOpen}
+        lessons={sortedLessons}
+        isSaving={isSavingRoadmap}
+        onClose={handleCloseRoadmapDialog}
+        onSave={handleSaveRoadmap}
+      />
 
       <MaterialDetailsDialog
         key={selectedMaterial?.id || 'material-details'}
