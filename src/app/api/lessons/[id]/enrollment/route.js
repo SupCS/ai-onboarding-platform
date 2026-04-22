@@ -1,6 +1,7 @@
 import { requireApiUser } from '../../../../../lib/apiAuth';
 import {
   enrollUserInLesson,
+  setLessonCompletionForUser,
   unenrollUserFromLesson,
 } from '../../../../../lib/lessons';
 
@@ -71,6 +72,51 @@ export async function DELETE(_request, { params }) {
 
     return Response.json(
       { error: error.message || 'Failed to remove lesson from My Lessons.' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PATCH(request, { params }) {
+  try {
+    const { user, response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
+    const { id } = await params;
+
+    if (!id) {
+      return Response.json(
+        { error: 'Lesson id is required.' },
+        { status: 400 }
+      );
+    }
+
+    const body = await request.json().catch(() => ({}));
+    const enrollment = await setLessonCompletionForUser(
+      user.id,
+      id,
+      Boolean(body.completed)
+    );
+
+    if (!enrollment) {
+      return Response.json(
+        { error: 'Lesson is not in My Lessons.' },
+        { status: 404 }
+      );
+    }
+
+    return Response.json({
+      ok: true,
+      enrollment,
+    });
+  } catch (error) {
+    console.error('PATCH /api/lessons/[id]/enrollment failed:', error);
+
+    return Response.json(
+      { error: error.message || 'Failed to update lesson progress.' },
       { status: 500 }
     );
   }

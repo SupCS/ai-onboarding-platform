@@ -2,10 +2,11 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Box, Button, Chip, Container, Paper, Stack, Typography } from '@mui/material';
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
+import LessonCompletionButton from '../../../../components/lessons/LessonCompletionButton';
 import LessonReader from '../../../../components/lessons/LessonReader';
 import { getCurrentUser } from '../../../../lib/currentUser';
 import { markdownToHtml } from '../../../../lib/lessonContent';
-import { getEnrolledLessonIdsForUser, getLessonById } from '../../../../lib/lessons';
+import { getLessonById, getLessonEnrollmentForUser } from '../../../../lib/lessons';
 
 export const metadata = {
   title: 'Lesson',
@@ -19,9 +20,9 @@ export default async function LessonReadPage({ params }) {
     redirect('/login');
   }
 
-  const enrolledLessonIds = await getEnrolledLessonIdsForUser(currentUser.id);
+  const enrollment = await getLessonEnrollmentForUser(currentUser.id, id);
 
-  if (!enrolledLessonIds.has(id)) {
+  if (!enrollment) {
     notFound();
   }
 
@@ -114,6 +115,10 @@ export default async function LessonReadPage({ params }) {
             </Stack>
 
             <LessonReader html={html} />
+            <LessonCompletionButton
+              lessonId={lesson.id}
+              initialIsCompleted={enrollment.isCompleted}
+            />
           </Paper>
         </Stack>
       </Container>

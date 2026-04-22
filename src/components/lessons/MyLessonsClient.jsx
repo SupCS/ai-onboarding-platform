@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { Alert, Snackbar } from '@mui/material';
+import { useMemo, useState } from 'react';
+import { Alert, Box, Snackbar, Stack, Typography } from '@mui/material';
 import LessonsGrid from './LessonsGrid';
 import EmptyState from '../ui/EmptyState';
 
@@ -12,6 +12,23 @@ export default function MyLessonsClient({ initialLessons = [] }) {
     message: '',
     severity: 'success',
   });
+  const { completedLessons, incompleteLessons } = useMemo(() => {
+    return lessons.reduce(
+      (groups, lesson) => {
+        if (lesson.isCompleted) {
+          groups.completedLessons.push(lesson);
+          return groups;
+        }
+
+        groups.incompleteLessons.push(lesson);
+        return groups;
+      },
+      {
+        completedLessons: [],
+        incompleteLessons: [],
+      }
+    );
+  }, [lessons]);
 
   const handleUnenrollLesson = async (lesson) => {
     setLessons((prev) => prev.filter((item) => item.id !== lesson.id));
@@ -57,12 +74,75 @@ export default function MyLessonsClient({ initialLessons = [] }) {
           description="Open the Lessons tab in Library and click Add to My Lessons on any ready lesson."
         />
       ) : (
-        <LessonsGrid
-          lessons={lessons}
-          getLessonHref={(lesson) => `/lessons/${lesson.id}`}
-          showUnenrollAction
-          onUnenrollLesson={handleUnenrollLesson}
-        />
+        <Stack spacing={4}>
+          <Box>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              sx={{
+                mb: 2,
+                alignItems: { xs: 'flex-start', sm: 'baseline' },
+                justifyContent: 'space-between',
+              }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: 900 }}>
+                Not completed
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {incompleteLessons.length} lesson{incompleteLessons.length === 1 ? '' : 's'}
+              </Typography>
+            </Stack>
+
+            {incompleteLessons.length === 0 ? (
+              <EmptyState
+                title="All lessons completed"
+                description="Completed lessons are collected below."
+              />
+            ) : (
+              <LessonsGrid
+                lessons={incompleteLessons}
+                getLessonHref={(lesson) => `/lessons/${lesson.id}`}
+                showUnenrollAction
+                showProgressStatus
+                onUnenrollLesson={handleUnenrollLesson}
+              />
+            )}
+          </Box>
+
+          <Box>
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={1}
+              sx={{
+                mb: 2,
+                alignItems: { xs: 'flex-start', sm: 'baseline' },
+                justifyContent: 'space-between',
+              }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: 900 }}>
+                Completed
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {completedLessons.length} lesson{completedLessons.length === 1 ? '' : 's'}
+              </Typography>
+            </Stack>
+
+            {completedLessons.length === 0 ? (
+              <EmptyState
+                title="No completed lessons yet"
+                description="Open a lesson and click Complete at the end when you finish reading."
+              />
+            ) : (
+              <LessonsGrid
+                lessons={completedLessons}
+                getLessonHref={(lesson) => `/lessons/${lesson.id}`}
+                showUnenrollAction
+                showProgressStatus
+                onUnenrollLesson={handleUnenrollLesson}
+              />
+            )}
+          </Box>
+        </Stack>
       )}
 
       <Snackbar

@@ -77,8 +77,14 @@ async function ensureLessonsSchemaUncached(client = db) {
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
       enrolled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      completed_at TIMESTAMPTZ,
       PRIMARY KEY (user_id, lesson_id)
     )
+  `);
+
+  await client.query(`
+    ALTER TABLE user_lessons
+    ADD COLUMN IF NOT EXISTS completed_at TIMESTAMPTZ
   `);
 
   await client.query(`
@@ -367,6 +373,57 @@ export async function enrollUserInLesson(userId, lessonId) {
   };
 }
 
+export async function setLessonCompletionForUser(userId, lessonId, isCompleted) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      UPDATE user_lessons
+      SET completed_at = CASE WHEN $3::boolean THEN NOW() ELSE NULL END
+      WHERE user_id = $1
+        AND lesson_id = $2
+      RETURNING lesson_id, enrolled_at, completed_at
+    `,
+    [userId, lessonId, Boolean(isCompleted)]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return {
+    lessonId: result.rows[0].lesson_id,
+    enrolledAt: result.rows[0].enrolled_at,
+    completedAt: result.rows[0].completed_at,
+    isCompleted: Boolean(result.rows[0].completed_at),
+  };
+}
+
+export async function getLessonEnrollmentForUser(userId, lessonId) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      SELECT lesson_id, enrolled_at, completed_at
+      FROM user_lessons
+      WHERE user_id = $1
+        AND lesson_id = $2
+    `,
+    [userId, lessonId]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return {
+    lessonId: result.rows[0].lesson_id,
+    enrolledAt: result.rows[0].enrolled_at,
+    completedAt: result.rows[0].completed_at,
+    isCompleted: Boolean(result.rows[0].completed_at),
+  };
+}
+
 export async function unenrollUserFromLesson(userId, lessonId) {
   await ensureLessonsSchema();
 
@@ -395,15 +452,31 @@ export async function getAllLessons(userId = null) {
     ORDER BY sort_order ASC
   `);
 
-  const enrolledLessonIds = await getEnrolledLessonIdsForUser(userId);
+  const enrollmentRows = userId
+    ? await db.query(
+        `
+          SELECT lesson_id, enrolled_at, completed_at
+          FROM user_lessons
+          WHERE user_id = $1
+        `,
+        [userId]
+      )
+    : { rows: [] };
+  const enrollmentsByLessonId = new Map(
+    enrollmentRows.rows.map((row) => [row.lesson_id, row])
+  );
 
   return lessonsResult.rows.map((lesson) => {
     const materialIds = lessonMaterialsResult.rows
       .filter((item) => item.lesson_id === lesson.id)
       .map((item) => item.material_id);
+    const enrollment = enrollmentsByLessonId.get(lesson.id);
 
     return mapLesson(lesson, materialIds, {
-      isEnrolled: enrolledLessonIds.has(lesson.id),
+      isEnrolled: Boolean(enrollment),
+      enrolledAt: enrollment?.enrolled_at || null,
+      completedAt: enrollment?.completed_at || null,
+      isCompleted: Boolean(enrollment?.completed_at),
     });
   });
 }
@@ -413,11 +486,11 @@ export async function getLessonsForUser(userId) {
 
   const lessonsResult = await db.query(
     `
-      SELECT lessons.*, user_lessons.enrolled_at
+      SELECT lessons.*, user_lessons.enrolled_at, user_lessons.completed_at
       FROM user_lessons
       JOIN lessons ON lessons.id = user_lessons.lesson_id
       WHERE user_lessons.user_id = $1
-      ORDER BY user_lessons.enrolled_at DESC
+      ORDER BY user_lessons.completed_at ASC NULLS FIRST, user_lessons.enrolled_at DESC
     `,
     [userId]
   );
@@ -446,6 +519,8 @@ export async function getLessonsForUser(userId) {
     return mapLesson(lesson, materialIds, {
       isEnrolled: true,
       enrolledAt: lesson.enrolled_at,
+      completedAt: lesson.completed_at,
+      isCompleted: Boolean(lesson.completed_at),
     });
   });
 }

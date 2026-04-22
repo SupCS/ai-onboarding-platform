@@ -78,6 +78,7 @@ export default function LessonsGrid({
   showUnenrollAction = false,
   isOpenEnabled = true,
   getLessonHref,
+  showProgressStatus = false,
 }) {
   return (
     <Box
@@ -173,6 +174,14 @@ export default function LessonsGrid({
                 size="small"
                 variant="outlined"
               />
+              {showProgressStatus && (
+                <Chip
+                  label={lesson.isCompleted ? 'Completed' : 'Not completed'}
+                  color={lesson.isCompleted ? 'success' : 'default'}
+                  size="small"
+                  variant={lesson.isCompleted ? 'filled' : 'outlined'}
+                />
+              )}
             </Stack>
 
             <Typography
