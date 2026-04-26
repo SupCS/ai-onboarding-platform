@@ -36,7 +36,11 @@ const formatOptions = [
   { value: 'internal wiki page', label: 'Internal Wiki Page' },
 ];
 
-export default function LessonPromptForm({ materials = [], onLessonGenerated }) {
+export default function LessonPromptForm({
+  materials = [],
+  onLessonGenerated,
+  showDebugActions = false,
+}) {
   const [selectedMaterialIds, setSelectedMaterialIds] = useState([]);
   const [userInstructions, setUserInstructions] = useState('');
   const [depth, setDepth] = useState('standard');
@@ -130,11 +134,6 @@ export default function LessonPromptForm({ materials = [], onLessonGenerated }) 
     }
   };
 
-  const handleBuildPrompt = (event) => {
-    event.preventDefault();
-    submitLessonRequest('build-prompt');
-  };
-
   const handleGenerateLesson = (event) => {
     event.preventDefault();
     submitLessonRequest('generate');
@@ -144,7 +143,7 @@ export default function LessonPromptForm({ materials = [], onLessonGenerated }) 
     <Paper
       component="form"
       elevation={0}
-      onSubmit={handleBuildPrompt}
+      onSubmit={handleGenerateLesson}
       sx={{
         p: 3,
         borderRadius: 4,
@@ -307,22 +306,24 @@ export default function LessonPromptForm({ materials = [], onLessonGenerated }) 
 
         <Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            <Button
-              type="submit"
-              variant="outlined"
-              size="large"
-              disabled={isSubmitting || !canSubmit}
-            >
-              {isSubmitting && submitAction === 'build-prompt'
-                ? 'Building prompt...'
-                : 'Build prompt'}
-            </Button>
+            {showDebugActions && (
+              <Button
+                type="button"
+                variant="outlined"
+                size="large"
+                disabled={isSubmitting || !canSubmit}
+                onClick={() => submitLessonRequest('build-prompt')}
+              >
+                {isSubmitting && submitAction === 'build-prompt'
+                  ? 'Building prompt...'
+                  : 'Build prompt'}
+              </Button>
+            )}
 
             <Button
-              type="button"
+              type="submit"
               variant="contained"
               size="large"
-              onClick={handleGenerateLesson}
               disabled={isSubmitting || !canSubmit}
             >
               {isSubmitting && submitAction === 'generate'

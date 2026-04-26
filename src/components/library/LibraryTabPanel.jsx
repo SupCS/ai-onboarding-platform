@@ -1,5 +1,6 @@
 import EmptyState from '../ui/EmptyState';
 import LessonsGrid from '../lessons/LessonsGrid';
+import LessonsLoadingState from '../lessons/LessonsLoadingState';
 import MaterialsGrid from '../materials/MaterialsGrid';
 import MaterialsLoadingState from '../materials/MaterialsLoadingState';
 import RoadmapsGrid from '../roadmaps/RoadmapsGrid';
@@ -41,7 +42,7 @@ export default function LibraryTabPanel({
 
   if (activeTab === 'lessons') {
     if (!isHydrated) {
-      return <MaterialsLoadingState />;
+      return <LessonsLoadingState showAction />;
     }
 
     if (lessons.length === 0) {

@@ -104,7 +104,7 @@ Phase 6 - Frontend implementation
     [x] Move creation form into modal opened by Create Lesson button.
     [x] Show generated lesson status in UI instead of only console.
     [x] Refresh lessons list after generation.
-    [ ] Hide or remove Build prompt button outside debug/admin mode.
+    [x] Hide or remove Build prompt button outside debug/admin mode.
 [x] Build lesson cards grid:
     [x] Show lesson cover placeholder.
     [x] Show title.
@@ -134,7 +134,7 @@ Phase 6 - Frontend implementation
     [x] Generation button loading state.
     [x] Generation failed state for saved lessons.
     [x] No lessons yet.
-    [ ] Better skeleton loading for lessons grid.
+    [x] Better skeleton loading for lessons grid.
 
 Phase 7 - Quality loop
 [ ] Add lesson quality checklist:

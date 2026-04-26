@@ -13,6 +13,7 @@ import MaterialDetailsDialog from '../../../components/materials/MaterialDetails
 import RoadmapFormDialog from '../../../components/roadmaps/RoadmapFormDialog';
 
 export default function LibraryClient() {
+  const showLessonDebugActions = process.env.NODE_ENV !== 'production';
   const [activeTab, setActiveTab] = useState('materials');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
@@ -709,6 +710,7 @@ export default function LibraryClient() {
           <LessonPromptForm
             materials={sortedMaterials}
             onLessonGenerated={handleLessonGenerated}
+            showDebugActions={showLessonDebugActions}
           />
         </DialogContent>
       </Dialog>
