@@ -1,6 +1,6 @@
 export const LESSON_PROMPT_VERSION = 'theoretical-lesson-v4-instructions-html';
 
-const TIPTAP_HTML_GUIDE = [
+export const TIPTAP_HTML_GUIDE = [
   'Output format:',
   '- Return HTML only. Do not wrap it in Markdown fences. Do not include explanations outside the HTML.',
   '- The HTML must be compatible with a Tiptap rich text editor.',

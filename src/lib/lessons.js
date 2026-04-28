@@ -282,21 +282,60 @@ export async function markLessonFailed(lessonId, input) {
 export async function updateLessonContent(lessonId, input) {
   await ensureLessonsSchema();
 
+  const fields = [];
+  const values = [lessonId];
+  let index = 2;
+
+  if (typeof input.title === 'string') {
+    fields.push(`title = COALESCE($${index}, title)`);
+    values.push(input.title || null);
+    index += 1;
+  }
+
+  if (typeof input.contentHtml === 'string') {
+    fields.push(`content_html = $${index}`);
+    values.push(input.contentHtml);
+    index += 1;
+  }
+
+  if (typeof input.contentMarkdown === 'string') {
+    fields.push(`content_markdown = $${index}`);
+    values.push(input.contentMarkdown);
+    index += 1;
+  }
+
+  if (input.generationMetadata !== undefined) {
+    fields.push(`generation_metadata = $${index}`);
+    values.push(JSON.stringify(input.generationMetadata || {}));
+    index += 1;
+  }
+
+  if (typeof input.errorMessage === 'string') {
+    fields.push(`error_message = $${index}`);
+    values.push(input.errorMessage);
+    index += 1;
+  }
+
+  if (typeof input.status === 'string') {
+    fields.push(`status = $${index}`);
+    values.push(input.status);
+    index += 1;
+  }
+
+  if (fields.length === 0) {
+    return getLessonById(lessonId);
+  }
+
   const result = await db.query(
     `
       UPDATE lessons
       SET
-        title = COALESCE($2, title),
-        content_html = $3,
+        ${fields.join(',\n        ')},
         updated_at = NOW()
       WHERE id = $1
       RETURNING *
     `,
-    [
-      lessonId,
-      input.title || null,
-      input.contentHtml || '',
-    ]
+    values
   );
 
   if (result.rowCount === 0) {

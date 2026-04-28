@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -13,6 +14,7 @@ import {
   IconButton,
   Paper,
   Stack,
+  TextField,
   Typography,
 } from '@mui/material';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
@@ -50,6 +52,14 @@ function getStatusColor(status) {
   return 'default';
 }
 
+const revisionOptions = [
+  { value: 'simpler', label: 'Simpler' },
+  { value: 'deeper', label: 'Deeper' },
+  { value: 'examples', label: 'More examples' },
+  { value: 'structured', label: 'Better structure' },
+  { value: 'shorter', label: 'Shorter' },
+];
+
 export default function LessonDetailsDialog({
   lesson,
   open,
@@ -61,6 +71,10 @@ export default function LessonDetailsDialog({
   const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRevising, setIsRevising] = useState(false);
+  const [revisionRequest, setRevisionRequest] = useState('');
+  const [selectedRevisionOptions, setSelectedRevisionOptions] = useState([]);
+  const [revisionError, setRevisionError] = useState('');
   const initialHtml = useMemo(() => {
     return lesson?.contentHtml || markdownToHtml(lesson?.contentMarkdown || '');
   }, [lesson]);
@@ -69,6 +83,10 @@ export default function LessonDetailsDialog({
   useEffect(() => {
     setIsEditing(false);
     setDraftHtml(initialHtml);
+    setIsRevising(false);
+    setRevisionRequest('');
+    setSelectedRevisionOptions([]);
+    setRevisionError('');
   }, [initialHtml, lesson?.id]);
 
   if (!lesson) {
@@ -78,6 +96,10 @@ export default function LessonDetailsDialog({
   const metadata = lesson.generationMetadata || {};
   const preparedMaterials = metadata.preparedMaterials || {};
   const sourceReferences = preparedMaterials.sourceReferences || [];
+  const revisionHistory = Array.isArray(metadata.revisionHistory)
+    ? metadata.revisionHistory
+    : [];
+  const lastRevision = revisionHistory[revisionHistory.length - 1] || null;
 
   const handleSave = async () => {
     try {
@@ -143,6 +165,54 @@ export default function LessonDetailsDialog({
     }
   };
 
+  const handleToggleRevisionOption = (value) => {
+    setSelectedRevisionOptions((prev) => {
+      if (prev.includes(value)) {
+        return prev.filter((item) => item !== value);
+      }
+
+      return [...prev, value];
+    });
+  };
+
+  const handleRevise = async () => {
+    if (!revisionRequest.trim() && selectedRevisionOptions.length === 0) {
+      setRevisionError('Add revision notes or select at least one revision option.');
+      return;
+    }
+
+    try {
+      setIsRevising(true);
+      setRevisionError('');
+
+      const response = await fetch(`/api/lessons/${lesson.id}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          revisionRequest,
+          selectedOptions: selectedRevisionOptions,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to revise lesson.');
+      }
+
+      setRevisionRequest('');
+      setSelectedRevisionOptions([]);
+      await onLessonUpdated?.(data.lesson);
+    } catch (error) {
+      console.error('Failed to revise lesson:', error);
+      setRevisionError(error.message || 'Failed to revise lesson.');
+    } finally {
+      setIsRevising(false);
+    }
+  };
+
   return (
     <Dialog
       open={open}
@@ -187,6 +257,9 @@ export default function LessonDetailsDialog({
             )}
             {metadata.promptVersion && (
               <Chip label={`Prompt: ${metadata.promptVersion}`} size="small" />
+            )}
+            {metadata.lastRevisionAt && (
+              <Chip label={`Revised ${formatDateTime(metadata.lastRevisionAt)}`} size="small" />
             )}
           </Stack>
 
@@ -368,6 +441,86 @@ export default function LessonDetailsDialog({
                 </>
               )}
             </Paper>
+
+            {lesson.status !== 'failed' && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  border: '1px solid #e5e7eb',
+                  backgroundColor: '#fff',
+                }}
+              >
+                <Stack spacing={1.5}>
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.5 }}>
+                      Revise lesson
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Describe what should change. The system will decide how broad the rewrite needs to be.
+                    </Typography>
+                  </Box>
+
+                  {revisionError && <Alert severity="error">{revisionError}</Alert>}
+
+                  <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                    {revisionOptions.map((option) => (
+                      <Chip
+                        key={option.value}
+                        label={option.label}
+                        clickable
+                        color={selectedRevisionOptions.includes(option.value) ? 'primary' : 'default'}
+                        variant={selectedRevisionOptions.includes(option.value) ? 'filled' : 'outlined'}
+                        onClick={() => handleToggleRevisionOption(option.value)}
+                      />
+                    ))}
+                  </Stack>
+
+                  <TextField
+                    label="Revision notes"
+                    value={revisionRequest}
+                    onChange={(event) => setRevisionRequest(event.target.value)}
+                    minRows={4}
+                    multiline
+                    placeholder="Example: keep the factual content, but make the explanation less course-like and add one clear example for naming conventions."
+                    fullWidth
+                    disabled={isEditing || isDeleting || isSaving || isRevising}
+                  />
+
+                  {lastRevision && (
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #eef2f7',
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mb: 0.5 }}>
+                        Last revision
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                        {formatDateTime(lastRevision.revisedAt)} • {lastRevision.revisionBrief?.changeScope || 'substantial'}
+                      </Typography>
+                      {lastRevision.revisionRequest && (
+                        <Typography variant="body2" color="text.secondary">
+                          {lastRevision.revisionRequest}
+                        </Typography>
+                      )}
+                    </Box>
+                  )}
+
+                  <Button
+                    variant="contained"
+                    onClick={handleRevise}
+                    disabled={isEditing || isDeleting || isSaving || isRevising}
+                  >
+                    {isRevising ? 'Revising lesson...' : 'Revise lesson'}
+                  </Button>
+                </Stack>
+              </Paper>
+            )}
           </Stack>
         </Box>
       </DialogContent>
@@ -376,7 +529,7 @@ export default function LessonDetailsDialog({
         <Button
           onClick={handleDelete}
           color="error"
-          disabled={isSaving || isDeleting}
+          disabled={isSaving || isDeleting || isRevising}
           sx={{ mr: 'auto' }}
         >
           {isDeleting ? 'Deleting...' : 'Delete lesson'}
@@ -387,18 +540,18 @@ export default function LessonDetailsDialog({
             <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isDeleting}>
               Cancel
             </Button>
-            <Button onClick={handleSave} variant="contained" disabled={isSaving || isDeleting}>
+            <Button onClick={handleSave} variant="contained" disabled={isSaving || isDeleting || isRevising}>
               {isSaving ? 'Saving...' : 'Save changes'}
             </Button>
           </>
         ) : (
           lesson.status !== 'failed' && (
-            <Button onClick={() => setIsEditing(true)} variant="contained" disabled={isDeleting}>
+            <Button onClick={() => setIsEditing(true)} variant="contained" disabled={isDeleting || isRevising}>
               Edit lesson
             </Button>
           )
         )}
-        <Button onClick={onClose} color="inherit" disabled={isSaving || isDeleting}>
+        <Button onClick={onClose} color="inherit" disabled={isSaving || isDeleting || isRevising}>
           Close
         </Button>
       </DialogActions>

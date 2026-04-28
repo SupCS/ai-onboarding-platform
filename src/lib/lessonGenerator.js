@@ -19,9 +19,9 @@ function extractResponseText(data) {
   return textParts.join('\n').trim();
 }
 
-export async function generateLessonContent(prompt) {
+async function createOpenAIResponse(prompt, options = {}) {
   const apiKey = process.env.OPENAI_API_KEY;
-  const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  const model = options.model || process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY is not configured.');
@@ -38,6 +38,9 @@ export async function generateLessonContent(prompt) {
       instructions: prompt.instructions,
       input: prompt.input,
       prompt_cache_key: prompt.cacheKey || prompt.version,
+      ...(options.promptCacheRetention
+        ? { prompt_cache_retention: options.promptCacheRetention }
+        : {}),
     }),
   });
 
@@ -47,6 +50,14 @@ export async function generateLessonContent(prompt) {
     throw new Error(data.error?.message || 'OpenAI lesson generation failed.');
   }
 
+  return {
+    data,
+    model,
+  };
+}
+
+export async function generateLessonContent(prompt) {
+  const { data, model } = await createOpenAIResponse(prompt);
   const content = extractResponseText(data);
 
   if (!content) {
@@ -67,3 +78,82 @@ export async function generateLessonContent(prompt) {
 }
 
 export const generateLessonMarkdown = generateLessonContent;
+
+function safeJsonParse(value) {
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+}
+
+function extractJsonObject(value = '') {
+  const direct = safeJsonParse(value);
+
+  if (direct && typeof direct === 'object' && !Array.isArray(direct)) {
+    return direct;
+  }
+
+  const start = value.indexOf('{');
+  const end = value.lastIndexOf('}');
+
+  if (start === -1 || end === -1 || end <= start) {
+    return null;
+  }
+
+  return safeJsonParse(value.slice(start, end + 1));
+}
+
+function normalizeStringList(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean);
+}
+
+export async function generateLessonRevisionBrief(prompt) {
+  const plannerModel =
+    process.env.OPENAI_REVISION_PLANNER_MODEL ||
+    process.env.OPENAI_MINI_MODEL ||
+    'gpt-5.4-mini';
+  const { data, model } = await createOpenAIResponse(prompt, {
+    model: plannerModel,
+  });
+  const raw = extractResponseText(data);
+  const parsed = extractJsonObject(raw);
+
+  if (!parsed) {
+    throw new Error('OpenAI returned an invalid revision brief.');
+  }
+
+  const allowedScopes = new Set(['targeted', 'substantial', 'near-complete']);
+  const changeScope = allowedScopes.has(parsed.changeScope)
+    ? parsed.changeScope
+    : 'substantial';
+  const userIntent =
+    typeof parsed.userIntent === 'string' && parsed.userIntent.trim()
+      ? parsed.userIntent.trim()
+      : 'Revise the current lesson based on user feedback.';
+
+  return {
+    brief: {
+      changeScope,
+      userIntent,
+      editInstructions: normalizeStringList(parsed.editInstructions),
+      preserveRules: normalizeStringList(parsed.preserveRules),
+      riskNotes: normalizeStringList(parsed.riskNotes),
+    },
+    metadata: {
+      provider: 'openai',
+      model,
+      promptVersion: prompt.version,
+      promptCacheKey: prompt.cacheKey || prompt.version,
+      responseId: data.id || '',
+      usage: data.usage || null,
+      rawOutput: raw,
+    },
+  };
+}
