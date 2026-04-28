@@ -1,0 +1,8 @@
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          7400
+- Dir:          E:\Onboarding\ai-onboarding-platform
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 7400 /F to stop it.

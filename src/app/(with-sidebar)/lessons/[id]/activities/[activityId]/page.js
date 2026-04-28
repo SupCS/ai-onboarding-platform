@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { Box, Container } from '@mui/material';
 import FlashcardsActivityPlayer from '../../../../../../components/lessons/FlashcardsActivityPlayer';
+import QuizActivityPlayer from '../../../../../../components/lessons/QuizActivityPlayer';
 import { getCurrentUser } from '../../../../../../lib/currentUser';
 import {
   getLessonActivityForUser,
@@ -38,7 +39,7 @@ export default async function LessonActivityPage({ params }) {
     notFound();
   }
 
-  if (activity.type !== 'flashcards') {
+  if (activity.type !== 'flashcards' && activity.type !== 'quiz') {
     notFound();
   }
 
@@ -55,10 +56,17 @@ export default async function LessonActivityPage({ params }) {
       }}
     >
       <Container maxWidth="lg" disableGutters>
-        <FlashcardsActivityPlayer
-          lesson={lesson}
-          activity={activity}
-        />
+        {activity.type === 'quiz' ? (
+          <QuizActivityPlayer
+            lesson={lesson}
+            activity={activity}
+          />
+        ) : (
+          <FlashcardsActivityPlayer
+            lesson={lesson}
+            activity={activity}
+          />
+        )}
       </Container>
     </Box>
   );

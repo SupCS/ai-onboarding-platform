@@ -14,8 +14,10 @@ import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutli
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import PlaylistAddOutlinedIcon from '@mui/icons-material/PlaylistAddOutlined';
+import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import RemoveCircleOutlineOutlinedIcon from '@mui/icons-material/RemoveCircleOutlineOutlined';
 import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
+import StyleOutlinedIcon from '@mui/icons-material/StyleOutlined';
 import { getLessonCoverBackground } from '../../lib/brandColors';
 
 function formatDate(isoString) {
@@ -69,6 +71,74 @@ function getLessonPreview(lesson) {
   return withoutHeadings || lesson.description || 'Generated lesson preview will appear here.';
 }
 
+function isActivityPassed(activity) {
+  if (activity.type === 'quiz') {
+    return Boolean(activity.progress?.isCompleted) && Number(activity.progress?.score || 0) >= 80;
+  }
+
+  return Boolean(activity.progress?.isCompleted);
+}
+
+function getActivityTypeLabel(activity) {
+  if (activity.type === 'quiz') {
+    return `${activity.itemCount} question quiz`;
+  }
+
+  if (activity.type === 'flashcards') {
+    return `${activity.itemCount} flashcards`;
+  }
+
+  return 'Activity';
+}
+
+function getActivityIcon(type) {
+  if (type === 'quiz') {
+    return <QuizOutlinedIcon sx={{ fontSize: 16 }} />;
+  }
+
+  return <StyleOutlinedIcon sx={{ fontSize: 16 }} />;
+}
+
+function getActivityStatus(activity) {
+  if (activity.type === 'quiz' && activity.progress) {
+    const score = Number(activity.progress?.score || 0);
+
+    if (activity.progress.status === 'failed' || score < 80) {
+      return {
+        label: `Not passed (${score}%)`,
+        color: 'warning',
+      };
+    }
+
+    return {
+      label: `Passed (${score}%)`,
+      color: 'success',
+    };
+  }
+
+  if (isActivityPassed(activity)) {
+    return {
+      label: 'Completed',
+      color: 'success',
+    };
+  }
+
+  return {
+    label: 'Not started',
+    color: 'default',
+  };
+}
+
+function getActivitySummary(activities) {
+  if (activities.length === 0) {
+    return null;
+  }
+
+  const completedCount = activities.filter(isActivityPassed).length;
+
+  return `${completedCount}/${activities.length} activities complete`;
+}
+
 export default function LessonsGrid({
   lessons = [],
   onOpenLesson,
@@ -94,41 +164,45 @@ export default function LessonsGrid({
         gap: 2,
       }}
     >
-      {lessons.map((lesson) => (
-        <Paper
-          key={lesson.id}
-          component={getLessonHref ? Link : 'div'}
-          href={getLessonHref ? getLessonHref(lesson) : undefined}
-          elevation={0}
-          onClick={
-            isOpenEnabled && onOpenLesson && !getLessonHref
-              ? () => onOpenLesson(lesson)
-              : undefined
-          }
-          sx={{
-            borderRadius: 4,
-            border: '1px solid #e5e7eb',
-            backgroundColor: '#fff',
-            overflow: 'hidden',
-            minHeight: 340,
-            display: 'flex',
-            flexDirection: 'column',
-            color: 'inherit',
-            textDecoration: 'none',
-            cursor:
-              getLessonHref || (isOpenEnabled && onOpenLesson)
-                ? 'pointer'
-                : 'default',
-            transition: 'transform 0.18s ease, box-shadow 0.18s ease',
-            '&:hover':
-              getLessonHref || (isOpenEnabled && onOpenLesson)
-                ? {
-                    transform: 'translateY(-2px)',
-                    boxShadow: '0 18px 40px rgba(15, 23, 42, 0.08)',
-                  }
-                : undefined,
-          }}
-        >
+      {lessons.map((lesson) => {
+        const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
+        const activitySummary = getActivitySummary(activities);
+
+        return (
+          <Paper
+            key={lesson.id}
+            component={getLessonHref ? Link : 'div'}
+            href={getLessonHref ? getLessonHref(lesson) : undefined}
+            elevation={0}
+            onClick={
+              isOpenEnabled && onOpenLesson && !getLessonHref
+                ? () => onOpenLesson(lesson)
+                : undefined
+            }
+            sx={{
+              borderRadius: 4,
+              border: '1px solid #e5e7eb',
+              backgroundColor: '#fff',
+              overflow: 'hidden',
+              minHeight: 340,
+              display: 'flex',
+              flexDirection: 'column',
+              color: 'inherit',
+              textDecoration: 'none',
+              cursor:
+                getLessonHref || (isOpenEnabled && onOpenLesson)
+                  ? 'pointer'
+                  : 'default',
+              transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+              '&:hover':
+                getLessonHref || (isOpenEnabled && onOpenLesson)
+                  ? {
+                      transform: 'translateY(-2px)',
+                      boxShadow: '0 18px 40px rgba(15, 23, 42, 0.08)',
+                    }
+                  : undefined,
+            }}
+          >
           <Box
             sx={{
               height: 160,
@@ -203,7 +277,7 @@ export default function LessonsGrid({
               variant="body2"
               color="text.secondary"
               sx={{
-                mb: 2,
+                mb: activities.length > 0 ? 1.5 : 2,
                 display: '-webkit-box',
                 overflow: 'hidden',
                 WebkitLineClamp: 3,
@@ -212,6 +286,70 @@ export default function LessonsGrid({
             >
               {getLessonPreview(lesson)}
             </Typography>
+
+            {activities.length > 0 && (
+              <Box
+                sx={{
+                  mb: 2,
+                  p: 1,
+                  borderRadius: 2.5,
+                  border: '1px solid #eef2f7',
+                  backgroundColor: '#f8fafc',
+                }}
+              >
+                <Stack spacing={0.75}>
+                  <Chip
+                    label={activitySummary}
+                    size="small"
+                    color={activities.every(isActivityPassed) ? 'success' : 'primary'}
+                    variant={activities.every(isActivityPassed) ? 'filled' : 'outlined'}
+                    sx={{
+                      alignSelf: 'flex-start',
+                      fontWeight: 800,
+                      backgroundColor: activities.every(isActivityPassed) ? undefined : '#fff',
+                    }}
+                  />
+
+                  {activities.slice(0, 3).map((activity) => {
+                    const activityStatus = getActivityStatus(activity);
+
+                    return (
+                      <Stack
+                        key={activity.id}
+                        direction="row"
+                        spacing={0.75}
+                        sx={{ alignItems: 'center', minWidth: 0 }}
+                      >
+                        <Box
+                          sx={{
+                            color: activity.type === 'quiz' ? '#0009DC' : '#0f766e',
+                            display: 'inline-flex',
+                          }}
+                        >
+                          {getActivityIcon(activity.type)}
+                        </Box>
+                        <Typography variant="caption" sx={{ flex: '1 1 auto', minWidth: 0 }} noWrap>
+                          {getActivityTypeLabel(activity)}
+                        </Typography>
+                        <Chip
+                          label={activityStatus.label}
+                          size="small"
+                          color={activityStatus.color}
+                          variant={activityStatus.color === 'default' ? 'outlined' : 'filled'}
+                          sx={{ height: 22, fontWeight: 700 }}
+                        />
+                      </Stack>
+                    );
+                  })}
+
+                  {activities.length > 3 && (
+                    <Typography variant="caption" color="text.secondary">
+                      +{activities.length - 3} more activit{activities.length - 3 === 1 ? 'y' : 'ies'}
+                    </Typography>
+                  )}
+                </Stack>
+              </Box>
+            )}
 
             <Stack spacing={0.75} sx={{ mt: 'auto' }}>
               <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
@@ -288,7 +426,8 @@ export default function LessonsGrid({
             </Stack>
           </Box>
         </Paper>
-      ))}
+        );
+      })}
     </Box>
   );
 }

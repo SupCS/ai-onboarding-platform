@@ -17,7 +17,61 @@ function getActivityLabel(activity) {
     return `${activity.itemCount} question quiz`;
   }
 
-  return `${activity.itemCount} flashcards`;
+  if (activity.type === 'flashcards') {
+    return `${activity.itemCount} flashcards`;
+  }
+
+  return 'Unsupported activity';
+}
+
+function isActivityPassed(activity) {
+  if (activity.type === 'quiz') {
+    return Boolean(activity.progress?.isCompleted) && Number(activity.progress?.score || 0) >= 80;
+  }
+
+  return Boolean(activity.progress?.isCompleted);
+}
+
+function getActivitySortWeight(activity) {
+  if (activity.type === 'flashcards') {
+    return 0;
+  }
+
+  if (activity.type === 'quiz') {
+    return 1;
+  }
+
+  return 2;
+}
+
+function getActivityStatus(activity) {
+  if (activity.type === 'quiz' && activity.progress) {
+    const score = Number(activity.progress?.score || 0);
+
+    if (activity.progress.status === 'failed' || score < 80) {
+      return {
+        label: `Quiz not passed: not enough points (${score}%)`,
+        color: 'warning',
+      };
+    }
+
+    return {
+      label: `Quiz passed: ${score}%`,
+      color: 'success',
+    };
+  }
+
+  if (isActivityPassed(activity)) {
+    return {
+      label: 'Completed',
+      color: 'success',
+    };
+  }
+
+  return {
+    label: 'Not completed',
+    color: 'default',
+  };
 }
 
 export default function LessonActivityGate({
@@ -34,14 +88,14 @@ export default function LessonActivityGate({
     );
   }
 
-  const supportedActivities = activities.filter((activity) => activity.type === 'flashcards');
-  const nextActivity =
-    supportedActivities.find((activity) => !activity.progress?.isCompleted) ||
-    supportedActivities[0] ||
-    activities[0];
-  const completedCount = activities.filter((activity) => activity.progress?.isCompleted).length;
+  const supportedActivities = activities.filter((activity) =>
+    activity.type === 'flashcards' || activity.type === 'quiz'
+  );
+  const sortedActivities = [...activities].sort((firstActivity, secondActivity) =>
+    getActivitySortWeight(firstActivity) - getActivitySortWeight(secondActivity)
+  );
+  const completedCount = activities.filter(isActivityPassed).length;
   const allCompleted = completedCount === activities.length;
-  const isActivitySupported = nextActivity.type === 'flashcards';
 
   return (
     <Box
@@ -54,15 +108,11 @@ export default function LessonActivityGate({
           'linear-gradient(135deg, rgba(239,246,255,0.96) 0%, rgba(245,243,255,0.96) 100%)',
       }}
     >
-      <Stack
-        direction={{ xs: 'column', md: 'row' }}
-        spacing={2}
-        sx={{ alignItems: { xs: 'stretch', md: 'center' }, justifyContent: 'space-between' }}
-      >
+      <Stack spacing={2.5}>
         <Stack spacing={0.75}>
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'center' }}>
             <Chip
-              label={allCompleted ? 'Activities completed' : 'Activity required'}
+              label={allCompleted ? 'Activities completed' : 'Practice activities'}
               color={allCompleted ? 'success' : 'primary'}
               sx={{ fontWeight: 800 }}
             />
@@ -74,54 +124,114 @@ export default function LessonActivityGate({
           </Stack>
 
           <Typography variant="h5" sx={{ fontWeight: 900, color: '#0f172a' }}>
-            {allCompleted ? 'Lesson completed' : nextActivity.title || 'Practice activity'}
+            Lesson activities
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            {allCompleted
-              ? 'All required activities are done.'
-              : isActivitySupported
-                ? `Complete ${getActivityLabel(nextActivity)} to finish this lesson.`
-                : 'This lesson has a quiz activity. Quiz passing UI is coming next.'}
+            Open activities in any order. Flashcards are shown first, then quizzes.
           </Typography>
         </Stack>
 
-        {isActivitySupported ? (
-          <Link href={`/lessons/${lessonId}/activities/${nextActivity.id}`}>
-            <Button
-              variant={allCompleted ? 'outlined' : 'contained'}
-              size="large"
-              startIcon={getActivityIcon(nextActivity.type)}
-              sx={{
-                minHeight: 54,
-                px: 3,
-                borderRadius: 999,
-                textTransform: 'none',
-                fontWeight: 900,
-                alignSelf: { xs: 'stretch', md: 'center' },
-                width: { xs: '100%', md: 'auto' },
-              }}
-            >
-              {allCompleted ? 'Review activity' : 'Go to activity'}
-            </Button>
-          </Link>
-        ) : (
-          <Button
-            variant="contained"
-            size="large"
-            startIcon={getActivityIcon(nextActivity.type)}
-            disabled
-            sx={{
-              minHeight: 54,
-              px: 3,
-              borderRadius: 999,
-              textTransform: 'none',
-              fontWeight: 900,
-              alignSelf: { xs: 'stretch', md: 'center' },
-            }}
-          >
-            Quiz player coming soon
-          </Button>
-        )}
+        <Stack spacing={1.5}>
+          {sortedActivities.map((activity) => {
+            const isActivitySupported = supportedActivities.includes(activity);
+            const activityStatus = getActivityStatus(activity);
+
+            return (
+              <Box
+                key={activity.id}
+                sx={{
+                  p: { xs: 1.75, md: 2 },
+                  borderRadius: 3,
+                  border: '1px solid rgba(15, 23, 42, 0.08)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.82)',
+                  boxShadow: '0 16px 36px rgba(15, 23, 42, 0.06)',
+                }}
+              >
+                <Stack
+                  direction={{ xs: 'column', md: 'row' }}
+                  spacing={1.5}
+                  sx={{
+                    alignItems: { xs: 'stretch', md: 'center' },
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
+                    <Box
+                      sx={{
+                        width: 44,
+                        height: 44,
+                        flex: '0 0 auto',
+                        display: 'grid',
+                        placeItems: 'center',
+                        borderRadius: 2.5,
+                        color: activity.type === 'quiz' ? '#0009DC' : '#0f766e',
+                        backgroundColor: activity.type === 'quiz' ? '#eef2ff' : '#ccfbf1',
+                      }}
+                    >
+                      {getActivityIcon(activity.type)}
+                    </Box>
+
+                    <Stack spacing={0.5} sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontWeight: 900, color: '#0f172a' }}>
+                        {activity.title || 'Practice activity'}
+                      </Typography>
+                      <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                        <Chip
+                          label={getActivityLabel(activity)}
+                          size="small"
+                          variant="outlined"
+                          sx={{ backgroundColor: '#fff', fontWeight: 700 }}
+                        />
+                        <Chip
+                          label={activityStatus.label}
+                          size="small"
+                          color={activityStatus.color}
+                          variant={activityStatus.color === 'default' ? 'outlined' : 'filled'}
+                          sx={{ fontWeight: 700 }}
+                        />
+                      </Stack>
+                    </Stack>
+                  </Stack>
+
+                  {isActivitySupported ? (
+                    <Link href={`/lessons/${lessonId}/activities/${activity.id}`}>
+                      <Button
+                        variant={isActivityPassed(activity) ? 'outlined' : 'contained'}
+                        startIcon={getActivityIcon(activity.type)}
+                        sx={{
+                          minHeight: 46,
+                          px: 2.5,
+                          borderRadius: 999,
+                          textTransform: 'none',
+                          fontWeight: 900,
+                          width: { xs: '100%', md: 'auto' },
+                        }}
+                      >
+                        {isActivityPassed(activity) ? 'Review' : 'Open'}
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button
+                      variant="contained"
+                      startIcon={getActivityIcon(activity.type)}
+                      disabled
+                      sx={{
+                        minHeight: 46,
+                        px: 2.5,
+                        borderRadius: 999,
+                        textTransform: 'none',
+                        fontWeight: 900,
+                        width: { xs: '100%', md: 'auto' },
+                      }}
+                    >
+                      Unavailable
+                    </Button>
+                  )}
+                </Stack>
+              </Box>
+            );
+          })}
+        </Stack>
       </Stack>
     </Box>
   );

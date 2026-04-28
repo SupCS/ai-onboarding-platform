@@ -659,9 +659,11 @@ export default function LessonDetailsDialog({
                     onChange={(event) => setActivityCount(event.target.value)}
                     size="small"
                     fullWidth
-                    inputProps={{
-                      min: activitySettings.min,
-                      max: activitySettings.max,
+                    slotProps={{
+                      htmlInput: {
+                        min: activitySettings.min,
+                        max: activitySettings.max,
+                      },
                     }}
                     helperText={`Allowed: ${activitySettings.min}-${activitySettings.max}`}
                     disabled={isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}

@@ -1,6 +1,7 @@
 import { requireApiUser } from '../../../../../../../lib/apiAuth';
 import {
   completeFlashcardsActivityForUser,
+  completeQuizActivityForUser,
   getLessonEnrollmentForUser,
   resetLessonActivityProgressForUser,
 } from '../../../../../../../lib/lessons';
@@ -26,9 +27,9 @@ export async function POST(request, { params }) {
       );
     }
 
-    if (body.type !== 'flashcards') {
+    if (body.type !== 'flashcards' && body.type !== 'quiz') {
       return Response.json(
-        { error: 'Only flashcard activity completion is supported for now.' },
+        { error: 'Unsupported activity type.' },
         { status: 400 }
       );
     }
@@ -42,10 +43,12 @@ export async function POST(request, { params }) {
       );
     }
 
-    const result = await completeFlashcardsActivityForUser(user.id, id, activityId, {
-      reviewedCards: Number.parseInt(body.reviewedCards, 10) || 0,
-      completedFrom: 'flashcards-player',
-    });
+    const result = body.type === 'quiz'
+      ? await completeQuizActivityForUser(user.id, id, activityId, body.answers || [])
+      : await completeFlashcardsActivityForUser(user.id, id, activityId, {
+          reviewedCards: Number.parseInt(body.reviewedCards, 10) || 0,
+          completedFrom: 'flashcards-player',
+        });
 
     if (!result) {
       return Response.json(
@@ -64,6 +67,7 @@ export async function POST(request, { params }) {
       activities: result.activities,
       enrollment: result.enrollment,
       lessonCompleted: result.lessonCompleted,
+      attempt: result.attempt || null,
       completedRoadmaps,
     });
   } catch (error) {

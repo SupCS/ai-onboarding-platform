@@ -191,6 +191,25 @@ function mapLessonActivity(row) {
   };
 }
 
+function mapLessonActivitySummary(row) {
+  return {
+    id: row.id,
+    lessonId: row.lesson_id,
+    type: row.type,
+    title: row.title,
+    itemCount: row.item_count,
+    progress: row.progress_status
+      ? {
+          status: row.progress_status,
+          score: row.progress_score === null ? null : Number(row.progress_score),
+          startedAt: row.progress_started_at,
+          completedAt: row.progress_completed_at,
+          isCompleted: Boolean(row.progress_completed_at),
+        }
+      : null,
+  };
+}
+
 function validateMaterialIds(materialIds) {
   const uniqueIds = [...new Set(materialIds.filter(Boolean))];
 
@@ -633,6 +652,40 @@ export async function getLessonsForUser(userId) {
     [lessonIds]
   );
 
+  const lessonActivitiesResult = await db.query(
+    `
+      SELECT
+        lesson_activities.id,
+        lesson_activities.lesson_id,
+        lesson_activities.type,
+        lesson_activities.title,
+        lesson_activities.item_count,
+        lesson_activities.created_at,
+        user_lesson_activity_progress.status AS progress_status,
+        user_lesson_activity_progress.score AS progress_score,
+        user_lesson_activity_progress.started_at AS progress_started_at,
+        user_lesson_activity_progress.completed_at AS progress_completed_at
+      FROM lesson_activities
+      LEFT JOIN user_lesson_activity_progress
+        ON user_lesson_activity_progress.activity_id = lesson_activities.id
+        AND user_lesson_activity_progress.user_id = $2
+      WHERE lesson_activities.lesson_id = ANY($1::text[])
+      ORDER BY
+        lesson_activities.lesson_id,
+        CASE lesson_activities.type WHEN 'flashcards' THEN 0 WHEN 'quiz' THEN 1 ELSE 2 END,
+        lesson_activities.created_at ASC
+    `,
+    [lessonIds, userId]
+  );
+
+  const activitiesByLessonId = new Map();
+
+  lessonActivitiesResult.rows.forEach((activityRow) => {
+    const activities = activitiesByLessonId.get(activityRow.lesson_id) || [];
+    activities.push(mapLessonActivitySummary(activityRow));
+    activitiesByLessonId.set(activityRow.lesson_id, activities);
+  });
+
   return lessonsResult.rows.map((lesson) => {
     const materialIds = lessonMaterialsResult.rows
       .filter((item) => item.lesson_id === lesson.id)
@@ -643,6 +696,7 @@ export async function getLessonsForUser(userId) {
       enrolledAt: lesson.enrolled_at,
       completedAt: lesson.completed_at,
       isCompleted: Boolean(lesson.completed_at),
+      activities: activitiesByLessonId.get(lesson.id) || [],
     });
   });
 }
@@ -724,7 +778,9 @@ export async function getLessonActivities(lessonId) {
       SELECT *
       FROM lesson_activities
       WHERE lesson_id = $1
-      ORDER BY created_at DESC
+      ORDER BY
+        CASE type WHEN 'flashcards' THEN 0 WHEN 'quiz' THEN 1 ELSE 2 END,
+        created_at ASC
     `,
     [lessonId]
   );
@@ -749,7 +805,9 @@ export async function getLessonActivitiesForUser(lessonId, userId) {
         ON user_lesson_activity_progress.activity_id = lesson_activities.id
         AND user_lesson_activity_progress.user_id = $2
       WHERE lesson_activities.lesson_id = $1
-      ORDER BY lesson_activities.created_at ASC
+      ORDER BY
+        CASE lesson_activities.type WHEN 'flashcards' THEN 0 WHEN 'quiz' THEN 1 ELSE 2 END,
+        lesson_activities.created_at ASC
     `,
     [lessonId, userId]
   );
@@ -869,6 +927,174 @@ export async function completeFlashcardsActivityForUser(userId, lessonId, activi
       activities,
       lessonCompleted,
       enrollment,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+function getQuizItems(activityPayload) {
+  return Array.isArray(activityPayload?.items) ? activityPayload.items : [];
+}
+
+function calculateQuizAttempt(activityPayload, submittedAnswers = []) {
+  const items = getQuizItems(activityPayload);
+  const answers = Array.isArray(submittedAnswers) ? submittedAnswers : [];
+  let correctCount = 0;
+
+  const results = items.map((item, index) => {
+    const options = Array.isArray(item.options) ? item.options : [];
+    const selectedAnswer = typeof answers[index] === 'string' ? answers[index].trim() : '';
+    const correctAnswer = typeof item.correctAnswer === 'string' ? item.correctAnswer.trim() : '';
+    const isCorrect = Boolean(selectedAnswer) && selectedAnswer === correctAnswer;
+
+    if (isCorrect) {
+      correctCount += 1;
+    }
+
+    return {
+      question: item.question || '',
+      options,
+      selectedAnswer,
+      correctAnswer,
+      isCorrect,
+      explanation: item.explanation || '',
+    };
+  });
+
+  const score = items.length === 0 ? 0 : Math.round((correctCount / items.length) * 100);
+
+  return {
+    score,
+    passed: score >= 80,
+    correctCount,
+    totalCount: items.length,
+    results,
+  };
+}
+
+export async function completeQuizActivityForUser(userId, lessonId, activityId, submittedAnswers = []) {
+  await ensureLessonsSchema();
+
+  const client = await db.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const activityResult = await client.query(
+      `
+        SELECT id, lesson_id, type, payload
+        FROM lesson_activities
+        WHERE id = $1
+          AND lesson_id = $2
+        LIMIT 1
+      `,
+      [activityId, lessonId]
+    );
+
+    if (activityResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const activityRow = activityResult.rows[0];
+
+    if (activityRow.type !== 'quiz') {
+      throw new Error('Only quiz activities can be completed with this action.');
+    }
+
+    const attempt = calculateQuizAttempt(activityRow.payload, submittedAnswers);
+
+    if (attempt.totalCount === 0) {
+      throw new Error('This quiz has no questions.');
+    }
+
+    const metadata = {
+      submittedAt: new Date().toISOString(),
+      completedFrom: 'quiz-player',
+      correctCount: attempt.correctCount,
+      totalCount: attempt.totalCount,
+      passed: attempt.passed,
+      results: attempt.results,
+    };
+
+    const progressResult = await client.query(
+      `
+        INSERT INTO user_lesson_activity_progress (
+          user_id,
+          activity_id,
+          lesson_id,
+          status,
+          score,
+          metadata,
+          completed_at,
+          updated_at
+        )
+        VALUES (
+          $1,
+          $2,
+          $3,
+          CASE WHEN $4::boolean THEN 'completed' ELSE 'failed' END,
+          $5,
+          $6,
+          CASE WHEN $4::boolean THEN NOW() ELSE NULL END,
+          NOW()
+        )
+        ON CONFLICT (user_id, activity_id) DO UPDATE
+          SET
+            status = CASE WHEN $4::boolean THEN 'completed' ELSE 'failed' END,
+            score = EXCLUDED.score,
+            metadata = EXCLUDED.metadata,
+            completed_at = CASE WHEN $4::boolean THEN NOW() ELSE NULL END,
+            updated_at = NOW()
+        RETURNING *
+      `,
+      [
+        userId,
+        activityId,
+        lessonId,
+        attempt.passed,
+        attempt.score,
+        JSON.stringify(metadata),
+      ]
+    );
+
+    if (!attempt.passed) {
+      await client.query(
+        `
+          UPDATE user_lessons
+          SET completed_at = NULL
+          WHERE user_id = $1
+            AND lesson_id = $2
+        `,
+        [userId, lessonId]
+      );
+    }
+
+    await client.query('COMMIT');
+
+    const activities = await getLessonActivitiesForUser(lessonId, userId);
+    const lessonCompleted = activities.length > 0 && activities.every(isActivityPassed);
+    const enrollment = lessonCompleted
+      ? await setLessonCompletionForUser(userId, lessonId, true)
+      : await getLessonEnrollmentForUser(userId, lessonId);
+
+    return {
+      progress: {
+        activityId: progressResult.rows[0].activity_id,
+        lessonId: progressResult.rows[0].lesson_id,
+        status: progressResult.rows[0].status,
+        score: progressResult.rows[0].score === null ? null : Number(progressResult.rows[0].score),
+        completedAt: progressResult.rows[0].completed_at,
+        metadata: progressResult.rows[0].metadata,
+      },
+      activities,
+      lessonCompleted,
+      enrollment,
+      attempt,
     };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
