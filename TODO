@@ -154,6 +154,29 @@ Phase 7 - Quality loop
     [ ] Rate generated lesson.
     [ ] Add feedback before regeneration.
 
+Phase 7.5 - Practical activities MVP
+[x] Add lesson activity entity linked to lessons.
+[x] Add activity generation endpoint for saved lessons.
+[x] Support quiz generation from lesson content.
+    [x] Question.
+    [x] Four answer options.
+    [x] Correct answer.
+    [x] Global explanation for the answer / elimination logic.
+    [x] Diverse question types through prompt instructions.
+[x] Support flashcard generation from lesson content.
+    [x] Front.
+    [x] Back.
+    [x] Optional explanation.
+[x] Add sensible activity limits.
+    [x] Quiz: 3-20 questions.
+    [x] Flashcards: 5-40 cards.
+[x] Add lesson editor UI to choose activity type and count.
+[x] Save generated activity JSON in the database.
+[x] Log generated activity response to browser console.
+[ ] Build activity display / passing flow.
+[ ] Store user attempts and results.
+[ ] Recommend lesson sections/materials based on missed quiz questions.
+
 Phase 8 - Testing
 [ ] Unit test material aggregation and validation.
 [ ] Unit test prompt builder with sample materials and instructions.

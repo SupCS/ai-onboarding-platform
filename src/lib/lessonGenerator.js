@@ -104,6 +104,10 @@ function extractJsonObject(value = '') {
   return safeJsonParse(value.slice(start, end + 1));
 }
 
+export function extractJsonPayload(value = '') {
+  return extractJsonObject(value);
+}
+
 function normalizeStringList(value) {
   if (!Array.isArray(value)) {
     return [];
@@ -146,6 +150,36 @@ export async function generateLessonRevisionBrief(prompt) {
       preserveRules: normalizeStringList(parsed.preserveRules),
       riskNotes: normalizeStringList(parsed.riskNotes),
     },
+    metadata: {
+      provider: 'openai',
+      model,
+      promptVersion: prompt.version,
+      promptCacheKey: prompt.cacheKey || prompt.version,
+      responseId: data.id || '',
+      usage: data.usage || null,
+      rawOutput: raw,
+    },
+  };
+}
+
+export async function generateLessonActivityPayload(prompt) {
+  const activityModel =
+    process.env.OPENAI_ACTIVITY_MODEL ||
+    process.env.OPENAI_MINI_MODEL ||
+    process.env.OPENAI_MODEL ||
+    'gpt-4o-mini';
+  const { data, model } = await createOpenAIResponse(prompt, {
+    model: activityModel,
+  });
+  const raw = extractResponseText(data);
+  const payload = extractJsonPayload(raw);
+
+  if (!payload) {
+    throw new Error('OpenAI returned an invalid activity JSON.');
+  }
+
+  return {
+    payload,
     metadata: {
       provider: 'openai',
       model,

@@ -11,8 +11,12 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
+  FormControl,
+  InputLabel,
+  MenuItem,
   IconButton,
   Paper,
+  Select,
   Stack,
   TextField,
   Typography,
@@ -60,6 +64,15 @@ const revisionOptions = [
   { value: 'shorter', label: 'Shorter' },
 ];
 
+const activityTypeOptions = [
+  { value: 'quiz', label: 'Quiz', min: 3, max: 20, defaultCount: 8 },
+  { value: 'flashcards', label: 'Flashcards', min: 5, max: 40, defaultCount: 12 },
+];
+
+function getActivityTypeSettings(type) {
+  return activityTypeOptions.find((option) => option.value === type) || activityTypeOptions[0];
+}
+
 export default function LessonDetailsDialog({
   lesson,
   open,
@@ -72,9 +85,14 @@ export default function LessonDetailsDialog({
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isRevising, setIsRevising] = useState(false);
+  const [isGeneratingActivity, setIsGeneratingActivity] = useState(false);
   const [revisionRequest, setRevisionRequest] = useState('');
   const [selectedRevisionOptions, setSelectedRevisionOptions] = useState([]);
   const [revisionError, setRevisionError] = useState('');
+  const [activityType, setActivityType] = useState('quiz');
+  const [activityCount, setActivityCount] = useState(8);
+  const [activityError, setActivityError] = useState('');
+  const [activitySuccess, setActivitySuccess] = useState('');
   const initialHtml = useMemo(() => {
     return lesson?.contentHtml || markdownToHtml(lesson?.contentMarkdown || '');
   }, [lesson]);
@@ -87,6 +105,10 @@ export default function LessonDetailsDialog({
     setRevisionRequest('');
     setSelectedRevisionOptions([]);
     setRevisionError('');
+    setActivityType('quiz');
+    setActivityCount(8);
+    setActivityError('');
+    setActivitySuccess('');
   }, [initialHtml, lesson?.id]);
 
   if (!lesson) {
@@ -100,6 +122,8 @@ export default function LessonDetailsDialog({
     ? metadata.revisionHistory
     : [];
   const lastRevision = revisionHistory[revisionHistory.length - 1] || null;
+  const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
+  const activitySettings = getActivityTypeSettings(activityType);
 
   const handleSave = async () => {
     try {
@@ -210,6 +234,72 @@ export default function LessonDetailsDialog({
       setRevisionError(error.message || 'Failed to revise lesson.');
     } finally {
       setIsRevising(false);
+    }
+  };
+
+  const handleActivityTypeChange = (nextType) => {
+    const nextSettings = getActivityTypeSettings(nextType);
+
+    setActivityType(nextType);
+    setActivityCount(nextSettings.defaultCount);
+    setActivityError('');
+    setActivitySuccess('');
+  };
+
+  const handleGenerateActivity = async () => {
+    const normalizedCount = Number.parseInt(activityCount, 10);
+
+    if (
+      Number.isNaN(normalizedCount) ||
+      normalizedCount < activitySettings.min ||
+      normalizedCount > activitySettings.max
+    ) {
+      setActivityError(
+        `Choose a number between ${activitySettings.min} and ${activitySettings.max}.`
+      );
+      return;
+    }
+
+    try {
+      setIsGeneratingActivity(true);
+      setActivityError('');
+      setActivitySuccess('');
+
+      const response = await fetch(`/api/lessons/${lesson.id}/activities`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          type: activityType,
+          count: normalizedCount,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate activity.');
+      }
+
+      console.group('Generated lesson activity');
+      console.log('Lesson:', lesson);
+      console.log('Activity:', data.activity);
+      console.log('Activity payload:', data.activity?.payload);
+      console.log('Prompt:', data.prompt);
+      console.log('Full response:', data);
+      console.groupEnd();
+
+      setActivitySuccess('Activity generated and saved. Check the browser console for the JSON.');
+      await onLessonUpdated?.({
+        ...lesson,
+        activities: [data.activity, ...activities],
+      });
+    } catch (error) {
+      console.error('Failed to generate lesson activity:', error);
+      setActivityError(error.message || 'Failed to generate activity.');
+    } finally {
+      setIsGeneratingActivity(false);
     }
   };
 
@@ -521,6 +611,94 @@ export default function LessonDetailsDialog({
                 </Stack>
               </Paper>
             )}
+
+            {lesson.status !== 'failed' && (
+              <Paper
+                elevation={0}
+                sx={{
+                  p: 2,
+                  borderRadius: 3,
+                  border: '1px solid #e5e7eb',
+                  backgroundColor: '#fff',
+                }}
+              >
+                <Stack spacing={1.5}>
+                  <Box>
+                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.5 }}>
+                      Generate activity
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Create a saved quiz or flashcards from this lesson. Passing flow comes later.
+                    </Typography>
+                  </Box>
+
+                  {activityError && <Alert severity="error">{activityError}</Alert>}
+                  {activitySuccess && <Alert severity="success">{activitySuccess}</Alert>}
+
+                  <FormControl fullWidth size="small">
+                    <InputLabel id="activity-type-label">Activity type</InputLabel>
+                    <Select
+                      labelId="activity-type-label"
+                      value={activityType}
+                      label="Activity type"
+                      onChange={(event) => handleActivityTypeChange(event.target.value)}
+                      disabled={isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                    >
+                      {activityTypeOptions.map((option) => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+
+                  <TextField
+                    label={activityType === 'quiz' ? 'Questions' : 'Cards'}
+                    type="number"
+                    value={activityCount}
+                    onChange={(event) => setActivityCount(event.target.value)}
+                    size="small"
+                    fullWidth
+                    inputProps={{
+                      min: activitySettings.min,
+                      max: activitySettings.max,
+                    }}
+                    helperText={`Allowed: ${activitySettings.min}-${activitySettings.max}`}
+                    disabled={isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                  />
+
+                  {activities.length > 0 && (
+                    <Box
+                      sx={{
+                        p: 1.5,
+                        borderRadius: 2,
+                        backgroundColor: '#f8fafc',
+                        border: '1px solid #eef2f7',
+                      }}
+                    >
+                      <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mb: 0.5 }}>
+                        Saved activities
+                      </Typography>
+                      <Stack spacing={0.75}>
+                        {activities.slice(0, 3).map((activity) => (
+                          <Typography key={activity.id} variant="body2" color="text.secondary">
+                            {activity.title || activity.type} - {activity.itemCount} item(s)
+                          </Typography>
+                        ))}
+                      </Stack>
+                    </Box>
+                  )}
+
+                  <Button
+                    variant="contained"
+                    onClick={handleGenerateActivity}
+                    disabled={isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                  >
+                    {isGeneratingActivity ? 'Generating activity...' : 'Generate activity'}
+                  </Button>
+                </Stack>
+              </Paper>
+            )}
           </Stack>
         </Box>
       </DialogContent>
@@ -529,7 +707,7 @@ export default function LessonDetailsDialog({
         <Button
           onClick={handleDelete}
           color="error"
-          disabled={isSaving || isDeleting || isRevising}
+          disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
           sx={{ mr: 'auto' }}
         >
           {isDeleting ? 'Deleting...' : 'Delete lesson'}
@@ -537,21 +715,21 @@ export default function LessonDetailsDialog({
 
         {isEditing ? (
           <>
-            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isDeleting}>
+            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isDeleting || isGeneratingActivity}>
               Cancel
             </Button>
-            <Button onClick={handleSave} variant="contained" disabled={isSaving || isDeleting || isRevising}>
+            <Button onClick={handleSave} variant="contained" disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}>
               {isSaving ? 'Saving...' : 'Save changes'}
             </Button>
           </>
         ) : (
           lesson.status !== 'failed' && (
-            <Button onClick={() => setIsEditing(true)} variant="contained" disabled={isDeleting || isRevising}>
+            <Button onClick={() => setIsEditing(true)} variant="contained" disabled={isDeleting || isRevising || isGeneratingActivity}>
               Edit lesson
             </Button>
           )
         )}
-        <Button onClick={onClose} color="inherit" disabled={isSaving || isDeleting || isRevising}>
+        <Button onClick={onClose} color="inherit" disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}>
           Close
         </Button>
       </DialogActions>

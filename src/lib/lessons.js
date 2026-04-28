@@ -91,6 +91,27 @@ async function ensureLessonsSchemaUncached(client = db) {
     CREATE INDEX IF NOT EXISTS user_lessons_lesson_id_idx
     ON user_lessons(lesson_id)
   `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS lesson_activities (
+      id TEXT PRIMARY KEY,
+      lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      item_count INTEGER NOT NULL DEFAULT 0,
+      payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+      generation_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_by TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT lesson_activities_type_check
+        CHECK (type IN ('quiz', 'flashcards'))
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS lesson_activities_lesson_id_idx
+    ON lesson_activities(lesson_id, created_at DESC)
+  `);
 }
 
 function mapLesson(row, materialIds = [], extra = {}) {
@@ -113,6 +134,20 @@ function mapLesson(row, materialIds = [], extra = {}) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     ...extra,
+  };
+}
+
+function mapLessonActivity(row) {
+  return {
+    id: row.id,
+    lessonId: row.lesson_id,
+    type: row.type,
+    title: row.title,
+    itemCount: row.item_count,
+    payload: row.payload,
+    generationMetadata: row.generation_metadata,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
   };
 }
 
@@ -590,8 +625,61 @@ export async function getLessonById(lessonId) {
     [lessonId]
   );
 
+  const activities = await getLessonActivities(lessonId);
+
   return mapLesson(
     lessonResult.rows[0],
-    lessonMaterialsResult.rows.map((item) => item.material_id)
+    lessonMaterialsResult.rows.map((item) => item.material_id),
+    { activities }
   );
+}
+
+export async function createLessonActivity(input) {
+  await ensureLessonsSchema();
+
+  const activityId = crypto.randomUUID();
+  const result = await db.query(
+    `
+      INSERT INTO lesson_activities (
+        id,
+        lesson_id,
+        type,
+        title,
+        item_count,
+        payload,
+        generation_metadata,
+        created_by
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING *
+    `,
+    [
+      activityId,
+      input.lessonId,
+      input.type,
+      input.title || '',
+      input.itemCount || 0,
+      JSON.stringify(input.payload || {}),
+      JSON.stringify(input.generationMetadata || {}),
+      input.createdBy || '',
+    ]
+  );
+
+  return mapLessonActivity(result.rows[0]);
+}
+
+export async function getLessonActivities(lessonId) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      SELECT *
+      FROM lesson_activities
+      WHERE lesson_id = $1
+      ORDER BY created_at DESC
+    `,
+    [lessonId]
+  );
+
+  return result.rows.map(mapLessonActivity);
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { AppRouterCacheProvider } from '@mui/material-nextjs/v15-appRouter';
+import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 
 const theme = createTheme({
