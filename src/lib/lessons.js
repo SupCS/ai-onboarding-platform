@@ -8,18 +8,26 @@ export {
   LESSON_STATUSES,
 } from './lessonConstants.js';
 
+const LESSONS_SCHEMA_VERSION = 2;
+
 export async function ensureLessonsSchema(client = db) {
   const globalForLessons = globalThis;
 
-  if (client === db && globalForLessons.lessonsSchemaPromise) {
+  if (
+    client === db &&
+    globalForLessons.lessonsSchemaPromise &&
+    globalForLessons.lessonsSchemaVersion === LESSONS_SCHEMA_VERSION
+  ) {
     return globalForLessons.lessonsSchemaPromise;
   }
 
   const schemaPromise = ensureLessonsSchemaUncached(client);
 
   if (client === db) {
+    globalForLessons.lessonsSchemaVersion = LESSONS_SCHEMA_VERSION;
     globalForLessons.lessonsSchemaPromise = schemaPromise.catch((error) => {
       globalForLessons.lessonsSchemaPromise = null;
+      globalForLessons.lessonsSchemaVersion = null;
       throw error;
     });
 
@@ -112,6 +120,28 @@ async function ensureLessonsSchemaUncached(client = db) {
     CREATE INDEX IF NOT EXISTS lesson_activities_lesson_id_idx
     ON lesson_activities(lesson_id, created_at DESC)
   `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS user_lesson_activity_progress (
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      activity_id TEXT NOT NULL REFERENCES lesson_activities(id) ON DELETE CASCADE,
+      lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+      status TEXT NOT NULL DEFAULT 'not_started',
+      score NUMERIC,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      completed_at TIMESTAMPTZ,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, activity_id),
+      CONSTRAINT user_lesson_activity_progress_status_check
+        CHECK (status IN ('not_started', 'in_progress', 'completed', 'failed'))
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS user_lesson_activity_progress_lesson_idx
+    ON user_lesson_activity_progress(user_id, lesson_id)
+  `);
 }
 
 function mapLesson(row, materialIds = [], extra = {}) {
@@ -148,6 +178,16 @@ function mapLessonActivity(row) {
     generationMetadata: row.generation_metadata,
     createdBy: row.created_by,
     createdAt: row.created_at,
+    progress: row.progress_status
+      ? {
+          status: row.progress_status,
+          score: row.progress_score === null ? null : Number(row.progress_score),
+          metadata: row.progress_metadata || {},
+          startedAt: row.progress_started_at,
+          completedAt: row.progress_completed_at,
+          isCompleted: Boolean(row.progress_completed_at),
+        }
+      : null,
   };
 }
 
@@ -450,6 +490,14 @@ export async function enrollUserInLesson(userId, lessonId) {
 export async function setLessonCompletionForUser(userId, lessonId, isCompleted) {
   await ensureLessonsSchema();
 
+  if (isCompleted) {
+    const activities = await getLessonActivitiesForUser(lessonId, userId);
+
+    if (activities.length > 0 && !activities.every(isActivityPassed)) {
+      throw new Error('Complete all lesson activities before marking this lesson complete.');
+    }
+  }
+
   const result = await db.query(
     `
       UPDATE user_lessons
@@ -682,4 +730,229 @@ export async function getLessonActivities(lessonId) {
   );
 
   return result.rows.map(mapLessonActivity);
+}
+
+export async function getLessonActivitiesForUser(lessonId, userId) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      SELECT
+        lesson_activities.*,
+        user_lesson_activity_progress.status AS progress_status,
+        user_lesson_activity_progress.score AS progress_score,
+        user_lesson_activity_progress.metadata AS progress_metadata,
+        user_lesson_activity_progress.started_at AS progress_started_at,
+        user_lesson_activity_progress.completed_at AS progress_completed_at
+      FROM lesson_activities
+      LEFT JOIN user_lesson_activity_progress
+        ON user_lesson_activity_progress.activity_id = lesson_activities.id
+        AND user_lesson_activity_progress.user_id = $2
+      WHERE lesson_activities.lesson_id = $1
+      ORDER BY lesson_activities.created_at ASC
+    `,
+    [lessonId, userId]
+  );
+
+  return result.rows.map(mapLessonActivity);
+}
+
+export async function getLessonActivityForUser(lessonId, activityId, userId) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      SELECT
+        lesson_activities.*,
+        user_lesson_activity_progress.status AS progress_status,
+        user_lesson_activity_progress.score AS progress_score,
+        user_lesson_activity_progress.metadata AS progress_metadata,
+        user_lesson_activity_progress.started_at AS progress_started_at,
+        user_lesson_activity_progress.completed_at AS progress_completed_at
+      FROM lesson_activities
+      LEFT JOIN user_lesson_activity_progress
+        ON user_lesson_activity_progress.activity_id = lesson_activities.id
+        AND user_lesson_activity_progress.user_id = $3
+      WHERE lesson_activities.lesson_id = $1
+        AND lesson_activities.id = $2
+      LIMIT 1
+    `,
+    [lessonId, activityId, userId]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return mapLessonActivity(result.rows[0]);
+}
+
+function isActivityPassed(activity) {
+  if (activity.type === 'quiz') {
+    return Boolean(activity.progress?.completedAt) && Number(activity.progress?.score || 0) >= 80;
+  }
+
+  return Boolean(activity.progress?.completedAt);
+}
+
+export async function completeFlashcardsActivityForUser(userId, lessonId, activityId, metadata = {}) {
+  await ensureLessonsSchema();
+
+  const client = await db.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const activityResult = await client.query(
+      `
+        SELECT id, lesson_id, type
+        FROM lesson_activities
+        WHERE id = $1
+          AND lesson_id = $2
+        LIMIT 1
+      `,
+      [activityId, lessonId]
+    );
+
+    if (activityResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const activityRow = activityResult.rows[0];
+
+    if (activityRow.type !== 'flashcards') {
+      throw new Error('Only flashcard activities can be completed with this action.');
+    }
+
+    const progressResult = await client.query(
+      `
+        INSERT INTO user_lesson_activity_progress (
+          user_id,
+          activity_id,
+          lesson_id,
+          status,
+          score,
+          metadata,
+          completed_at,
+          updated_at
+        )
+        VALUES ($1, $2, $3, 'completed', NULL, $4, NOW(), NOW())
+        ON CONFLICT (user_id, activity_id) DO UPDATE
+          SET
+            status = 'completed',
+            score = NULL,
+            metadata = EXCLUDED.metadata,
+            completed_at = COALESCE(user_lesson_activity_progress.completed_at, NOW()),
+            updated_at = NOW()
+        RETURNING *
+      `,
+      [userId, activityId, lessonId, JSON.stringify(metadata || {})]
+    );
+
+    await client.query('COMMIT');
+
+    const activities = await getLessonActivitiesForUser(lessonId, userId);
+    const lessonCompleted = activities.length > 0 && activities.every(isActivityPassed);
+    const enrollment = lessonCompleted
+      ? await setLessonCompletionForUser(userId, lessonId, true)
+      : await getLessonEnrollmentForUser(userId, lessonId);
+
+    return {
+      progress: {
+        activityId: progressResult.rows[0].activity_id,
+        lessonId: progressResult.rows[0].lesson_id,
+        status: progressResult.rows[0].status,
+        completedAt: progressResult.rows[0].completed_at,
+        metadata: progressResult.rows[0].metadata,
+      },
+      activities,
+      lessonCompleted,
+      enrollment,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function resetLessonActivityProgressForUser(userId, lessonId, activityId) {
+  await ensureLessonsSchema();
+
+  const client = await db.connect();
+
+  try {
+    await client.query('BEGIN');
+
+    const activityResult = await client.query(
+      `
+        SELECT id
+        FROM lesson_activities
+        WHERE id = $1
+          AND lesson_id = $2
+        LIMIT 1
+      `,
+      [activityId, lessonId]
+    );
+
+    if (activityResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const progressResult = await client.query(
+      `
+        INSERT INTO user_lesson_activity_progress (
+          user_id,
+          activity_id,
+          lesson_id,
+          status,
+          score,
+          metadata,
+          completed_at,
+          updated_at
+        )
+        VALUES ($1, $2, $3, 'not_started', NULL, '{}'::jsonb, NULL, NOW())
+        ON CONFLICT (user_id, activity_id) DO UPDATE
+          SET
+            status = 'not_started',
+            score = NULL,
+            metadata = '{}'::jsonb,
+            completed_at = NULL,
+            updated_at = NOW()
+        RETURNING *
+      `,
+      [userId, activityId, lessonId]
+    );
+
+    await client.query(
+      `
+        UPDATE user_lessons
+        SET completed_at = NULL
+        WHERE user_id = $1
+          AND lesson_id = $2
+      `,
+      [userId, lessonId]
+    );
+
+    await client.query('COMMIT');
+
+    return {
+      progress: {
+        activityId: progressResult.rows[0].activity_id,
+        lessonId: progressResult.rows[0].lesson_id,
+        status: progressResult.rows[0].status,
+        completedAt: progressResult.rows[0].completed_at,
+        metadata: progressResult.rows[0].metadata,
+      },
+      enrollment: await getLessonEnrollmentForUser(userId, lessonId),
+    };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw error;
+  } finally {
+    client.release();
+  }
 }

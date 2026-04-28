@@ -2,11 +2,15 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Box, Button, Chip, Container, Paper, Stack, Typography } from '@mui/material';
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
-import LessonCompletionButton from '../../../../components/lessons/LessonCompletionButton';
+import LessonActivityGate from '../../../../components/lessons/LessonActivityGate';
 import LessonReader from '../../../../components/lessons/LessonReader';
 import { getCurrentUser } from '../../../../lib/currentUser';
 import { markdownToHtml } from '../../../../lib/lessonContent';
-import { getLessonById, getLessonEnrollmentForUser } from '../../../../lib/lessons';
+import {
+  getLessonActivitiesForUser,
+  getLessonById,
+  getLessonEnrollmentForUser,
+} from '../../../../lib/lessons';
 
 export const metadata = {
   title: 'Lesson',
@@ -33,6 +37,7 @@ export default async function LessonReadPage({ params }) {
   }
 
   const html = lesson.contentHtml || markdownToHtml(lesson.contentMarkdown || '');
+  const activities = await getLessonActivitiesForUser(lesson.id, currentUser.id);
 
   return (
     <Box
@@ -115,8 +120,9 @@ export default async function LessonReadPage({ params }) {
             </Stack>
 
             <LessonReader html={html} />
-            <LessonCompletionButton
+            <LessonActivityGate
               lessonId={lesson.id}
+              activities={activities}
               initialIsCompleted={enrollment.isCompleted}
             />
           </Paper>
