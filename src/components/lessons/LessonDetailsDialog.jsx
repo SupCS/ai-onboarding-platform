@@ -19,6 +19,7 @@ import {
   Select,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
@@ -31,6 +32,7 @@ import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import SourceOutlinedIcon from '@mui/icons-material/SourceOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
+import ViewSidebarOutlinedIcon from '@mui/icons-material/ViewSidebarOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import LessonAttachments, { getSourceAttachments } from './LessonAttachments';
 import { SimpleEditor } from '../tiptap/tiptap-templates/simple/simple-editor';
@@ -147,6 +149,7 @@ export default function LessonDetailsDialog({
   }, [lesson]);
   const [draftHtml, setDraftHtml] = useState(initialHtml);
   const [draftTitle, setDraftTitle] = useState(lesson?.title || '');
+  const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
 
   useEffect(() => {
     setIsEditing(false);
@@ -160,7 +163,14 @@ export default function LessonDetailsDialog({
     setActivityCount(8);
     setActivityError('');
     setActivitySuccess('');
+    setIsRightPanelCollapsed(false);
   }, [initialHtml, lesson?.id, lesson?.title]);
+
+  useEffect(() => {
+    if (isEditing) {
+      setIsRightPanelCollapsed(true);
+    }
+  }, [isEditing]);
 
   if (!lesson) {
     return null;
@@ -176,6 +186,8 @@ export default function LessonDetailsDialog({
   const lastRevision = revisionHistory[revisionHistory.length - 1] || null;
   const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
   const activitySettings = getActivityTypeSettings(activityType);
+  const hasAssets = sourceAttachments.length > 0;
+  const isRightPanelVisible = !isRightPanelCollapsed;
 
   const handleSave = async () => {
     try {
@@ -521,7 +533,10 @@ export default function LessonDetailsDialog({
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 340px' },
+            gridTemplateColumns: {
+              xs: '1fr',
+              lg: isRightPanelVisible ? 'minmax(0, 1fr) 340px' : 'minmax(0, 1fr)',
+            },
             gap: 2.5,
             alignItems: 'stretch',
             flex: '1 1 auto',
@@ -583,15 +598,49 @@ export default function LessonDetailsDialog({
                       </Box>
                     </Stack>
 
-                    <Chip
-                      label={`${sourceReferences.length} source${sourceReferences.length === 1 ? '' : 's'} · ${activities.length} activit${activities.length === 1 ? 'y' : 'ies'}`}
-                      size="small"
-                      sx={{
-                        fontWeight: 800,
-                        color: AI_DIGITAL_COLORS.yvesKleinBlue,
-                        backgroundColor: hexToRgba(AI_DIGITAL_COLORS.skywave, 0.24),
-                      }}
-                    />
+                    <Stack
+                      direction="row"
+                      spacing={1}
+                      useFlexGap
+                      sx={{ flexWrap: 'wrap', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}
+                    >
+                      <Chip
+                        label={`${sourceReferences.length} source${sourceReferences.length === 1 ? '' : 's'} - ${activities.length} activit${activities.length === 1 ? 'y' : 'ies'}`}
+                        size="small"
+                        sx={{
+                          fontWeight: 800,
+                          color: AI_DIGITAL_COLORS.yvesKleinBlue,
+                          backgroundColor: hexToRgba(AI_DIGITAL_COLORS.skywave, 0.24),
+                        }}
+                      />
+
+                      <Tooltip title={isRightPanelCollapsed ? 'Show sidebar' : 'Hide sidebar'}>
+                        <IconButton
+                          size="small"
+                          aria-label={isRightPanelCollapsed ? 'Show lesson sidebar' : 'Hide lesson sidebar'}
+                          onClick={() => setIsRightPanelCollapsed((prev) => !prev)}
+                          sx={{
+                            width: 30,
+                            height: 30,
+                            borderRadius: 1.5,
+                            color: isRightPanelCollapsed
+                              ? AI_DIGITAL_COLORS.yvesKleinBlue
+                              : '#fff',
+                            border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.22)}`,
+                            backgroundColor: isRightPanelCollapsed
+                              ? '#fff'
+                              : AI_DIGITAL_COLORS.yvesKleinBlue,
+                            '&:hover': {
+                              backgroundColor: isRightPanelCollapsed
+                                ? hexToRgba(AI_DIGITAL_COLORS.skywave, 0.22)
+                                : AI_DIGITAL_COLORS.violetPulse,
+                            },
+                          }}
+                        >
+                          <ViewSidebarOutlinedIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
                   </Stack>
                 </Box>
 
@@ -604,35 +653,19 @@ export default function LessonDetailsDialog({
                   />
                 </Box>
 
-                {sourceAttachments.length > 0 && (
-                  <Box
-                    sx={{
-                      flex: '0 0 auto',
-                      p: { xs: 1.5, md: 2 },
-                      borderTop: '1px solid #e8edf5',
-                      backgroundColor: '#fff',
-                      maxHeight: 240,
-                      overflow: 'auto',
-                    }}
-                  >
-                    <LessonAttachments
-                      attachments={sourceAttachments}
-                      onOpenSourceMaterial={onOpenSourceMaterial}
-                    />
-                  </Box>
-                )}
               </Stack>
             )}
           </Paper>
 
-          <Stack
-            spacing={2}
-            sx={{
-              minHeight: 0,
-              overflow: 'auto',
-              pr: 0.5,
-            }}
-          >
+          {isRightPanelVisible && (
+            <Stack
+              spacing={2}
+              sx={{
+                minHeight: 0,
+                overflow: 'auto',
+                pr: 0.5,
+              }}
+            >
             <DetailPanel
               title="Source materials"
               icon={<SourceOutlinedIcon fontSize="small" />}
@@ -784,6 +817,21 @@ export default function LessonDetailsDialog({
               </DetailPanel>
             )}
 
+            {hasAssets && (
+              <DetailPanel
+                title="Assets"
+                icon={<LibraryBooksOutlinedIcon fontSize="small" />}
+                accent={AI_DIGITAL_COLORS.neonAzure}
+              >
+                <LessonAttachments
+                  attachments={sourceAttachments}
+                  onOpenSourceMaterial={onOpenSourceMaterial}
+                  layout="column"
+                  showTitle={false}
+                />
+              </DetailPanel>
+            )}
+
             {lesson.status !== 'failed' && (
               <DetailPanel
                 title="Generate activity"
@@ -867,7 +915,8 @@ export default function LessonDetailsDialog({
                 </Stack>
               </DetailPanel>
             )}
-          </Stack>
+            </Stack>
+          )}
         </Box>
       </DialogContent>
 

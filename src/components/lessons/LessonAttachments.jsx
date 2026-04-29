@@ -304,6 +304,8 @@ export default function LessonAttachments({
   attachments = [],
   sourceReferences = [],
   onOpenSourceMaterial,
+  layout = 'grid',
+  showTitle = true,
 }) {
   const resolvedAttachments = attachments.length > 0
     ? attachments
@@ -349,21 +351,27 @@ export default function LessonAttachments({
 
   return (
     <Box>
-      <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.25 }}>
-        Assets
-      </Typography>
+      {showTitle && (
+        <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.25 }}>
+          Assets
+        </Typography>
+      )}
 
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: {
-            xs: 'repeat(2, 136px)',
-            sm: 'repeat(3, 136px)',
-            md: 'repeat(4, 136px)',
-            xl: 'repeat(5, 136px)',
-          },
+          gridTemplateColumns: layout === 'column'
+            ? 'minmax(0, 136px)'
+            : {
+                xs: 'repeat(2, 136px)',
+                sm: 'repeat(3, 136px)',
+                md: 'repeat(4, 136px)',
+                xl: 'repeat(5, 136px)',
+              },
           gap: 1.5,
-          justifyContent: { xs: 'center', sm: 'flex-start' },
+          justifyContent: layout === 'column'
+            ? 'flex-start'
+            : { xs: 'center', sm: 'flex-start' },
         }}
       >
         {resolvedAttachments.map((attachment, index) => (
