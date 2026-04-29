@@ -3,9 +3,12 @@ import { notFound, redirect } from 'next/navigation';
 import { Box, Button, Chip, Container, Paper, Stack, Typography } from '@mui/material';
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
 import LessonActivityGate from '../../../../components/lessons/LessonActivityGate';
+import LessonAttachments from '../../../../components/lessons/LessonAttachments';
 import LessonReader from '../../../../components/lessons/LessonReader';
 import { getCurrentUser } from '../../../../lib/currentUser';
 import { markdownToHtml } from '../../../../lib/lessonContent';
+import { getMaterialsByIds } from '../../../../lib/materials';
+import { getPreviewUrl } from '../../../../lib/storage';
 import {
   getLessonActivitiesForUser,
   getLessonById,
@@ -15,6 +18,41 @@ import {
 export const metadata = {
   title: 'Lesson',
 };
+
+async function hydrateSourceReferencesWithMaterials(sourceReferences = [], materialIds = []) {
+  const materials = await getMaterialsByIds(materialIds);
+  const materialsById = new Map(materials.map((material) => [material.id, material]));
+
+  return Promise.all(sourceReferences.map(async (source) => {
+    const material = materialsById.get(source.id);
+
+    if (!material) {
+      return source;
+    }
+
+    return {
+      ...source,
+      attachments: await Promise.all((material.attachments || []).map(async (attachment) => {
+        const isImage = attachment.kind === 'image' || attachment.mimeType?.startsWith('image/');
+        const previewUrl = isImage && attachment.storageKey
+          ? await getPreviewUrl(attachment.storageKey, { expiresIn: 60 * 10 })
+          : '';
+
+        return {
+          id: attachment.id,
+          name: attachment.name,
+          storageKey: attachment.storageKey,
+          mimeType: attachment.mimeType,
+          kind: attachment.kind,
+          size: attachment.size,
+          previewUrl,
+          openaiFileId: attachment.openaiFileId,
+          openaiFileStatus: attachment.openaiFileStatus,
+        };
+      })),
+    };
+  }));
+}
 
 export default async function LessonReadPage({ params }) {
   const { id } = await params;
@@ -38,6 +76,10 @@ export default async function LessonReadPage({ params }) {
 
   const html = lesson.contentHtml || markdownToHtml(lesson.contentMarkdown || '');
   const activities = await getLessonActivitiesForUser(lesson.id, currentUser.id);
+  const sourceReferences = await hydrateSourceReferencesWithMaterials(
+    lesson.generationMetadata?.preparedMaterials?.sourceReferences || [],
+    lesson.materialIds || []
+  );
 
   return (
     <Box
@@ -120,6 +162,9 @@ export default async function LessonReadPage({ params }) {
             </Stack>
 
             <LessonReader html={html} />
+            <Box sx={{ mt: 5 }}>
+              <LessonAttachments sourceReferences={sourceReferences} />
+            </Box>
             <LessonActivityGate
               lessonId={lesson.id}
               activities={activities}

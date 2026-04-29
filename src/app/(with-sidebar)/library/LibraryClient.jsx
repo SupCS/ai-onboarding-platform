@@ -461,6 +461,49 @@ export default function LibraryClient() {
     }
   };
 
+  const hydrateLessonSourceAttachments = (lesson) => {
+    const sourceReferences = lesson?.generationMetadata?.preparedMaterials?.sourceReferences;
+
+    if (!Array.isArray(sourceReferences)) {
+      return lesson;
+    }
+
+    const materialsById = new Map(materials.map((material) => [material.id, material]));
+
+    return {
+      ...lesson,
+      generationMetadata: {
+        ...lesson.generationMetadata,
+        preparedMaterials: {
+          ...lesson.generationMetadata.preparedMaterials,
+          sourceReferences: sourceReferences.map((source) => {
+            const material = materialsById.get(source.id);
+
+            if (!material) {
+              return source;
+            }
+
+            return {
+              ...source,
+              attachments: (material.attachments || []).map((attachment) => ({
+                id: attachment.id,
+                name: attachment.name,
+                storageKey: attachment.storageKey,
+                mimeType: attachment.mimeType,
+                kind: attachment.kind,
+                size: attachment.size,
+                previewUrl: attachment.previewUrl || '',
+                fileUrl: attachment.fileUrl || '',
+                openaiFileId: attachment.openaiFileId,
+                openaiFileStatus: attachment.openaiFileStatus,
+              })),
+            };
+          }),
+        },
+      },
+    };
+  };
+
   const handleEditMaterial = (material) => {
     if (!material) {
       return;
@@ -741,7 +784,7 @@ export default function LibraryClient() {
       <LessonDetailsDialog
         key={selectedLesson?.id || 'lesson-details'}
         open={Boolean(selectedLesson)}
-        lesson={selectedLesson}
+        lesson={hydrateLessonSourceAttachments(selectedLesson)}
         onClose={handleCloseLesson}
         onOpenSourceMaterial={handleOpenSourceMaterial}
         onLessonDeleted={handleLessonDeleted}

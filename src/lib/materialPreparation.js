@@ -197,9 +197,12 @@ function buildSourceReferences(materials) {
     links: material.links,
     youtubeUrls: material.youtubeUrls,
     attachments: material.attachments.map((attachment) => ({
+      id: attachment.id,
       name: attachment.name,
       kind: attachment.kind,
       mimeType: attachment.mimeType,
+      size: attachment.size,
+      storageKey: attachment.storageKey,
       openaiFileId: attachment.openaiFileId,
       openaiFileStatus: attachment.openaiFileStatus,
     })),

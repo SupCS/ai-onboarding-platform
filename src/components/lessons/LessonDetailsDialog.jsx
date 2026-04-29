@@ -23,6 +23,7 @@ import {
 } from '@mui/material';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
+import LessonAttachments, { getSourceAttachments } from './LessonAttachments';
 import { SimpleEditor } from '../tiptap/tiptap-templates/simple/simple-editor';
 import { markdownToHtml } from '../../lib/lessonContent';
 
@@ -118,6 +119,7 @@ export default function LessonDetailsDialog({
   const metadata = lesson.generationMetadata || {};
   const preparedMaterials = metadata.preparedMaterials || {};
   const sourceReferences = preparedMaterials.sourceReferences || [];
+  const sourceAttachments = getSourceAttachments(sourceReferences);
   const revisionHistory = Array.isArray(metadata.revisionHistory)
     ? metadata.revisionHistory
     : [];
@@ -416,12 +418,21 @@ export default function LessonDetailsDialog({
                 </Typography>
               </Stack>
             ) : (
-              <SimpleEditor
-                content={draftHtml}
-                editable={isEditing}
-                onChange={(nextHtml) => setDraftHtml(nextHtml)}
-                className="lesson-details-editor"
-              />
+              <Stack spacing={2.5} sx={{ minHeight: 0, overflow: 'auto' }}>
+                <Box sx={{ minHeight: 0 }}>
+                  <SimpleEditor
+                    content={draftHtml}
+                    editable={isEditing}
+                    onChange={(nextHtml) => setDraftHtml(nextHtml)}
+                    className="lesson-details-editor"
+                  />
+                </Box>
+
+                <LessonAttachments
+                  attachments={sourceAttachments}
+                  onOpenSourceMaterial={onOpenSourceMaterial}
+                />
+              </Stack>
             )}
           </Paper>
 
