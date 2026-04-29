@@ -3,6 +3,7 @@
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { AI_DIGITAL_COLORS } from '../../lib/brandColors';
+import { TaskTrayProvider } from './TaskTrayProvider';
 
 const theme = createTheme({
   palette: {
@@ -30,7 +31,7 @@ export default function AppProviders({ children }) {
     <AppRouterCacheProvider>
       <ThemeProvider theme={theme}>
         <CssBaseline />
-        {children}
+        <TaskTrayProvider>{children}</TaskTrayProvider>
       </ThemeProvider>
     </AppRouterCacheProvider>
   );

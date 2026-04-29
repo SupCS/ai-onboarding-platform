@@ -70,6 +70,34 @@ async function createOpenAIResponse(prompt, options = {}) {
   };
 }
 
+export async function condenseSourceText(prompt) {
+  const model =
+    process.env.OPENAI_TRANSCRIPT_COMPRESSION_MODEL ||
+    process.env.OPENAI_NANO_MODEL ||
+    process.env.OPENAI_MINI_MODEL ||
+    'gpt-5.4-mini';
+  const { data, model: usedModel } = await createOpenAIResponse(prompt, {
+    model,
+  });
+  const text = extractResponseText(data);
+
+  if (!text) {
+    throw new Error('OpenAI returned an empty condensed transcript.');
+  }
+
+  return {
+    text,
+    metadata: {
+      provider: 'openai',
+      model: usedModel,
+      promptVersion: prompt.version,
+      promptCacheKey: prompt.cacheKey || prompt.version,
+      responseId: data.id || '',
+      usage: data.usage || null,
+    },
+  };
+}
+
 export async function generateLessonContent(prompt) {
   const { data, model } = await createOpenAIResponse(prompt);
   const content = extractResponseText(data);

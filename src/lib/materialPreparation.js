@@ -49,13 +49,23 @@ function normalizeMaterial(material, index) {
     description: normalizeText(material.description || ''),
     text: normalizeText(material.text || ''),
     youtubeUrls: normalizeUrlList(material.youtubeUrls || []),
+    youtubeVideos: Array.isArray(material.youtubeVideos)
+      ? material.youtubeVideos
+      : [],
+    youtubeTranscripts: Array.isArray(material.youtubeTranscripts)
+      ? material.youtubeTranscripts
+      : [],
     links: normalizeUrlList(material.links || []),
     attachments: (material.attachments || []).map(normalizeAttachment),
   };
 }
 
 function getMaterialTextSize(material) {
-  return [material.title, material.description, material.text].join('\n').length;
+  const youtubeText = (material.youtubeTranscripts || [])
+    .map((transcript) => transcript.preparedText || '')
+    .join('\n');
+
+  return [material.title, material.description, material.text, youtubeText].join('\n').length;
 }
 
 function hasUsableContent(material) {
@@ -74,7 +84,10 @@ function extractCandidateTerms(materials) {
   const phraseRegex = /\b[A-Z][A-Za-z0-9+.#/&-]*(?: [A-Z][A-Za-z0-9+.#/&-]*){0,3}\b/g;
 
   for (const material of materials) {
-    const textChunks = [material.title, material.description, material.text]
+    const transcriptText = (material.youtubeTranscripts || [])
+      .map((transcript) => transcript.preparedText || '')
+      .join('\n');
+    const textChunks = [material.title, material.description, material.text, transcriptText]
       .filter(Boolean)
       .map((text) => text.replace(/\s+/g, ' '));
 
@@ -110,7 +123,10 @@ function extractSignalSentences(materials, keywords) {
   const signals = [];
 
   for (const material of materials) {
-    const text = [material.description, material.text].filter(Boolean).join('\n');
+    const transcriptText = (material.youtubeTranscripts || [])
+      .map((transcript) => transcript.preparedText || '')
+      .join('\n');
+    const text = [material.description, material.text, transcriptText].filter(Boolean).join('\n');
     const sentences = getSentences(text);
 
     for (const sentence of sentences) {
@@ -196,6 +212,18 @@ function buildSourceReferences(materials) {
     title: material.title,
     links: material.links,
     youtubeUrls: material.youtubeUrls,
+    youtubeVideos: material.youtubeVideos || [],
+    youtubeTranscripts: (material.youtubeTranscripts || []).map((transcript) => ({
+      url: transcript.url,
+      videoId: transcript.videoId,
+      status: transcript.status,
+      error: transcript.error,
+      wasCondensed: transcript.wasCondensed,
+      rawCharacters: transcript.rawCharacters,
+      preparedCharacters: transcript.preparedCharacters,
+      segmentCount: transcript.segmentCount,
+      compressionMetadata: transcript.compressionMetadata,
+    })),
     attachments: material.attachments.map((attachment) => ({
       id: attachment.id,
       name: attachment.name,
@@ -257,7 +285,22 @@ export function prepareMaterialsForLesson(materials = []) {
 
 export async function loadAndPrepareMaterialsForLesson(materialIds = []) {
   const { getMaterialsByIds } = await import('./materials.js');
+  const { prepareYoutubeTranscript } = await import('./youtubeTranscripts.js');
   const materials = await getMaterialsByIds(materialIds);
+  const materialsWithYoutubeTranscripts = [];
 
-  return prepareMaterialsForLesson(materials);
+  for (const material of materials) {
+    const youtubeTranscripts = [];
+
+    for (const url of material.youtubeUrls || []) {
+      youtubeTranscripts.push(await prepareYoutubeTranscript(url));
+    }
+
+    materialsWithYoutubeTranscripts.push({
+      ...material,
+      youtubeTranscripts,
+    });
+  }
+
+  return prepareMaterialsForLesson(materialsWithYoutubeTranscripts);
 }

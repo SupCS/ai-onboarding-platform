@@ -11,9 +11,10 @@ import LessonPromptForm from '../../../components/lessons/LessonPromptForm';
 import UploadMaterialDialog from '../../../components/materials/UploadMaterialDialog';
 import MaterialDetailsDialog from '../../../components/materials/MaterialDetailsDialog';
 import RoadmapFormDialog from '../../../components/roadmaps/RoadmapFormDialog';
+import { useTaskTray } from '../../../components/providers/TaskTrayProvider';
 
 export default function LibraryClient() {
-  const showLessonDebugActions = process.env.NODE_ENV !== 'production';
+  const { addTask, updateTask } = useTaskTray();
   const [activeTab, setActiveTab] = useState('materials');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
@@ -561,8 +562,24 @@ export default function LibraryClient() {
   };
 
   const handleSaveMaterial = async (formData) => {
+    const materialBeingEdited = editingMaterial;
+    const isEditMode = Boolean(materialBeingEdited);
+    const taskId = addTask({
+      title: isEditMode ? 'Updating material' : 'Creating material',
+      description: formData.title.trim() || 'Preparing material sources',
+    });
+
+    setIsUploadDialogOpen(false);
+    setEditingMaterial(null);
+
     try {
       setIsSavingMaterial(true);
+      updateTask(taskId, {
+        description: formData.newAttachments?.length
+          ? `Uploading ${formData.newAttachments.length} file(s)...`
+          : 'Saving sources and metadata...',
+      });
+
       const uploadedAttachments = await uploadNewAttachments(
         formData.newAttachments || []
       );
@@ -595,9 +612,9 @@ export default function LibraryClient() {
       };
 
       const response = await fetch(
-        editingMaterial ? `/api/materials/${editingMaterial.id}` : '/api/materials',
+        materialBeingEdited ? `/api/materials/${materialBeingEdited.id}` : '/api/materials',
         {
-          method: editingMaterial ? 'PUT' : 'POST',
+          method: materialBeingEdited ? 'PUT' : 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
@@ -610,19 +627,26 @@ export default function LibraryClient() {
       if (!response.ok) {
         throw new Error(
           data.error ||
-            (editingMaterial
+            (materialBeingEdited
               ? 'Failed to update material.'
               : 'Failed to create material.')
         );
       }
 
+      updateTask(taskId, {
+        description: 'Refreshing library...',
+      });
       await loadMaterials();
-      setEditingMaterial(null);
-      setIsUploadDialogOpen(false);
+      updateTask(taskId, {
+        status: 'success',
+        description: materialBeingEdited
+          ? 'Material updated successfully.'
+          : 'Material created successfully.',
+      });
 
       setToast({
         open: true,
-        message: editingMaterial
+        message: materialBeingEdited
           ? 'Material updated successfully.'
           : 'Material saved successfully.',
         severity: 'success',
@@ -634,6 +658,10 @@ export default function LibraryClient() {
         open: true,
         message: error.message || 'Failed to save material.',
         severity: 'error',
+      });
+      updateTask(taskId, {
+        status: 'error',
+        description: error.message || 'Failed to save material.',
       });
     } finally {
       setIsSavingMaterial(false);
@@ -758,7 +786,7 @@ export default function LibraryClient() {
           <LessonPromptForm
             materials={sortedMaterials}
             onLessonGenerated={handleLessonGenerated}
-            showDebugActions={showLessonDebugActions}
+            onLessonGenerationStarted={handleCloseLessonDialog}
           />
         </DialogContent>
       </Dialog>

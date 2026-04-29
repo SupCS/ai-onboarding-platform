@@ -146,10 +146,12 @@ export default function LessonDetailsDialog({
     return lesson?.contentHtml || markdownToHtml(lesson?.contentMarkdown || '');
   }, [lesson]);
   const [draftHtml, setDraftHtml] = useState(initialHtml);
+  const [draftTitle, setDraftTitle] = useState(lesson?.title || '');
 
   useEffect(() => {
     setIsEditing(false);
     setDraftHtml(initialHtml);
+    setDraftTitle(lesson?.title || '');
     setIsRevising(false);
     setRevisionRequest('');
     setSelectedRevisionOptions([]);
@@ -158,7 +160,7 @@ export default function LessonDetailsDialog({
     setActivityCount(8);
     setActivityError('');
     setActivitySuccess('');
-  }, [initialHtml, lesson?.id]);
+  }, [initialHtml, lesson?.id, lesson?.title]);
 
   if (!lesson) {
     return null;
@@ -185,6 +187,7 @@ export default function LessonDetailsDialog({
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          title: draftTitle.trim(),
           contentHtml: draftHtml,
         }),
       });
@@ -206,6 +209,7 @@ export default function LessonDetailsDialog({
 
   const handleCancelEdit = () => {
     setDraftHtml(initialHtml);
+    setDraftTitle(lesson.title || '');
     setIsEditing(false);
   };
 
@@ -368,7 +372,7 @@ export default function LessonDetailsDialog({
             flexDirection: 'column',
             overflow: 'hidden',
             backgroundColor: AI_DIGITAL_COLORS.silverHaze,
-            border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.12)}`,
+            border: 0,
             boxShadow: `0 28px 80px ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.2)}`,
           },
         },
@@ -387,9 +391,12 @@ export default function LessonDetailsDialog({
             <Stack
               direction={{ xs: 'column', md: 'row' }}
               spacing={1.5}
-              sx={{ alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between' }}
+              sx={{
+                alignItems: { xs: 'flex-start', md: isEditing ? 'stretch' : 'center' },
+                justifyContent: 'space-between',
+              }}
             >
-              <Box sx={{ minWidth: 0 }}>
+              <Box sx={{ minWidth: 0, flex: '1 1 auto', width: '100%' }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
                   <Chip
                     icon={isEditing ? <EditOutlinedIcon /> : <VisibilityOutlinedIcon />}
@@ -410,24 +417,58 @@ export default function LessonDetailsDialog({
                   />
                 </Stack>
 
-                <Typography
-                  variant="h4"
-                  sx={{
-                    fontWeight: 950,
-                    lineHeight: 1.08,
-                    letterSpacing: 0,
-                    maxWidth: 980,
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {lesson.title}
-                </Typography>
+                {isEditing ? (
+                  <Box
+                    component="input"
+                    value={draftTitle}
+                    onChange={(event) => setDraftTitle(event.target.value)}
+                    placeholder="Lesson title"
+                    sx={{
+                      display: 'block',
+                      width: '100%',
+                      maxWidth: 980,
+                      minWidth: 0,
+                      border: 0,
+                      outline: 0,
+                      p: 0,
+                      m: 0,
+                      color: '#fff',
+                      backgroundColor: 'transparent',
+                      fontFamily: 'Arial, sans-serif',
+                      fontSize: { xs: '1.65rem', md: '2.125rem' },
+                      fontWeight: 950,
+                      lineHeight: 1.08,
+                      letterSpacing: 0,
+                      '&::placeholder': {
+                        color: 'rgba(255,255,255,0.68)',
+                      },
+                      '&:focus': {
+                        boxShadow: `0 2px 0 ${AI_DIGITAL_COLORS.lime}`,
+                      },
+                    }}
+                  />
+                ) : (
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 950,
+                      lineHeight: 1.08,
+                      letterSpacing: 0,
+                      maxWidth: 980,
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {lesson.title}
+                  </Typography>
+                )}
               </Box>
 
-              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                <Chip label={`Created ${formatDateTime(lesson.createdAt)}`} size="small" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.36)' }} variant="outlined" />
-                <Chip label={`By ${lesson.createdBy || 'AI Onboarding'}`} size="small" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.36)' }} variant="outlined" />
-              </Stack>
+              {!isEditing && (
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', flex: '0 0 auto' }}>
+                  <Chip label={`Created ${formatDateTime(lesson.createdAt)}`} size="small" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.36)' }} variant="outlined" />
+                  <Chip label={`By ${lesson.createdBy || 'AI Onboarding'}`} size="small" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.36)' }} variant="outlined" />
+                </Stack>
+              )}
             </Stack>
 
             {(lesson.description || metadata.model || metadata.promptVersion || metadata.lastRevisionAt) && (
@@ -492,7 +533,7 @@ export default function LessonDetailsDialog({
             elevation={0}
             sx={{
               borderRadius: 2,
-              border: `1px solid ${isEditing ? hexToRgba(AI_DIGITAL_COLORS.lime, 0.72) : '#e4e8f0'}`,
+              border: 0,
               backgroundColor: '#fff',
               minHeight: 0,
               overflow: 'hidden',

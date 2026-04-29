@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { db } from './db.js';
+import { fetchYoutubeOEmbedMetadata } from './youtubeMetadata.js';
 
 async function ensureMaterialFileOpenAIColumns(client = db) {
   await client.query(`
@@ -12,8 +13,79 @@ async function ensureMaterialFileOpenAIColumns(client = db) {
   `);
 }
 
+async function ensureMaterialYoutubeMetadataColumns(client = db) {
+  await client.query(`
+    ALTER TABLE material_youtube_urls
+    ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS author_name TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS author_url TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS thumbnail_url TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS thumbnail_width INTEGER,
+    ADD COLUMN IF NOT EXISTS thumbnail_height INTEGER,
+    ADD COLUMN IF NOT EXISTS provider_name TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS metadata_error TEXT NOT NULL DEFAULT ''
+  `);
+}
+
+async function prepareYoutubeUrlRecords(youtubeUrls = []) {
+  const records = [];
+
+  for (const url of youtubeUrls) {
+    const metadata = await fetchYoutubeOEmbedMetadata(url);
+
+    records.push({
+      url,
+      ...metadata,
+    });
+  }
+
+  return records;
+}
+
+async function backfillMissingYoutubeMetadata(client = db) {
+  const result = await client.query(`
+    SELECT id, url
+    FROM material_youtube_urls
+    WHERE title = '' AND thumbnail_url = '' AND metadata_error = ''
+    LIMIT 12
+  `);
+
+  for (const row of result.rows) {
+    const metadata = await fetchYoutubeOEmbedMetadata(row.url);
+
+    await client.query(
+      `
+        UPDATE material_youtube_urls
+        SET
+          title = $2,
+          author_name = $3,
+          author_url = $4,
+          thumbnail_url = $5,
+          thumbnail_width = $6,
+          thumbnail_height = $7,
+          provider_name = $8,
+          metadata_error = $9
+        WHERE id = $1
+      `,
+      [
+        row.id,
+        metadata.title || '',
+        metadata.authorName || '',
+        metadata.authorUrl || '',
+        metadata.thumbnailUrl || '',
+        metadata.thumbnailWidth,
+        metadata.thumbnailHeight,
+        metadata.providerName || '',
+        metadata.error || '',
+      ]
+    );
+  }
+}
+
 export async function getAllMaterials() {
   await ensureMaterialFileOpenAIColumns();
+  await ensureMaterialYoutubeMetadataColumns();
+  await backfillMissingYoutubeMetadata();
 
   const materialsResult = await db.query(`
     SELECT id, title, description, text_content, created_at, updated_at
@@ -22,7 +94,18 @@ export async function getAllMaterials() {
   `);
 
   const youtubeResult = await db.query(`
-    SELECT material_id, url, sort_order
+    SELECT
+      material_id,
+      url,
+      sort_order,
+      title,
+      author_name,
+      author_url,
+      thumbnail_url,
+      thumbnail_width,
+      thumbnail_height,
+      provider_name,
+      metadata_error
     FROM material_youtube_urls
     ORDER BY sort_order ASC
   `);
@@ -61,6 +144,19 @@ export async function getAllMaterials() {
     youtubeUrls: youtubeResult.rows
       .filter((item) => item.material_id === material.id)
       .map((item) => item.url),
+    youtubeVideos: youtubeResult.rows
+      .filter((item) => item.material_id === material.id)
+      .map((item) => ({
+        url: item.url,
+        title: item.title || '',
+        authorName: item.author_name || '',
+        authorUrl: item.author_url || '',
+        thumbnailUrl: item.thumbnail_url || '',
+        thumbnailWidth: item.thumbnail_width || null,
+        thumbnailHeight: item.thumbnail_height || null,
+        providerName: item.provider_name || '',
+        metadataError: item.metadata_error || '',
+      })),
     links: linksResult.rows
       .filter((item) => item.material_id === material.id)
       .map((item) => item.url),
@@ -103,6 +199,8 @@ export async function createMaterial(input) {
   try {
     await client.query('BEGIN');
     await ensureMaterialFileOpenAIColumns(client);
+    await ensureMaterialYoutubeMetadataColumns(client);
+    const youtubeRecords = await prepareYoutubeUrlRecords(input.youtubeUrls || []);
 
     const materialId = crypto.randomUUID();
 
@@ -114,13 +212,41 @@ export async function createMaterial(input) {
       [materialId, input.title, input.description || '', input.text || '']
     );
 
-    for (let index = 0; index < (input.youtubeUrls || []).length; index += 1) {
+    for (let index = 0; index < youtubeRecords.length; index += 1) {
+      const youtubeRecord = youtubeRecords[index];
+
       await client.query(
         `
-          INSERT INTO material_youtube_urls (id, material_id, url, sort_order)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO material_youtube_urls (
+            id,
+            material_id,
+            url,
+            sort_order,
+            title,
+            author_name,
+            author_url,
+            thumbnail_url,
+            thumbnail_width,
+            thumbnail_height,
+            provider_name,
+            metadata_error
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         `,
-        [crypto.randomUUID(), materialId, input.youtubeUrls[index], index]
+        [
+          crypto.randomUUID(),
+          materialId,
+          youtubeRecord.url,
+          index,
+          youtubeRecord.title || '',
+          youtubeRecord.authorName || '',
+          youtubeRecord.authorUrl || '',
+          youtubeRecord.thumbnailUrl || '',
+          youtubeRecord.thumbnailWidth,
+          youtubeRecord.thumbnailHeight,
+          youtubeRecord.providerName || '',
+          youtubeRecord.error || '',
+        ]
       );
     }
 
@@ -200,6 +326,7 @@ export async function deleteMaterialById(materialId) {
       return null;
     }
     await ensureMaterialFileOpenAIColumns(client);
+    await ensureMaterialYoutubeMetadataColumns(client);
 
     const filesResult = await client.query(
       `
@@ -276,6 +403,8 @@ export async function updateMaterialById(materialId, input) {
       return null;
     }
     await ensureMaterialFileOpenAIColumns(client);
+    await ensureMaterialYoutubeMetadataColumns(client);
+    const youtubeRecords = await prepareYoutubeUrlRecords(input.youtubeUrls || []);
 
     const existingFilesResult = await client.query(
       `
@@ -323,13 +452,41 @@ export async function updateMaterialById(materialId, input) {
       [materialId]
     );
 
-    for (let index = 0; index < (input.youtubeUrls || []).length; index += 1) {
+    for (let index = 0; index < youtubeRecords.length; index += 1) {
+      const youtubeRecord = youtubeRecords[index];
+
       await client.query(
         `
-          INSERT INTO material_youtube_urls (id, material_id, url, sort_order)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO material_youtube_urls (
+            id,
+            material_id,
+            url,
+            sort_order,
+            title,
+            author_name,
+            author_url,
+            thumbnail_url,
+            thumbnail_width,
+            thumbnail_height,
+            provider_name,
+            metadata_error
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         `,
-        [crypto.randomUUID(), materialId, input.youtubeUrls[index], index]
+        [
+          crypto.randomUUID(),
+          materialId,
+          youtubeRecord.url,
+          index,
+          youtubeRecord.title || '',
+          youtubeRecord.authorName || '',
+          youtubeRecord.authorUrl || '',
+          youtubeRecord.thumbnailUrl || '',
+          youtubeRecord.thumbnailWidth,
+          youtubeRecord.thumbnailHeight,
+          youtubeRecord.providerName || '',
+          youtubeRecord.error || '',
+        ]
       );
     }
 

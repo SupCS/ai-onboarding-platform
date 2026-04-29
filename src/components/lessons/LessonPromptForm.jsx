@@ -17,6 +17,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { useTaskTray } from '../providers/TaskTrayProvider';
 
 const depthOptions = [
   { value: 'intro', label: 'Intro' },
@@ -39,8 +40,9 @@ const formatOptions = [
 export default function LessonPromptForm({
   materials = [],
   onLessonGenerated,
-  showDebugActions = false,
+  onLessonGenerationStarted,
 }) {
+  const { addTask, updateTask } = useTaskTray();
   const [selectedMaterialIds, setSelectedMaterialIds] = useState([]);
   const [userInstructions, setUserInstructions] = useState('');
   const [depth, setDepth] = useState('standard');
@@ -77,9 +79,26 @@ export default function LessonPromptForm({
       return;
     }
 
+    let taskId = null;
+
     try {
       setIsSubmitting(true);
       setSubmitAction(action);
+      taskId = action === 'generate'
+        ? addTask({
+            title: 'Generating lesson',
+            description: selectedMaterials.length
+              ? `Preparing ${selectedMaterials.length} source material(s)...`
+              : 'Preparing prompt instructions...',
+          })
+        : null;
+
+      if (action === 'generate') {
+        onLessonGenerationStarted?.();
+        updateTask(taskId, {
+          description: 'Generating lesson with AI...',
+        });
+      }
 
       const response = await fetch('/api/lessons', {
         method: 'POST',
@@ -123,11 +142,26 @@ export default function LessonPromptForm({
       );
 
       if (action === 'generate' && data.lesson && onLessonGenerated) {
+        updateTask(taskId, {
+          description: 'Refreshing lesson library...',
+        });
         await onLessonGenerated(data.lesson);
+        updateTask(taskId, {
+          status: 'success',
+          description: data.lesson.title
+            ? `Lesson ready: ${data.lesson.title}`
+            : 'Lesson generated successfully.',
+        });
       }
     } catch (error) {
       console.error('Lesson request failed:', error);
       setErrorMessage(error.message || 'Lesson request failed.');
+      if (action === 'generate') {
+        updateTask(taskId, {
+          status: 'error',
+          description: error.message || 'Lesson generation failed.',
+        });
+      }
     } finally {
       setIsSubmitting(false);
       setSubmitAction('');
@@ -306,20 +340,6 @@ export default function LessonPromptForm({
 
         <Box>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            {showDebugActions && (
-              <Button
-                type="button"
-                variant="outlined"
-                size="large"
-                disabled={isSubmitting || !canSubmit}
-                onClick={() => submitLessonRequest('build-prompt')}
-              >
-                {isSubmitting && submitAction === 'build-prompt'
-                  ? 'Building prompt...'
-                  : 'Build prompt'}
-              </Button>
-            )}
-
             <Button
               type="submit"
               variant="contained"

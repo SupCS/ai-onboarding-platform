@@ -20,12 +20,32 @@ function normalizeText(value = '') {
 }
 
 function formatSourceMaterial(material) {
+  const youtubeTranscriptSections = (material.youtubeTranscripts || []).map((transcript) => {
+    const label = transcript.wasCondensed
+      ? 'Condensed YouTube transcript, filler removed'
+      : 'YouTube transcript';
+
+    if (transcript.preparedText) {
+      return [
+        `${label} for ${transcript.url}:`,
+        transcript.preparedText,
+      ].join('\n');
+    }
+
+    return [
+      `YouTube transcript unavailable for ${transcript.url}.`,
+      transcript.error ? `Reason: ${transcript.error}` : '',
+    ].filter(Boolean).join('\n');
+  });
   const sections = [
     `Source ${material.sourceNumber}: ${material.title}`,
     material.description ? `Description:\n${material.description}` : '',
     material.text ? `Extracted text:\n${material.text}` : '',
     material.youtubeUrls.length
       ? `YouTube URLs:\n${material.youtubeUrls.map((url) => `- ${url}`).join('\n')}`
+      : '',
+    youtubeTranscriptSections.length
+      ? `YouTube transcript context:\n${youtubeTranscriptSections.join('\n\n')}`
       : '',
     material.links.length
       ? `Links:\n${material.links.map((url) => `- ${url}`).join('\n')}`
