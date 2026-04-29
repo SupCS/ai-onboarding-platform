@@ -5,6 +5,7 @@ import QuizActivityPlayer from '../../../../../../components/lessons/QuizActivit
 import { getCurrentUser } from '../../../../../../lib/currentUser';
 import {
   getLessonActivityForUser,
+  getLessonActivityAttemptsForUser,
   getLessonById,
   getLessonEnrollmentForUser,
 } from '../../../../../../lib/lessons';
@@ -43,6 +44,10 @@ export default async function LessonActivityPage({ params }) {
     notFound();
   }
 
+  const attempts = activity.type === 'quiz'
+    ? await getLessonActivityAttemptsForUser(id, activityId, currentUser.id)
+    : [];
+
   return (
     <Box
       sx={{
@@ -60,6 +65,7 @@ export default async function LessonActivityPage({ params }) {
           <QuizActivityPlayer
             lesson={lesson}
             activity={activity}
+            initialAttempts={attempts}
           />
         ) : (
           <FlashcardsActivityPlayer

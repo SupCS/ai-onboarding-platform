@@ -8,7 +8,7 @@ export {
   LESSON_STATUSES,
 } from './lessonConstants.js';
 
-const LESSONS_SCHEMA_VERSION = 2;
+const LESSONS_SCHEMA_VERSION = 3;
 
 export async function ensureLessonsSchema(client = db) {
   const globalForLessons = globalThis;
@@ -142,6 +142,39 @@ async function ensureLessonsSchemaUncached(client = db) {
     CREATE INDEX IF NOT EXISTS user_lesson_activity_progress_lesson_idx
     ON user_lesson_activity_progress(user_id, lesson_id)
   `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS user_lesson_activity_attempts (
+      id TEXT PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      activity_id TEXT NOT NULL REFERENCES lesson_activities(id) ON DELETE CASCADE,
+      lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+      type TEXT NOT NULL,
+      attempt_number INTEGER NOT NULL,
+      score NUMERIC,
+      passed BOOLEAN NOT NULL DEFAULT false,
+      correct_count INTEGER NOT NULL DEFAULT 0,
+      total_count INTEGER NOT NULL DEFAULT 0,
+      submitted_answers JSONB NOT NULL DEFAULT '[]'::jsonb,
+      results JSONB NOT NULL DEFAULT '[]'::jsonb,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT user_lesson_activity_attempts_type_check
+        CHECK (type IN ('quiz', 'flashcards')),
+      CONSTRAINT user_lesson_activity_attempts_number_unique
+        UNIQUE (user_id, activity_id, attempt_number)
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS user_lesson_activity_attempts_user_activity_idx
+    ON user_lesson_activity_attempts(user_id, activity_id, created_at DESC)
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS user_lesson_activity_attempts_lesson_idx
+    ON user_lesson_activity_attempts(user_id, lesson_id, created_at DESC)
+  `);
 }
 
 function mapLesson(row, materialIds = [], extra = {}) {
@@ -207,6 +240,25 @@ function mapLessonActivitySummary(row) {
           isCompleted: Boolean(row.progress_completed_at),
         }
       : null,
+  };
+}
+
+function mapLessonActivityAttempt(row) {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    lessonId: row.lesson_id,
+    activityId: row.activity_id,
+    type: row.type,
+    attemptNumber: row.attempt_number,
+    score: row.score === null ? null : Number(row.score),
+    passed: Boolean(row.passed),
+    correctCount: row.correct_count,
+    totalCount: row.total_count,
+    submittedAnswers: row.submitted_answers || [],
+    results: row.results || [],
+    metadata: row.metadata || {},
+    createdAt: row.created_at,
   };
 }
 
@@ -845,6 +897,24 @@ export async function getLessonActivityForUser(lessonId, activityId, userId) {
   return mapLessonActivity(result.rows[0]);
 }
 
+export async function getLessonActivityAttemptsForUser(lessonId, activityId, userId) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      SELECT *
+      FROM user_lesson_activity_attempts
+      WHERE user_id = $1
+        AND lesson_id = $2
+        AND activity_id = $3
+      ORDER BY attempt_number DESC
+    `,
+    [userId, lessonId, activityId]
+  );
+
+  return result.rows.map(mapLessonActivityAttempt);
+}
+
 function isActivityPassed(activity) {
   if (activity.type === 'quiz') {
     return Boolean(activity.progress?.completedAt) && Number(activity.progress?.score || 0) >= 80;
@@ -1021,6 +1091,53 @@ export async function completeQuizActivityForUser(userId, lessonId, activityId, 
       results: attempt.results,
     };
 
+    const attemptNumberResult = await client.query(
+      `
+        SELECT COALESCE(MAX(attempt_number), 0) + 1 AS next_attempt_number
+        FROM user_lesson_activity_attempts
+        WHERE user_id = $1
+          AND activity_id = $2
+      `,
+      [userId, activityId]
+    );
+    const attemptNumber = Number(attemptNumberResult.rows[0]?.next_attempt_number || 1);
+
+    const attemptResult = await client.query(
+      `
+        INSERT INTO user_lesson_activity_attempts (
+          id,
+          user_id,
+          activity_id,
+          lesson_id,
+          type,
+          attempt_number,
+          score,
+          passed,
+          correct_count,
+          total_count,
+          submitted_answers,
+          results,
+          metadata
+        )
+        VALUES ($1, $2, $3, $4, 'quiz', $5, $6, $7, $8, $9, $10, $11, $12)
+        RETURNING *
+      `,
+      [
+        crypto.randomUUID(),
+        userId,
+        activityId,
+        lessonId,
+        attemptNumber,
+        attempt.score,
+        attempt.passed,
+        attempt.correctCount,
+        attempt.totalCount,
+        JSON.stringify(submittedAnswers || []),
+        JSON.stringify(attempt.results),
+        JSON.stringify(metadata),
+      ]
+    );
+
     const progressResult = await client.query(
       `
         INSERT INTO user_lesson_activity_progress (
@@ -1094,7 +1211,10 @@ export async function completeQuizActivityForUser(userId, lessonId, activityId, 
       activities,
       lessonCompleted,
       enrollment,
-      attempt,
+      attempt: {
+        ...attempt,
+        ...mapLessonActivityAttempt(attemptResult.rows[0]),
+      },
     };
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});

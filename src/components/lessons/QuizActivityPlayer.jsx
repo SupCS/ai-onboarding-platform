@@ -60,9 +60,21 @@ function buildInitialQuestions(questions) {
   }));
 }
 
+function formatAttemptDate(value) {
+  if (!value) {
+    return 'Just now';
+  }
+
+  return new Intl.DateTimeFormat('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
 export default function QuizActivityPlayer({
   lesson,
   activity,
+  initialAttempts = [],
 }) {
   const router = useRouter();
   const questions = useMemo(() => getQuestions(activity), [activity]);
@@ -75,6 +87,7 @@ export default function QuizActivityPlayer({
   );
   const [results, setResults] = useState(savedResults);
   const [score, setScore] = useState(activity.progress?.score ?? null);
+  const [attempts, setAttempts] = useState(initialAttempts);
   const [isSaving, setIsSaving] = useState(false);
   const [isConfettiActive, setIsConfettiActive] = useState(false);
   const [completedRoadmapsCelebration, setCompletedRoadmapsCelebration] = useState([]);
@@ -98,7 +111,8 @@ export default function QuizActivityPlayer({
     );
     setResults(savedResults);
     setScore(activity.progress?.score ?? null);
-  }, [activity.id, activity.progress?.score, questions, savedResults]);
+    setAttempts(initialAttempts);
+  }, [activity.id, activity.progress?.score, initialAttempts, questions, savedResults]);
 
   useEffect(() => {
     if (!isConfettiActive) {
@@ -160,6 +174,9 @@ export default function QuizActivityPlayer({
 
       setScore(nextScore);
       setResults(nextResults);
+      if (data.attempt?.id) {
+        setAttempts((current) => [data.attempt, ...current]);
+      }
       router.refresh();
 
       if (nextScore >= PASSING_SCORE) {
@@ -453,6 +470,67 @@ export default function QuizActivityPlayer({
             </Button>
           )}
         </Stack>
+
+        {attempts.length > 0 && (
+          <Paper
+            elevation={0}
+            sx={{
+              p: { xs: 2, md: 3 },
+              borderRadius: 3,
+              border: '1px solid rgba(15, 23, 42, 0.1)',
+              backgroundColor: '#fff',
+            }}
+          >
+            <Stack spacing={2}>
+              <Box>
+                <Typography variant="h6" sx={{ fontWeight: 900 }}>
+                  Attempt history
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Every submitted quiz attempt is saved for this user.
+                </Typography>
+              </Box>
+
+              <Stack spacing={1}>
+                {attempts.map((attempt) => (
+                  <Box
+                    key={attempt.id}
+                    sx={{
+                      display: 'grid',
+                      gridTemplateColumns: { xs: '1fr', sm: '1fr auto auto' },
+                      gap: 1,
+                      alignItems: 'center',
+                      p: 1.25,
+                      borderRadius: 2,
+                      backgroundColor: attempt.passed ? '#f0fdf4' : '#fff7ed',
+                      border: attempt.passed ? '1px solid #bbf7d0' : '1px solid #fed7aa',
+                    }}
+                  >
+                    <Box>
+                      <Typography sx={{ fontWeight: 900 }}>
+                        Attempt {attempt.attemptNumber}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatAttemptDate(attempt.createdAt)}
+                      </Typography>
+                    </Box>
+
+                    <Chip
+                      label={`${attempt.score ?? 0}%`}
+                      color={attempt.passed ? 'success' : 'warning'}
+                      sx={{ fontWeight: 900 }}
+                    />
+                    <Chip
+                      label={`${attempt.correctCount}/${attempt.totalCount} correct`}
+                      variant="outlined"
+                      sx={{ backgroundColor: '#fff', fontWeight: 800 }}
+                    />
+                  </Box>
+                ))}
+              </Stack>
+            </Stack>
+          </Paper>
+        )}
       </Stack>
 
       <Snackbar
