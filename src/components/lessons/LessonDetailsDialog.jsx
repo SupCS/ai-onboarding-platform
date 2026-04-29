@@ -23,9 +23,19 @@ import {
 } from '@mui/material';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined';
+import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
+import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
+import SourceOutlinedIcon from '@mui/icons-material/SourceOutlined';
+import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import LessonAttachments, { getSourceAttachments } from './LessonAttachments';
 import { SimpleEditor } from '../tiptap/tiptap-templates/simple/simple-editor';
 import { markdownToHtml } from '../../lib/lessonContent';
+import { AI_DIGITAL_COLORS, hexToRgba } from '../../lib/brandColors';
 
 function formatDateTime(isoString) {
   try {
@@ -72,6 +82,44 @@ const activityTypeOptions = [
 
 function getActivityTypeSettings(type) {
   return activityTypeOptions.find((option) => option.value === type) || activityTypeOptions[0];
+}
+
+function DetailPanel({ icon, title, children, accent = AI_DIGITAL_COLORS.yvesKleinBlue }) {
+  return (
+    <Paper
+      elevation={0}
+      sx={{
+        p: 2,
+        borderRadius: 2,
+        border: `1px solid ${hexToRgba(accent, 0.22)}`,
+        backgroundColor: '#fff',
+        boxShadow: `0 14px 34px ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.05)}`,
+      }}
+    >
+      <Stack spacing={1.5}>
+        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+          <Box
+            sx={{
+              width: 32,
+              height: 32,
+              borderRadius: 1.5,
+              display: 'grid',
+              placeItems: 'center',
+              color: AI_DIGITAL_COLORS.midnightCharcoal,
+              backgroundColor: hexToRgba(accent, 0.18),
+            }}
+          >
+            {icon}
+          </Box>
+          <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
+            {title}
+          </Typography>
+        </Stack>
+
+        {children}
+      </Stack>
+    </Paper>
+  );
 }
 
 export default function LessonDetailsDialog({
@@ -314,58 +362,103 @@ export default function LessonDetailsDialog({
       slotProps={{
         paper: {
           sx: {
-            height: '92vh',
-            borderRadius: 4,
+            height: '94vh',
+            borderRadius: 3,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            backgroundColor: AI_DIGITAL_COLORS.silverHaze,
+            border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.12)}`,
+            boxShadow: `0 28px 80px ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.2)}`,
           },
         },
       }}
     >
-      <DialogTitle sx={{ pr: 7, flex: '0 0 auto' }}>
-        <Stack spacing={1.5}>
-          <Typography variant="h4" sx={{ fontWeight: 900, lineHeight: 1.12 }}>
-            {lesson.title}
-          </Typography>
+      <DialogTitle
+        sx={{
+          p: 0,
+          flex: '0 0 auto',
+          color: '#fff',
+          background: `linear-gradient(115deg, ${AI_DIGITAL_COLORS.yvesKleinBlue} 0%, ${AI_DIGITAL_COLORS.violetPulse} 64%, ${AI_DIGITAL_COLORS.neonAzure} 100%)`,
+        }}
+      >
+        <Box sx={{ position: 'relative', px: { xs: 2, md: 3 }, py: { xs: 2, md: 2.5 }, pr: 8 }}>
+          <Stack spacing={1.5}>
+            <Stack
+              direction={{ xs: 'column', md: 'row' }}
+              spacing={1.5}
+              sx={{ alignItems: { xs: 'flex-start', md: 'center' }, justifyContent: 'space-between' }}
+            >
+              <Box sx={{ minWidth: 0 }}>
+                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
+                  <Chip
+                    icon={isEditing ? <EditOutlinedIcon /> : <VisibilityOutlinedIcon />}
+                    label={isEditing ? 'Editing lesson' : 'Lesson preview'}
+                    size="small"
+                    sx={{
+                      color: AI_DIGITAL_COLORS.midnightCharcoal,
+                      backgroundColor: AI_DIGITAL_COLORS.lime,
+                      fontWeight: 900,
+                      '& .MuiChip-icon': { color: AI_DIGITAL_COLORS.midnightCharcoal },
+                    }}
+                  />
+                  <Chip
+                    label={lesson.status}
+                    color={getStatusColor(lesson.status)}
+                    size="small"
+                    sx={{ backgroundColor: 'rgba(255,255,255,0.16)', color: '#fff', fontWeight: 800 }}
+                  />
+                </Stack>
 
-          <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-            <Chip
-              label={lesson.status}
-              color={getStatusColor(lesson.status)}
-              size="small"
-              variant="outlined"
-            />
-            <Chip
-              label={`Created ${formatDateTime(lesson.createdAt)}`}
-              size="small"
-            />
-            <Chip
-              label={`By ${lesson.createdBy || 'AI Onboarding'}`}
-              size="small"
-            />
-            {metadata.model && (
-              <Chip label={`Model: ${metadata.model}`} size="small" />
-            )}
-            {metadata.promptVersion && (
-              <Chip label={`Prompt: ${metadata.promptVersion}`} size="small" />
-            )}
-            {metadata.lastRevisionAt && (
-              <Chip label={`Revised ${formatDateTime(metadata.lastRevisionAt)}`} size="small" />
+                <Typography
+                  variant="h4"
+                  sx={{
+                    fontWeight: 950,
+                    lineHeight: 1.08,
+                    letterSpacing: 0,
+                    maxWidth: 980,
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {lesson.title}
+                </Typography>
+              </Box>
+
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                <Chip label={`Created ${formatDateTime(lesson.createdAt)}`} size="small" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.36)' }} variant="outlined" />
+                <Chip label={`By ${lesson.createdBy || 'AI Onboarding'}`} size="small" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.36)' }} variant="outlined" />
+              </Stack>
+            </Stack>
+
+            {(lesson.description || metadata.model || metadata.promptVersion || metadata.lastRevisionAt) && (
+              <Stack spacing={1}>
+                {lesson.description && (
+                  <Typography sx={{ maxWidth: 900, color: 'rgba(255,255,255,0.84)', lineHeight: 1.55 }}>
+                    {lesson.description}
+                  </Typography>
+                )}
+
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                  {metadata.model && <Chip label={`Model: ${metadata.model}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
+                  {metadata.promptVersion && <Chip label={`Prompt: ${metadata.promptVersion}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
+                  {metadata.lastRevisionAt && <Chip label={`Revised ${formatDateTime(metadata.lastRevisionAt)}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
+                </Stack>
+              </Stack>
             )}
           </Stack>
-
-          {lesson.description && (
-            <Typography variant="body1" color="text.secondary">
-              {lesson.description}
-            </Typography>
-          )}
-        </Stack>
+        </Box>
 
         <IconButton
           aria-label="Close lesson details"
           onClick={onClose}
-          sx={{ position: 'absolute', right: 16, top: 16 }}
+          sx={{
+            position: 'absolute',
+            right: 16,
+            top: 16,
+            color: '#fff',
+            backgroundColor: 'rgba(255,255,255,0.14)',
+            '&:hover': { backgroundColor: 'rgba(255,255,255,0.24)' },
+          }}
         >
           <CloseOutlinedIcon />
         </IconButton>
@@ -379,13 +472,16 @@ export default function LessonDetailsDialog({
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
+          p: { xs: 1.5, md: 2.5 },
+          borderColor: hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.1),
+          backgroundColor: AI_DIGITAL_COLORS.silverHaze,
         }}
       >
         <Box
           sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 320px' },
-            gap: 3,
+            gridTemplateColumns: { xs: '1fr', lg: 'minmax(0, 1fr) 340px' },
+            gap: 2.5,
             alignItems: 'stretch',
             flex: '1 1 auto',
             minHeight: 0,
@@ -395,18 +491,20 @@ export default function LessonDetailsDialog({
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 2, md: 3 },
-              borderRadius: 3,
-              border: '1px solid #e5e7eb',
+              borderRadius: 2,
+              border: `1px solid ${isEditing ? hexToRgba(AI_DIGITAL_COLORS.lime, 0.72) : '#e4e8f0'}`,
               backgroundColor: '#fff',
               minHeight: 0,
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
+              boxShadow: isEditing
+                ? `0 20px 52px ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.12)}`
+                : `0 18px 44px ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.06)}`,
             }}
           >
             {lesson.status === 'failed' ? (
-              <Stack spacing={1.5}>
+              <Stack spacing={1.5} sx={{ p: { xs: 2, md: 3 } }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <ErrorOutlineOutlinedIcon color="error" />
                   <Typography variant="h6" sx={{ fontWeight: 800 }}>
@@ -418,8 +516,45 @@ export default function LessonDetailsDialog({
                 </Typography>
               </Stack>
             ) : (
-              <Stack spacing={2.5} sx={{ minHeight: 0, overflow: 'auto' }}>
-                <Box sx={{ minHeight: 0 }}>
+              <Stack sx={{ minHeight: 0, overflow: 'hidden', height: '100%' }}>
+                <Box
+                  sx={{
+                    px: { xs: 1.5, md: 2 },
+                    py: 1.5,
+                    borderBottom: '1px solid #e8edf5',
+                    backgroundColor: isEditing ? hexToRgba(AI_DIGITAL_COLORS.lime, 0.16) : '#fff',
+                  }}
+                >
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1}
+                    sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between' }}
+                  >
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                      {isEditing ? <EditOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} /> : <VisibilityOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} />}
+                      <Box>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 900, lineHeight: 1.2 }}>
+                          {isEditing ? 'Editor mode' : 'Reading preview'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {isEditing ? 'Make changes in the rich-text canvas below.' : 'Review generated lesson content as learners will read it.'}
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    <Chip
+                      label={`${sourceReferences.length} source${sourceReferences.length === 1 ? '' : 's'} · ${activities.length} activit${activities.length === 1 ? 'y' : 'ies'}`}
+                      size="small"
+                      sx={{
+                        fontWeight: 800,
+                        color: AI_DIGITAL_COLORS.yvesKleinBlue,
+                        backgroundColor: hexToRgba(AI_DIGITAL_COLORS.skywave, 0.24),
+                      }}
+                    />
+                  </Stack>
+                </Box>
+
+                <Box sx={{ minHeight: 0, flex: '1 1 auto', overflow: 'hidden' }}>
                   <SimpleEditor
                     content={draftHtml}
                     editable={isEditing}
@@ -428,10 +563,23 @@ export default function LessonDetailsDialog({
                   />
                 </Box>
 
-                <LessonAttachments
-                  attachments={sourceAttachments}
-                  onOpenSourceMaterial={onOpenSourceMaterial}
-                />
+                {sourceAttachments.length > 0 && (
+                  <Box
+                    sx={{
+                      flex: '0 0 auto',
+                      p: { xs: 1.5, md: 2 },
+                      borderTop: '1px solid #e8edf5',
+                      backgroundColor: '#fff',
+                      maxHeight: 240,
+                      overflow: 'auto',
+                    }}
+                  >
+                    <LessonAttachments
+                      attachments={sourceAttachments}
+                      onOpenSourceMaterial={onOpenSourceMaterial}
+                    />
+                  </Box>
+                )}
               </Stack>
             )}
           </Paper>
@@ -444,19 +592,11 @@ export default function LessonDetailsDialog({
               pr: 0.5,
             }}
           >
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                borderRadius: 3,
-                border: '1px solid #e5e7eb',
-                backgroundColor: '#fff',
-              }}
+            <DetailPanel
+              title="Source materials"
+              icon={<SourceOutlinedIcon fontSize="small" />}
+              accent={AI_DIGITAL_COLORS.brightAqua}
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
-                Source materials
-              </Typography>
-
               {sourceReferences.length === 0 ? (
                 <Typography variant="body2" color="text.secondary">
                   No source snapshot found.
@@ -476,17 +616,17 @@ export default function LessonDetailsDialog({
                       sx={{
                         width: '100%',
                         p: 1,
-                        border: '1px solid #eef2f7',
+                        border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.brightAqua, 0.36)}`,
                         borderRadius: 2,
-                        backgroundColor: '#f8fafc',
+                        backgroundColor: hexToRgba(AI_DIGITAL_COLORS.brightAqua, 0.08),
                         textAlign: 'left',
                         cursor: onOpenSourceMaterial ? 'pointer' : 'default',
                         font: 'inherit',
                         transition: 'background-color 0.15s ease, border-color 0.15s ease',
                         '&:hover': onOpenSourceMaterial
                           ? {
-                              backgroundColor: '#eff6ff',
-                              borderColor: '#bfdbfe',
+                              backgroundColor: hexToRgba(AI_DIGITAL_COLORS.brightAqua, 0.16),
+                              borderColor: AI_DIGITAL_COLORS.neonAzure,
                             }
                           : undefined,
                       }}
@@ -503,31 +643,17 @@ export default function LessonDetailsDialog({
                   ))}
                 </Stack>
               )}
-            </Paper>
+            </DetailPanel>
 
-            <Paper
-              elevation={0}
-              sx={{
-                p: 2,
-                borderRadius: 3,
-                border: '1px solid #e5e7eb',
-                backgroundColor: '#fff',
-              }}
+            <DetailPanel
+              title="Generation"
+              icon={<TuneOutlinedIcon fontSize="small" />}
+              accent={AI_DIGITAL_COLORS.digitalLilac}
             >
-              <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
-                Generation
-              </Typography>
-
-              <Stack spacing={0.75}>
-                <Typography variant="body2" color="text.secondary">
-                  Depth: {lesson.depth || 'standard'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Tone: {lesson.tone || 'clear'}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Format: {lesson.desiredFormat || 'structured theoretical lesson'}
-                </Typography>
+              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                <Chip label={`Depth: ${lesson.depth || 'standard'}`} size="small" />
+                <Chip label={`Tone: ${lesson.tone || 'clear'}`} size="small" />
+                <Chip label={lesson.desiredFormat || 'structured theoretical lesson'} size="small" />
               </Stack>
 
               {lesson.userInstructions && (
@@ -541,23 +667,16 @@ export default function LessonDetailsDialog({
                   </Typography>
                 </>
               )}
-            </Paper>
+            </DetailPanel>
 
             {lesson.status !== 'failed' && (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2,
-                  borderRadius: 3,
-                  border: '1px solid #e5e7eb',
-                  backgroundColor: '#fff',
-                }}
+              <DetailPanel
+                title="Revise lesson"
+                icon={<AutoAwesomeOutlinedIcon fontSize="small" />}
+                accent={AI_DIGITAL_COLORS.pink}
               >
                 <Stack spacing={1.5}>
                   <Box>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.5 }}>
-                      Revise lesson
-                    </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Describe what should change. The system will decide how broad the rewrite needs to be.
                     </Typography>
@@ -594,8 +713,8 @@ export default function LessonDetailsDialog({
                       sx={{
                         p: 1.5,
                         borderRadius: 2,
-                        backgroundColor: '#f8fafc',
-                        border: '1px solid #eef2f7',
+                        backgroundColor: hexToRgba(AI_DIGITAL_COLORS.pink, 0.08),
+                        border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.pink, 0.22)}`,
                       }}
                     >
                       <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mb: 0.5 }}>
@@ -614,30 +733,24 @@ export default function LessonDetailsDialog({
 
                   <Button
                     variant="contained"
+                    startIcon={<AutoAwesomeOutlinedIcon />}
                     onClick={handleRevise}
                     disabled={isEditing || isDeleting || isSaving || isRevising}
                   >
                     {isRevising ? 'Revising lesson...' : 'Revise lesson'}
                   </Button>
                 </Stack>
-              </Paper>
+              </DetailPanel>
             )}
 
             {lesson.status !== 'failed' && (
-              <Paper
-                elevation={0}
-                sx={{
-                  p: 2,
-                  borderRadius: 3,
-                  border: '1px solid #e5e7eb',
-                  backgroundColor: '#fff',
-                }}
+              <DetailPanel
+                title="Generate activity"
+                icon={<QuizOutlinedIcon fontSize="small" />}
+                accent={AI_DIGITAL_COLORS.lime}
               >
                 <Stack spacing={1.5}>
                   <Box>
-                    <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 0.5 }}>
-                      Generate activity
-                    </Typography>
                     <Typography variant="body2" color="text.secondary">
                       Create a saved quiz or flashcards from this lesson. Passing flow comes later.
                     </Typography>
@@ -685,8 +798,8 @@ export default function LessonDetailsDialog({
                       sx={{
                         p: 1.5,
                         borderRadius: 2,
-                        backgroundColor: '#f8fafc',
-                        border: '1px solid #eef2f7',
+                        backgroundColor: hexToRgba(AI_DIGITAL_COLORS.lime, 0.1),
+                        border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.lime, 0.28)}`,
                       }}
                     >
                       <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mb: 0.5 }}>
@@ -704,22 +817,32 @@ export default function LessonDetailsDialog({
 
                   <Button
                     variant="contained"
+                    startIcon={<QuizOutlinedIcon />}
                     onClick={handleGenerateActivity}
                     disabled={isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
                   >
                     {isGeneratingActivity ? 'Generating activity...' : 'Generate activity'}
                   </Button>
                 </Stack>
-              </Paper>
+              </DetailPanel>
             )}
           </Stack>
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, py: 2, flex: '0 0 auto' }}>
+      <DialogActions
+        sx={{
+          px: { xs: 2, md: 3 },
+          py: 1.5,
+          flex: '0 0 auto',
+          borderTop: '1px solid #e4e8f0',
+          backgroundColor: '#fff',
+        }}
+      >
         <Button
           onClick={handleDelete}
           color="error"
+          startIcon={<DeleteOutlineOutlinedIcon />}
           disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
           sx={{ mr: 'auto' }}
         >
@@ -731,18 +854,33 @@ export default function LessonDetailsDialog({
             <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isDeleting || isGeneratingActivity}>
               Cancel
             </Button>
-            <Button onClick={handleSave} variant="contained" disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}>
+            <Button
+              onClick={handleSave}
+              variant="contained"
+              startIcon={<SaveOutlinedIcon />}
+              disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
+            >
               {isSaving ? 'Saving...' : 'Save changes'}
             </Button>
           </>
         ) : (
           lesson.status !== 'failed' && (
-            <Button onClick={() => setIsEditing(true)} variant="contained" disabled={isDeleting || isRevising || isGeneratingActivity}>
+            <Button
+              onClick={() => setIsEditing(true)}
+              variant="contained"
+              startIcon={<EditOutlinedIcon />}
+              disabled={isDeleting || isRevising || isGeneratingActivity}
+            >
               Edit lesson
             </Button>
           )
         )}
-        <Button onClick={onClose} color="inherit" disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}>
+        <Button
+          onClick={onClose}
+          color="inherit"
+          startIcon={<LibraryBooksOutlinedIcon />}
+          disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
+        >
           Close
         </Button>
       </DialogActions>

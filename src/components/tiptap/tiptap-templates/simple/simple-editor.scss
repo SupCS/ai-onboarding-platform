@@ -6,7 +6,7 @@
   max-height: calc(92vh - 190px);
   min-height: 520px;
   overflow: auto;
-  border-radius: 0.75rem;
+  border-radius: 0;
   background-color: var(--tt-bg-color);
   color: var(--tt-theme-text);
 }
@@ -16,14 +16,36 @@
   min-height: 0;
   height: 100%;
   max-height: none;
+  background: #ffffff;
 }
 
 .simple-editor-wrapper.lesson-details-editor .simple-editor-content {
   min-height: 0;
+  height: 100%;
+  overflow: auto;
 }
 
 .simple-editor-wrapper.lesson-details-editor .tiptap.ProseMirror.simple-editor {
   min-height: 100%;
+  max-width: 860px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2.75rem clamp(1.25rem, 4vw, 4rem) 4rem;
+  color: #172033;
+  font-size: 1rem;
+  line-height: 1.78;
+  background:
+    linear-gradient(90deg, rgba(0, 9, 220, 0.06) 0, rgba(0, 9, 220, 0.06) 3px, transparent 3px) 0 0 / 100% 100% no-repeat,
+    #ffffff;
+}
+
+.simple-editor-wrapper.lesson-details-editor:has(.tiptap-toolbar) .tiptap.ProseMirror.simple-editor {
+  max-width: none;
+  margin: 0;
+  padding: 2rem clamp(1rem, 3vw, 3rem) 4rem;
+  background:
+    linear-gradient(90deg, rgba(174, 243, 62, 0.38) 0, rgba(174, 243, 62, 0.38) 4px, transparent 4px) 0 0 / 100% 100% no-repeat,
+    #ffffff;
 }
 
 .simple-editor-wrapper .tiptap-toolbar[data-variant="fixed"] {
@@ -54,20 +76,27 @@
 .simple-editor-content .tiptap.ProseMirror.simple-editor h2,
 .simple-editor-content .tiptap.ProseMirror.simple-editor h3,
 .simple-editor-content .tiptap.ProseMirror.simple-editor h4 {
-  margin: 1.4em 0 0.55em;
+  margin: 1.35em 0 0.55em;
   line-height: 1.2;
+  color: #080808;
+  letter-spacing: 0;
 }
 
 .simple-editor-content .tiptap.ProseMirror.simple-editor h1 {
-  font-size: 2rem;
+  font-size: 2.05rem;
+  font-weight: 950;
 }
 
 .simple-editor-content .tiptap.ProseMirror.simple-editor h2 {
-  font-size: 1.5rem;
+  font-size: 1.45rem;
+  font-weight: 900;
+  border-bottom: 1px solid rgba(0, 9, 220, 0.14);
+  padding-bottom: 0.35rem;
 }
 
 .simple-editor-content .tiptap.ProseMirror.simple-editor h3 {
   font-size: 1.25rem;
+  font-weight: 850;
 }
 
 .simple-editor-content .tiptap.ProseMirror.simple-editor p {
@@ -81,16 +110,41 @@
 }
 
 .simple-editor-content .tiptap.ProseMirror.simple-editor blockquote {
-  border-left: 4px solid #93c5fd;
+  border-left: 4px solid #0009dc;
   margin: 1rem 0;
-  padding: 0.25rem 0 0.25rem 1rem;
-  color: #374151;
-  background: #eff6ff;
+  padding: 0.55rem 1rem;
+  color: #172033;
+  background: rgba(142, 231, 241, 0.2);
   border-radius: 0.5rem;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor a {
+  color: #0009dc;
+  font-weight: 750;
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 9, 220, 0.28);
+  text-underline-offset: 0.18em;
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor code {
+  border-radius: 0.35rem;
+  padding: 0.12rem 0.35rem;
+  color: #080808;
+  background: rgba(174, 243, 62, 0.32);
+}
+
+.simple-editor-content .tiptap.ProseMirror.simple-editor hr {
+  border: 0;
+  border-top: 1px solid rgba(0, 9, 220, 0.16);
+  margin: 2rem 0;
 }
 
 @media screen and (max-width: 480px) {
   .simple-editor-content .tiptap.ProseMirror.simple-editor {
     padding: 1rem;
+  }
+
+  .simple-editor-wrapper.lesson-details-editor .tiptap.ProseMirror.simple-editor {
+    padding: 1.25rem 1rem 2.5rem;
   }
 }

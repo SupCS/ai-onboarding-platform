@@ -25,6 +25,7 @@ import SmartDisplayOutlinedIcon from '@mui/icons-material/SmartDisplayOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import TextSnippetOutlinedIcon from '@mui/icons-material/TextSnippetOutlined';
 import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined';
+import { AI_DIGITAL_COLORS, hexToRgba } from '../../lib/brandColors';
 
 function formatDate(isoString) {
   try {
@@ -93,6 +94,48 @@ function Section({ icon, title, children }) {
   );
 }
 
+const badgeStyles = [
+  {
+    backgroundColor: hexToRgba(AI_DIGITAL_COLORS.lime, 0.72),
+    color: AI_DIGITAL_COLORS.midnightCharcoal,
+  },
+  {
+    backgroundColor: hexToRgba(AI_DIGITAL_COLORS.brightAqua, 0.62),
+    color: AI_DIGITAL_COLORS.midnightCharcoal,
+  },
+  {
+    backgroundColor: hexToRgba(AI_DIGITAL_COLORS.pink, 0.26),
+    color: AI_DIGITAL_COLORS.midnightCharcoal,
+  },
+  {
+    backgroundColor: hexToRgba(AI_DIGITAL_COLORS.skywave, 0.5),
+    color: AI_DIGITAL_COLORS.midnightCharcoal,
+  },
+  {
+    backgroundColor: hexToRgba(AI_DIGITAL_COLORS.digitalLilac, 0.48),
+    color: AI_DIGITAL_COLORS.midnightCharcoal,
+  },
+];
+
+function MaterialBadge({ label, index = 0 }) {
+  return (
+    <Chip
+      label={label}
+      size="small"
+      sx={{
+        ...badgeStyles[index % badgeStyles.length],
+        height: 26,
+        borderRadius: 999,
+        fontWeight: 850,
+        border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.08)}`,
+        '& .MuiChip-label': {
+          px: 1.1,
+        },
+      }}
+    />
+  );
+}
+
 export default function MaterialDetailsDialog({
   material,
   open,
@@ -131,20 +174,20 @@ export default function MaterialDetailsDialog({
           </Typography>
 
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-            <Chip label={`Added ${formatDate(material.createdAt)}`} size="small" />
+            <MaterialBadge label={`Added ${formatDate(material.createdAt)}`} index={0} />
             {material.youtubeUrls?.length > 0 && (
-              <Chip label={`${material.youtubeUrls.length} video(s)`} size="small" />
+              <MaterialBadge label={`${material.youtubeUrls.length} video(s)`} index={1} />
             )}
             {material.links?.length > 0 && (
-              <Chip label={`${material.links.length} link(s)`} size="small" />
+              <MaterialBadge label={`${material.links.length} link(s)`} index={2} />
             )}
             {imageAttachments.length > 0 && (
-              <Chip label={`${imageAttachments.length} image(s)`} size="small" />
+              <MaterialBadge label={`${imageAttachments.length} image(s)`} index={3} />
             )}
             {fileAttachments.length > 0 && (
-              <Chip label={`${fileAttachments.length} file(s)`} size="small" />
+              <MaterialBadge label={`${fileAttachments.length} file(s)`} index={4} />
             )}
-            {material.text && <Chip label="Text included" size="small" />}
+            {material.text && <MaterialBadge label="Text included" index={5} />}
           </Stack>
 
           {material.description && (
@@ -187,10 +230,37 @@ export default function MaterialDetailsDialog({
 
       <DialogContent dividers>
         <Stack spacing={3}>
+          {material.text && (
+            <>
+              <Section
+                icon={<TextSnippetOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} />}
+                title="Text"
+              >
+                <Paper
+                  elevation={0}
+                  sx={{
+                    p: 2.5,
+                    borderRadius: 3,
+                    border: '1px solid #e5e7eb',
+                    backgroundColor: '#fff',
+                  }}
+                >
+                  <Typography
+                    variant="body1"
+                    sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
+                  >
+                    {material.text}
+                  </Typography>
+                </Paper>
+              </Section>
+              <Divider />
+            </>
+          )}
+
           {material.youtubeUrls?.length > 0 && (
             <>
               <Section
-                icon={<SmartDisplayOutlinedIcon color="action" />}
+                icon={<SmartDisplayOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} />}
                 title="Videos"
               >
                 <Stack spacing={2}>
@@ -259,7 +329,7 @@ export default function MaterialDetailsDialog({
           {imageAttachments.length > 0 && (
             <>
               <Section
-                icon={<ImageOutlinedIcon color="action" />}
+                icon={<ImageOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} />}
                 title="Images"
               >
                 <Box
@@ -279,30 +349,62 @@ export default function MaterialDetailsDialog({
                       sx={{
                         p: 1.5,
                         borderRadius: 3,
-                        border: '1px solid #e5e7eb',
+                        border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.12)}`,
                         backgroundColor: '#fff',
+                        height: { xs: 430, sm: 456 },
+                        display: 'flex',
+                        flexDirection: 'column',
+                        boxShadow: `0 12px 34px ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.05)}`,
                       }}
                     >
-                      <Stack spacing={1.5}>
+                      <Stack spacing={1.5} sx={{ minHeight: 0, height: '100%' }}>
                         <Box
-                          component="img"
-                          src={attachment.previewUrl}
-                          alt={attachment.name}
                           sx={{
                             width: '100%',
-                            maxHeight: 360,
-                            objectFit: 'contain',
+                            height: { xs: 288, sm: 320 },
+                            flex: '0 0 auto',
+                            display: 'grid',
+                            placeItems: 'center',
+                            overflow: 'hidden',
                             borderRadius: 2,
-                            backgroundColor: '#f8fafc',
+                            backgroundColor: hexToRgba(AI_DIGITAL_COLORS.skywave, 0.12),
                           }}
-                        />
+                        >
+                          <Box
+                            component="img"
+                            src={attachment.previewUrl}
+                            alt={attachment.name}
+                            sx={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              display: 'block',
+                            }}
+                          />
+                        </Box>
                         <Stack
                           direction={{ xs: 'column', sm: 'row' }}
                           spacing={1}
-                          sx={{ justifyContent: 'space-between' }}
+                          sx={{
+                            flex: '1 1 auto',
+                            minHeight: 0,
+                            justifyContent: 'space-between',
+                            alignItems: { xs: 'stretch', sm: 'flex-end' },
+                          }}
                         >
-                          <Box sx={{ minWidth: 0 }}>
-                            <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                          <Box sx={{ minWidth: 0, pr: { sm: 1 } }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontWeight: 800,
+                                lineHeight: 1.25,
+                                display: '-webkit-box',
+                                overflow: 'hidden',
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: 'vertical',
+                                wordBreak: 'break-word',
+                              }}
+                            >
                               {attachment.name}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
@@ -318,6 +420,18 @@ export default function MaterialDetailsDialog({
                               variant="outlined"
                               size="small"
                               endIcon={<OpenInNewOutlinedIcon />}
+                              sx={{
+                                flex: '0 0 auto',
+                                alignSelf: { xs: 'flex-start', sm: 'flex-end' },
+                                borderColor: AI_DIGITAL_COLORS.yvesKleinBlue,
+                                color: AI_DIGITAL_COLORS.yvesKleinBlue,
+                                fontWeight: 850,
+                                minWidth: 82,
+                                '&:hover': {
+                                  borderColor: AI_DIGITAL_COLORS.yvesKleinBlue,
+                                  backgroundColor: hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.06),
+                                },
+                              }}
                             >
                               Open
                             </Button>
@@ -332,37 +446,10 @@ export default function MaterialDetailsDialog({
             </>
           )}
 
-          {material.text && (
-            <>
-              <Section
-                icon={<TextSnippetOutlinedIcon color="action" />}
-                title="Text"
-              >
-                <Paper
-                  elevation={0}
-                  sx={{
-                    p: 2.5,
-                    borderRadius: 3,
-                    border: '1px solid #e5e7eb',
-                    backgroundColor: '#fff',
-                  }}
-                >
-                  <Typography
-                    variant="body1"
-                    sx={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}
-                  >
-                    {material.text}
-                  </Typography>
-                </Paper>
-              </Section>
-              <Divider />
-            </>
-          )}
-
           {material.links?.length > 0 && (
             <>
               <Section
-                icon={<LinkOutlinedIcon color="action" />}
+                icon={<LinkOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} />}
                 title="Links"
               >
                 <Stack spacing={1.25}>
@@ -396,7 +483,7 @@ export default function MaterialDetailsDialog({
 
           {fileAttachments.length > 0 && (
             <Section
-              icon={<DescriptionOutlinedIcon color="action" />}
+              icon={<DescriptionOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} />}
               title="Files"
             >
               <Stack spacing={1.25}>
@@ -407,7 +494,7 @@ export default function MaterialDetailsDialog({
                     sx={{
                       p: 2,
                       borderRadius: 3,
-                      border: '1px solid #e5e7eb',
+                      border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.12)}`,
                       backgroundColor: '#fff',
                     }}
                   >
@@ -435,6 +522,14 @@ export default function MaterialDetailsDialog({
                           rel="noreferrer"
                           variant="contained"
                           endIcon={<OpenInNewOutlinedIcon />}
+                          sx={{
+                            flex: '0 0 auto',
+                            fontWeight: 850,
+                            backgroundColor: AI_DIGITAL_COLORS.yvesKleinBlue,
+                            '&:hover': {
+                              backgroundColor: '#0007B8',
+                            },
+                          }}
                         >
                           Open file
                         </Button>

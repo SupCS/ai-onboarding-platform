@@ -2,18 +2,19 @@
 
 import { AppRouterCacheProvider } from '@mui/material-nextjs/v16-appRouter';
 import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { AI_DIGITAL_COLORS } from '../../lib/brandColors';
 
 const theme = createTheme({
   palette: {
     mode: 'light',
     primary: {
-      main: '#1976d2',
+      main: AI_DIGITAL_COLORS.yvesKleinBlue,
     },
     secondary: {
-      main: '#7c4dff',
+      main: AI_DIGITAL_COLORS.pink,
     },
     background: {
-      default: '#f7f8fc',
+      default: AI_DIGITAL_COLORS.silverHaze,
     },
   },
   shape: {
