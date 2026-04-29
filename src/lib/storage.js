@@ -34,6 +34,23 @@ export async function getPreviewUrl(storageKey, options = {}) {
   return getObjectUrl(storageKey, options);
 }
 
+export async function getObjectBuffer(storageKey) {
+  const result = await storage.send(
+    new GetObjectCommand({
+      Bucket: bucketName,
+      Key: storageKey,
+    })
+  );
+
+  const chunks = [];
+
+  for await (const chunk of result.Body) {
+    chunks.push(Buffer.from(chunk));
+  }
+
+  return Buffer.concat(chunks);
+}
+
 export async function deleteStorageObjects(storageKeys = []) {
   const uniqueKeys = [...new Set(storageKeys.filter(Boolean))];
 

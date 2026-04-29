@@ -531,6 +531,11 @@ export default function LibraryClient() {
           mimeType: attachment.mimeType || '',
           sizeBytes: attachment.size || 0,
           kind: attachment.kind,
+          openaiFileId: attachment.openaiFileId || '',
+          openaiFilePurpose: attachment.openaiFilePurpose || '',
+          openaiFileStatus: attachment.openaiFileStatus || '',
+          openaiFileError: attachment.openaiFileError || '',
+          openaiUploadedAt: attachment.openaiUploadedAt || null,
         })
       );
 

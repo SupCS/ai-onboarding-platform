@@ -90,8 +90,14 @@ function formatSourceMaterial(material) {
       ? `Links:\n${material.links.map((url) => `- ${url}`).join('\n')}`
       : '',
     material.attachments.length
-      ? `Attachments, metadata only:\n${material.attachments
-          .map((attachment) => `- ${attachment.name} (${attachment.kind})`)
+      ? `Attachments:\n${material.attachments
+          .map((attachment) => {
+            const openaiStatus = attachment.openaiFileId
+              ? `attached to this OpenAI request as ${attachment.openaiFileId}`
+              : 'metadata only';
+
+            return `- ${attachment.name} (${attachment.kind}, ${attachment.mimeType || 'unknown MIME'}, ${openaiStatus})`;
+          })
           .join('\n')}`
       : '',
   ];
@@ -145,6 +151,7 @@ function formatSignals(signals) {
 
 export function buildTheoreticalLessonPrompt({
   preparedMaterials,
+  fileInputs = [],
   userInstructions = '',
   depth = 'standard',
   tone = 'clear',
@@ -186,6 +193,7 @@ export function buildTheoreticalLessonPrompt({
     cacheKey: LESSON_PROMPT_VERSION,
     instructions: LESSON_INSTRUCTIONS,
     input,
+    fileInputs,
     messages: [
       {
         role: 'system',

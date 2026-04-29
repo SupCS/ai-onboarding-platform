@@ -22,6 +22,13 @@ function extractResponseText(data) {
 async function createOpenAIResponse(prompt, options = {}) {
   const apiKey = process.env.OPENAI_API_KEY;
   const model = options.model || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+  const content = [
+    {
+      type: 'input_text',
+      text: prompt.input,
+    },
+    ...(prompt.fileInputs || []),
+  ];
 
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY is not configured.');
@@ -36,7 +43,14 @@ async function createOpenAIResponse(prompt, options = {}) {
     body: JSON.stringify({
       model,
       instructions: prompt.instructions,
-      input: prompt.input,
+      input: prompt.fileInputs?.length
+        ? [
+            {
+              role: 'user',
+              content,
+            },
+          ]
+        : prompt.input,
       prompt_cache_key: prompt.cacheKey || prompt.version,
       ...(options.promptCacheRetention
         ? { prompt_cache_retention: options.promptCacheRetention }

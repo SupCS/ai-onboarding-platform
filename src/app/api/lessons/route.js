@@ -9,6 +9,12 @@ import {
 } from '../../../lib/lessons';
 import { extractHtmlTitle, looksLikeHtml, markdownToHtml } from '../../../lib/lessonContent';
 import { loadAndPrepareMaterialsForLesson } from '../../../lib/materialPreparation';
+import { updateMaterialFileOpenAIUpload } from '../../../lib/materials';
+import {
+  getOpenAIFileInputType,
+  getOpenAIFilePurpose,
+  uploadMaterialFileToOpenAI,
+} from '../../../lib/openaiFiles';
 import { requireApiUser } from '../../../lib/apiAuth';
 
 export const runtime = 'nodejs';
@@ -47,6 +53,81 @@ function serializePreparedMaterials(preparedMaterials) {
     signals: preparedMaterials.signals,
     overlaps: preparedMaterials.overlaps,
     stats: preparedMaterials.stats,
+  };
+}
+
+async function prepareOpenAIFileInputs(preparedMaterials) {
+  const fileInputs = [];
+  const attachedFiles = [];
+
+  for (const material of preparedMaterials.materials) {
+    for (const attachment of material.attachments || []) {
+      const inputType = getOpenAIFileInputType(attachment);
+
+      if (!inputType) {
+        continue;
+      }
+
+      try {
+        let openaiFileId = attachment.openaiFileId;
+        let openaiFilePurpose = attachment.openaiFilePurpose || getOpenAIFilePurpose(attachment);
+
+        if (!openaiFileId) {
+          const upload = await uploadMaterialFileToOpenAI(attachment);
+
+          if (!upload?.id) {
+            continue;
+          }
+
+          openaiFileId = upload.id;
+          openaiFilePurpose = upload.purpose;
+
+          await updateMaterialFileOpenAIUpload(attachment.id, {
+            openaiFileId,
+            openaiFilePurpose,
+            openaiFileStatus: 'uploaded',
+            openaiFileError: '',
+          });
+        }
+
+        attachment.openaiFileId = openaiFileId;
+        attachment.openaiFilePurpose = openaiFilePurpose;
+        attachment.openaiFileStatus = 'uploaded';
+        attachment.openaiFileError = '';
+
+        fileInputs.push({
+          type: inputType,
+          file_id: openaiFileId,
+        });
+        attachedFiles.push({
+          materialId: material.id,
+          materialTitle: material.title,
+          attachmentId: attachment.id,
+          name: attachment.name,
+          mimeType: attachment.mimeType,
+          inputType,
+          openaiFileId,
+          openaiFilePurpose,
+        });
+      } catch (error) {
+        attachment.openaiFileStatus = 'failed';
+        attachment.openaiFileError = error.message || 'OpenAI file upload failed.';
+
+        await updateMaterialFileOpenAIUpload(attachment.id, {
+          openaiFileId: attachment.openaiFileId || '',
+          openaiFilePurpose: attachment.openaiFilePurpose || getOpenAIFilePurpose(attachment),
+          openaiFileStatus: 'failed',
+          openaiFileError: attachment.openaiFileError,
+        });
+
+        throw new Error(`Failed to attach "${attachment.name}" to OpenAI: ${attachment.openaiFileError}`);
+      }
+    }
+  }
+
+  return {
+    fileInputs,
+    attachedFiles,
   };
 }
 
@@ -94,16 +175,8 @@ export async function POST(request) {
       );
     }
 
-    const preparedMaterials = await loadAndPrepareMaterialsForLesson(materialIds);
-    const prompt = buildTheoreticalLessonPrompt({
-      preparedMaterials,
-      userInstructions,
-      depth,
-      tone,
-      desiredFormat,
-    });
-
     if (action === 'generate') {
+      const preparedMaterials = await loadAndPrepareMaterialsForLesson(materialIds);
       const lesson = await createLessonDraft({
         title: buildLessonTitle(preparedMaterials.sourceReferences),
         description:
@@ -117,13 +190,29 @@ export async function POST(request) {
         desiredFormat,
         createdBy: user.name,
       });
-
-      await markLessonGenerating(lesson.id, {
-        promptVersion: prompt.version,
-        preparedMaterials: serializePreparedMaterials(preparedMaterials),
-      });
+      let promptVersion = 'file-input-preparation-or-generation';
+      let attachedFiles = [];
 
       try {
+        const filePreparation = await prepareOpenAIFileInputs(preparedMaterials);
+        const fileInputs = filePreparation.fileInputs;
+        attachedFiles = filePreparation.attachedFiles;
+        const prompt = buildTheoreticalLessonPrompt({
+          preparedMaterials,
+          fileInputs,
+          userInstructions,
+          depth,
+          tone,
+          desiredFormat,
+        });
+        promptVersion = prompt.version;
+
+        await markLessonGenerating(lesson.id, {
+          promptVersion: prompt.version,
+          preparedMaterials: serializePreparedMaterials(preparedMaterials),
+          attachedFiles,
+        });
+
         const generatedLesson = await generateLessonContent(prompt);
         const generatedContent = generatedLesson.content;
         const generatedHtml = looksLikeHtml(generatedContent)
@@ -138,6 +227,7 @@ export async function POST(request) {
           generationMetadata: {
             ...generatedLesson.metadata,
             preparedMaterials: serializePreparedMaterials(preparedMaterials),
+            attachedFiles,
           },
         });
 
@@ -156,8 +246,9 @@ export async function POST(request) {
         const failedLesson = await markLessonFailed(lesson.id, {
           generationMetadata: {
             provider: 'openai',
-            promptVersion: prompt.version,
+            promptVersion,
             preparedMaterials: serializePreparedMaterials(preparedMaterials),
+            attachedFiles,
             failedAt: new Date().toISOString(),
           },
           errorMessage: generationError.message || 'Lesson generation failed.',
@@ -168,6 +259,15 @@ export async function POST(request) {
         });
       }
     }
+
+    const preparedMaterials = await loadAndPrepareMaterialsForLesson(materialIds);
+    const prompt = buildTheoreticalLessonPrompt({
+      preparedMaterials,
+      userInstructions,
+      depth,
+      tone,
+      desiredFormat,
+    });
 
     console.log('Generated theoretical lesson prompt:', {
       promptVersion: prompt.version,

@@ -1,7 +1,20 @@
 import crypto from 'crypto';
 import { db } from './db.js';
 
+async function ensureMaterialFileOpenAIColumns(client = db) {
+  await client.query(`
+    ALTER TABLE material_files
+    ADD COLUMN IF NOT EXISTS openai_file_id TEXT,
+    ADD COLUMN IF NOT EXISTS openai_file_purpose TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS openai_file_status TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS openai_file_error TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS openai_uploaded_at TIMESTAMPTZ
+  `);
+}
+
 export async function getAllMaterials() {
+  await ensureMaterialFileOpenAIColumns();
+
   const materialsResult = await db.query(`
     SELECT id, title, description, text_content, created_at, updated_at
     FROM materials
@@ -21,7 +34,19 @@ export async function getAllMaterials() {
   `);
 
   const filesResult = await db.query(`
-    SELECT material_id, id, original_name, storage_key, mime_type, size_bytes, kind
+    SELECT
+      material_id,
+      id,
+      original_name,
+      storage_key,
+      mime_type,
+      size_bytes,
+      kind,
+      openai_file_id,
+      openai_file_purpose,
+      openai_file_status,
+      openai_file_error,
+      openai_uploaded_at
     FROM material_files
     ORDER BY created_at ASC
   `);
@@ -48,6 +73,11 @@ export async function getAllMaterials() {
         mimeType: item.mime_type,
         size: Number(item.size_bytes || 0),
         kind: item.kind,
+        openaiFileId: item.openai_file_id || '',
+        openaiFilePurpose: item.openai_file_purpose || '',
+        openaiFileStatus: item.openai_file_status || '',
+        openaiFileError: item.openai_file_error || '',
+        openaiUploadedAt: item.openai_uploaded_at,
       })),
   }));
 }
@@ -72,6 +102,7 @@ export async function createMaterial(input) {
 
   try {
     await client.query('BEGIN');
+    await ensureMaterialFileOpenAIColumns(client);
 
     const materialId = crypto.randomUUID();
 
@@ -110,12 +141,17 @@ export async function createMaterial(input) {
             id,
             material_id,
             original_name,
-            storage_key,
-            mime_type,
-            size_bytes,
-            kind
+          storage_key,
+          mime_type,
+          size_bytes,
+          kind,
+          openai_file_id,
+          openai_file_purpose,
+          openai_file_status,
+          openai_file_error,
+          openai_uploaded_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         `,
         [
           crypto.randomUUID(),
@@ -125,6 +161,11 @@ export async function createMaterial(input) {
           attachment.mimeType || '',
           attachment.sizeBytes || 0,
           attachment.kind,
+          attachment.openaiFileId || null,
+          attachment.openaiFilePurpose || '',
+          attachment.openaiFileStatus || '',
+          attachment.openaiFileError || '',
+          attachment.openaiUploadedAt || null,
         ]
       );
     }
@@ -158,6 +199,7 @@ export async function deleteMaterialById(materialId) {
       await client.query('ROLLBACK');
       return null;
     }
+    await ensureMaterialFileOpenAIColumns(client);
 
     const filesResult = await client.query(
       `
@@ -233,6 +275,7 @@ export async function updateMaterialById(materialId, input) {
       await client.query('ROLLBACK');
       return null;
     }
+    await ensureMaterialFileOpenAIColumns(client);
 
     const existingFilesResult = await client.query(
       `
@@ -310,9 +353,14 @@ export async function updateMaterialById(materialId, input) {
             storage_key,
             mime_type,
             size_bytes,
-            kind
+            kind,
+            openai_file_id,
+            openai_file_purpose,
+            openai_file_status,
+            openai_file_error,
+            openai_uploaded_at
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         `,
         [
           attachment.id || crypto.randomUUID(),
@@ -322,6 +370,11 @@ export async function updateMaterialById(materialId, input) {
           attachment.mimeType || '',
           attachment.sizeBytes || 0,
           attachment.kind,
+          attachment.openaiFileId || null,
+          attachment.openaiFilePurpose || '',
+          attachment.openaiFileStatus || '',
+          attachment.openaiFileError || '',
+          attachment.openaiUploadedAt || null,
         ]
       );
     }
@@ -344,4 +397,48 @@ export async function updateMaterialById(materialId, input) {
   } finally {
     client.release();
   }
+}
+
+export async function updateMaterialFileOpenAIUpload(fileId, input) {
+  await ensureMaterialFileOpenAIColumns();
+
+  const result = await db.query(
+    `
+      UPDATE material_files
+      SET
+        openai_file_id = $2,
+        openai_file_purpose = $3,
+        openai_file_status = $4,
+        openai_file_error = $5,
+        openai_uploaded_at = CASE WHEN $2::text IS NULL OR $2::text = '' THEN openai_uploaded_at ELSE NOW() END
+      WHERE id = $1
+      RETURNING
+        id,
+        openai_file_id,
+        openai_file_purpose,
+        openai_file_status,
+        openai_file_error,
+        openai_uploaded_at
+    `,
+    [
+      fileId,
+      input.openaiFileId || null,
+      input.openaiFilePurpose || '',
+      input.openaiFileStatus || '',
+      input.openaiFileError || '',
+    ]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return {
+    id: result.rows[0].id,
+    openaiFileId: result.rows[0].openai_file_id || '',
+    openaiFilePurpose: result.rows[0].openai_file_purpose || '',
+    openaiFileStatus: result.rows[0].openai_file_status || '',
+    openaiFileError: result.rows[0].openai_file_error || '',
+    openaiUploadedAt: result.rows[0].openai_uploaded_at,
+  };
 }

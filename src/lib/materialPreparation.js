@@ -29,9 +29,15 @@ function normalizeAttachment(attachment) {
   return {
     id: attachment.id,
     name: attachment.name || 'Untitled attachment',
+    storageKey: attachment.storageKey || '',
     mimeType: attachment.mimeType || '',
     kind: attachment.kind || 'file',
     size: Number(attachment.size || 0),
+    openaiFileId: attachment.openaiFileId || '',
+    openaiFilePurpose: attachment.openaiFilePurpose || '',
+    openaiFileStatus: attachment.openaiFileStatus || '',
+    openaiFileError: attachment.openaiFileError || '',
+    openaiUploadedAt: attachment.openaiUploadedAt || null,
   };
 }
 
@@ -194,6 +200,8 @@ function buildSourceReferences(materials) {
       name: attachment.name,
       kind: attachment.kind,
       mimeType: attachment.mimeType,
+      openaiFileId: attachment.openaiFileId,
+      openaiFileStatus: attachment.openaiFileStatus,
     })),
   }));
 }
