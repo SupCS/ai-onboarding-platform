@@ -127,6 +127,35 @@
   text-underline-offset: 0.18em;
 }
 
+.simple-editor-wrapper.lesson-details-editor .tiptap.ProseMirror.simple-editor a[href] {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(100%, 24rem);
+  min-height: 1.55rem;
+  margin: 0 0.12rem;
+  padding: 0.12rem 0.52rem;
+  border: 1px solid rgba(0, 9, 220, 0.18);
+  border-radius: 999px;
+  color: #0009dc;
+  background: rgba(142, 231, 241, 0.2);
+  font-size: 0.88em;
+  font-weight: 850;
+  line-height: 1.2;
+  text-decoration: none;
+  vertical-align: baseline;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.simple-editor-wrapper.lesson-details-editor .tiptap.ProseMirror.simple-editor a[href]::after {
+  content: ">";
+  flex: 0 0 auto;
+  margin-left: 0.35rem;
+  font-size: 0.78em;
+  line-height: 1;
+}
+
 .simple-editor-content .tiptap.ProseMirror.simple-editor code {
   border-radius: 0.35rem;
   padding: 0.12rem 0.35rem;

@@ -5,7 +5,6 @@ import { EditorContent, EditorContext, useEditor } from "@tiptap/react"
 
 // --- Tiptap Core Extensions ---
 import { StarterKit } from "@tiptap/starter-kit"
-import { Image } from "@tiptap/extension-image"
 import { TaskItem, TaskList } from "@tiptap/extension-list"
 import { TextAlign } from "@tiptap/extension-text-align"
 import { Typography } from "@tiptap/extension-typography"
@@ -25,6 +24,7 @@ import {
 
 // --- Tiptap Node ---
 import { HorizontalRule } from "@/components/tiptap/tiptap-node/horizontal-rule-node/horizontal-rule-node-extension"
+import { ResizableImage as Image } from "@/components/tiptap/tiptap-node/resizable-image-node/resizable-image-extension"
 import "@/components/tiptap-node/blockquote-node/blockquote-node.scss"
 import "@/components/tiptap-node/code-block-node/code-block-node.scss"
 import "@/components/tiptap-node/horizontal-rule-node/horizontal-rule-node.scss"
@@ -153,6 +153,7 @@ export function SimpleEditor({
   const [mobileView, setMobileView] = useState("main")
   const toolbarRef = useRef(null)
   const latestContentRef = useRef(content)
+  const editableRef = useRef(editable)
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -164,6 +165,20 @@ export function SimpleEditor({
         autocapitalize: "off",
         "aria-label": "Main content area, start typing to enter text.",
         class: "simple-editor",
+      },
+      handleClick: (_view, _pos, event) => {
+        if (editableRef.current) {
+          return false
+        }
+
+        const link = event.target?.closest?.("a[href]")
+
+        if (!link) {
+          return false
+        }
+
+        window.open(link.href, "_blank", "noopener,noreferrer")
+        return true
       },
     },
     extensions: [
@@ -209,6 +224,7 @@ export function SimpleEditor({
       return
     }
 
+    editableRef.current = editable
     editor.setEditable(editable)
   }, [editor, editable])
 

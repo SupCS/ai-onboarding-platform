@@ -41,6 +41,18 @@ function normalizeAttachment(attachment) {
   };
 }
 
+function normalizeLinkAsset(linkAsset) {
+  return {
+    url: linkAsset.url || '',
+    title: normalizeText(linkAsset.title || ''),
+    description: normalizeText(linkAsset.description || ''),
+    imageUrl: linkAsset.imageUrl || '',
+    siteName: normalizeText(linkAsset.siteName || ''),
+    extractedText: normalizeText(linkAsset.extractedText || ''),
+    metadataError: normalizeText(linkAsset.metadataError || ''),
+  };
+}
+
 function normalizeMaterial(material, index) {
   return {
     id: material.id,
@@ -56,6 +68,9 @@ function normalizeMaterial(material, index) {
       ? material.youtubeTranscripts
       : [],
     links: normalizeUrlList(material.links || []),
+    linkAssets: Array.isArray(material.linkAssets)
+      ? material.linkAssets.map(normalizeLinkAsset)
+      : [],
     attachments: (material.attachments || []).map(normalizeAttachment),
   };
 }
@@ -64,8 +79,13 @@ function getMaterialTextSize(material) {
   const youtubeText = (material.youtubeTranscripts || [])
     .map((transcript) => transcript.preparedText || '')
     .join('\n');
+  const linkText = (material.linkAssets || [])
+    .map((linkAsset) => linkAsset.extractedText || '')
+    .join('\n');
 
-  return [material.title, material.description, material.text, youtubeText].join('\n').length;
+  return [material.title, material.description, material.text, youtubeText, linkText]
+    .join('\n')
+    .length;
 }
 
 function hasUsableContent(material) {
@@ -87,7 +107,10 @@ function extractCandidateTerms(materials) {
     const transcriptText = (material.youtubeTranscripts || [])
       .map((transcript) => transcript.preparedText || '')
       .join('\n');
-    const textChunks = [material.title, material.description, material.text, transcriptText]
+    const linkText = (material.linkAssets || [])
+      .map((linkAsset) => [linkAsset.title, linkAsset.description, linkAsset.extractedText].join('\n'))
+      .join('\n');
+    const textChunks = [material.title, material.description, material.text, transcriptText, linkText]
       .filter(Boolean)
       .map((text) => text.replace(/\s+/g, ' '));
 
@@ -126,7 +149,12 @@ function extractSignalSentences(materials, keywords) {
     const transcriptText = (material.youtubeTranscripts || [])
       .map((transcript) => transcript.preparedText || '')
       .join('\n');
-    const text = [material.description, material.text, transcriptText].filter(Boolean).join('\n');
+    const linkText = (material.linkAssets || [])
+      .map((linkAsset) => linkAsset.extractedText || '')
+      .join('\n');
+    const text = [material.description, material.text, transcriptText, linkText]
+      .filter(Boolean)
+      .join('\n');
     const sentences = getSentences(text);
 
     for (const sentence of sentences) {
@@ -211,6 +239,14 @@ function buildSourceReferences(materials) {
     sourceNumber: material.sourceNumber,
     title: material.title,
     links: material.links,
+    linkAssets: (material.linkAssets || []).map((linkAsset) => ({
+      url: linkAsset.url,
+      title: linkAsset.title,
+      description: linkAsset.description,
+      imageUrl: linkAsset.imageUrl,
+      siteName: linkAsset.siteName,
+      metadataError: linkAsset.metadataError,
+    })),
     youtubeUrls: material.youtubeUrls,
     youtubeVideos: material.youtubeVideos || [],
     youtubeTranscripts: (material.youtubeTranscripts || []).map((transcript) => ({

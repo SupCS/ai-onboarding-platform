@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { db } from './db.js';
+import { fetchLinkMetadata } from './linkMetadata.js';
 import { fetchYoutubeOEmbedMetadata } from './youtubeMetadata.js';
 
 async function ensureMaterialFileOpenAIColumns(client = db) {
@@ -27,11 +28,38 @@ async function ensureMaterialYoutubeMetadataColumns(client = db) {
   `);
 }
 
+async function ensureMaterialLinkMetadataColumns(client = db) {
+  await client.query(`
+    ALTER TABLE material_links
+    ADD COLUMN IF NOT EXISTS title TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS image_url TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS site_name TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS extracted_text TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS metadata_error TEXT NOT NULL DEFAULT ''
+  `);
+}
+
 async function prepareYoutubeUrlRecords(youtubeUrls = []) {
   const records = [];
 
   for (const url of youtubeUrls) {
     const metadata = await fetchYoutubeOEmbedMetadata(url);
+
+    records.push({
+      url,
+      ...metadata,
+    });
+  }
+
+  return records;
+}
+
+async function prepareLinkRecords(links = []) {
+  const records = [];
+
+  for (const url of links) {
+    const metadata = await fetchLinkMetadata(url);
 
     records.push({
       url,
@@ -85,6 +113,7 @@ async function backfillMissingYoutubeMetadata(client = db) {
 export async function getAllMaterials() {
   await ensureMaterialFileOpenAIColumns();
   await ensureMaterialYoutubeMetadataColumns();
+  await ensureMaterialLinkMetadataColumns();
   await backfillMissingYoutubeMetadata();
 
   const materialsResult = await db.query(`
@@ -111,7 +140,16 @@ export async function getAllMaterials() {
   `);
 
   const linksResult = await db.query(`
-    SELECT material_id, url, sort_order
+    SELECT
+      material_id,
+      url,
+      sort_order,
+      title,
+      description,
+      image_url,
+      site_name,
+      extracted_text,
+      metadata_error
     FROM material_links
     ORDER BY sort_order ASC
   `);
@@ -160,6 +198,17 @@ export async function getAllMaterials() {
     links: linksResult.rows
       .filter((item) => item.material_id === material.id)
       .map((item) => item.url),
+    linkAssets: linksResult.rows
+      .filter((item) => item.material_id === material.id)
+      .map((item) => ({
+        url: item.url,
+        title: item.title || '',
+        description: item.description || '',
+        imageUrl: item.image_url || '',
+        siteName: item.site_name || '',
+        extractedText: item.extracted_text || '',
+        metadataError: item.metadata_error || '',
+      })),
     attachments: filesResult.rows
       .filter((item) => item.material_id === material.id)
       .map((item) => ({
@@ -194,13 +243,15 @@ export async function getMaterialsByIds(materialIds = []) {
 }
 
 export async function createMaterial(input) {
+  const youtubeRecords = await prepareYoutubeUrlRecords(input.youtubeUrls || []);
+  const linkRecords = await prepareLinkRecords(input.links || []);
   const client = await db.connect();
 
   try {
     await client.query('BEGIN');
     await ensureMaterialFileOpenAIColumns(client);
     await ensureMaterialYoutubeMetadataColumns(client);
-    const youtubeRecords = await prepareYoutubeUrlRecords(input.youtubeUrls || []);
+    await ensureMaterialLinkMetadataColumns(client);
 
     const materialId = crypto.randomUUID();
 
@@ -250,13 +301,37 @@ export async function createMaterial(input) {
       );
     }
 
-    for (let index = 0; index < (input.links || []).length; index += 1) {
+    for (let index = 0; index < linkRecords.length; index += 1) {
+      const linkRecord = linkRecords[index];
+
       await client.query(
         `
-          INSERT INTO material_links (id, material_id, url, sort_order)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO material_links (
+            id,
+            material_id,
+            url,
+            sort_order,
+            title,
+            description,
+            image_url,
+            site_name,
+            extracted_text,
+            metadata_error
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         `,
-        [crypto.randomUUID(), materialId, input.links[index], index]
+        [
+          crypto.randomUUID(),
+          materialId,
+          linkRecord.url,
+          index,
+          linkRecord.title || '',
+          linkRecord.description || '',
+          linkRecord.imageUrl || '',
+          linkRecord.siteName || '',
+          linkRecord.extractedText || '',
+          linkRecord.error || '',
+        ]
       );
     }
 
@@ -327,6 +402,7 @@ export async function deleteMaterialById(materialId) {
     }
     await ensureMaterialFileOpenAIColumns(client);
     await ensureMaterialYoutubeMetadataColumns(client);
+    await ensureMaterialLinkMetadataColumns(client);
 
     const filesResult = await client.query(
       `
@@ -384,6 +460,8 @@ export async function deleteMaterialById(materialId) {
 }
 
 export async function updateMaterialById(materialId, input) {
+  const youtubeRecords = await prepareYoutubeUrlRecords(input.youtubeUrls || []);
+  const linkRecords = await prepareLinkRecords(input.links || []);
   const client = await db.connect();
 
   try {
@@ -404,7 +482,7 @@ export async function updateMaterialById(materialId, input) {
     }
     await ensureMaterialFileOpenAIColumns(client);
     await ensureMaterialYoutubeMetadataColumns(client);
-    const youtubeRecords = await prepareYoutubeUrlRecords(input.youtubeUrls || []);
+    await ensureMaterialLinkMetadataColumns(client);
 
     const existingFilesResult = await client.query(
       `
@@ -490,13 +568,37 @@ export async function updateMaterialById(materialId, input) {
       );
     }
 
-    for (let index = 0; index < (input.links || []).length; index += 1) {
+    for (let index = 0; index < linkRecords.length; index += 1) {
+      const linkRecord = linkRecords[index];
+
       await client.query(
         `
-          INSERT INTO material_links (id, material_id, url, sort_order)
-          VALUES ($1, $2, $3, $4)
+          INSERT INTO material_links (
+            id,
+            material_id,
+            url,
+            sort_order,
+            title,
+            description,
+            image_url,
+            site_name,
+            extracted_text,
+            metadata_error
+          )
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
         `,
-        [crypto.randomUUID(), materialId, input.links[index], index]
+        [
+          crypto.randomUUID(),
+          materialId,
+          linkRecord.url,
+          index,
+          linkRecord.title || '',
+          linkRecord.description || '',
+          linkRecord.imageUrl || '',
+          linkRecord.siteName || '',
+          linkRecord.extractedText || '',
+          linkRecord.error || '',
+        ]
       );
     }
 

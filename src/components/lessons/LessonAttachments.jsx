@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Box, Typography } from '@mui/material';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
+import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
 import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined';
 import SmartDisplayOutlinedIcon from '@mui/icons-material/SmartDisplayOutlined';
 import { AI_DIGITAL_COLORS, hexToRgba } from '../../lib/brandColors';
@@ -30,6 +31,21 @@ export function getSourceAttachments(sourceReferences = []) {
         sourceTitle: source.title,
       };
     });
+    const linkAssets = (source.linkAssets || []).map((linkAsset, index) => ({
+      id: `${source.id || source.sourceNumber}-link-${index}`,
+      name: linkAsset.title || getLinkAssetName(linkAsset.url, index),
+      kind: 'link',
+      mimeType: 'text/html',
+      url: linkAsset.url,
+      linkTitle: linkAsset.title || '',
+      linkDescription: linkAsset.description || '',
+      linkImageUrl: linkAsset.imageUrl || '',
+      linkSiteName: linkAsset.siteName || '',
+      linkMetadataError: linkAsset.metadataError || '',
+      sourceId: source.id,
+      sourceNumber: source.sourceNumber,
+      sourceTitle: source.title,
+    }));
     const fileAssets = (source.attachments || []).map((attachment) => ({
       ...attachment,
       sourceId: source.id,
@@ -37,8 +53,16 @@ export function getSourceAttachments(sourceReferences = []) {
       sourceTitle: source.title,
     }));
 
-    return [...youtubeAssets, ...fileAssets];
+    return [...youtubeAssets, ...linkAssets, ...fileAssets];
   });
+}
+
+function getLinkAssetName(url, index) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '') || `Web link ${index + 1}`;
+  } catch {
+    return `Web link ${index + 1}`;
+  }
 }
 
 function getYoutubeAssetName(url, index) {
@@ -68,6 +92,7 @@ function getYoutubeThumbnailUrl(url) {
 }
 
 function useYouTubeAssetPreview(attachment) {
+  const isYoutube = attachment.kind === 'youtube';
   const hasStoredMetadata = Boolean(
     attachment.youtubeTitle ||
       attachment.youtubeAuthorName ||
@@ -108,14 +133,14 @@ function useYouTubeAssetPreview(attachment) {
       }
     }
 
-    if (attachment.url && !hasStoredMetadata) {
+    if (isYoutube && attachment.url && !hasStoredMetadata) {
       loadMetadata();
     }
 
     return () => {
       isMounted = false;
     };
-  }, [attachment.url, hasStoredMetadata]);
+  }, [attachment.url, hasStoredMetadata, isYoutube]);
 
   return {
     title: metadata?.title || attachment.name,
@@ -144,6 +169,43 @@ function useYouTubeAssetPreview(attachment) {
   };
 }
 
+function useStorageImagePreview(attachment, isImage) {
+  const [previewUrl, setPreviewUrl] = useState(attachment.previewUrl || '');
+
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadPreviewUrl() {
+      try {
+        const response = await fetch(
+          `/api/files/preview?storageKey=${encodeURIComponent(attachment.storageKey)}`
+        );
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to load image preview.');
+        }
+
+        if (isMounted) {
+          setPreviewUrl(data.previewUrl);
+        }
+      } catch (error) {
+        console.error('Failed to load image preview:', error);
+      }
+    }
+
+    if (isImage && attachment.storageKey && !previewUrl) {
+      loadPreviewUrl();
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [attachment.storageKey, isImage, previewUrl]);
+
+  return previewUrl;
+}
+
 function LessonAssetCard({
   attachment,
   index,
@@ -151,10 +213,12 @@ function LessonAssetCard({
   onOpenSourceMaterial,
 }) {
   const isYoutube = attachment.kind === 'youtube';
+  const isLink = attachment.kind === 'link';
   const youtubeAsset = useYouTubeAssetPreview(attachment);
   const isImage = attachment.kind === 'image' || attachment.mimeType?.startsWith('image/');
+  const imagePreviewUrl = useStorageImagePreview(attachment, isImage);
   const badge = getFileBadge(attachment);
-  const canOpen = Boolean(isYoutube || attachment.storageKey || onOpenSourceMaterial);
+  const canOpen = Boolean(isYoutube || isLink || attachment.storageKey || onOpenSourceMaterial);
   const title = isYoutube ? youtubeAsset.title : attachment.name;
 
   return (
@@ -199,15 +263,30 @@ function LessonAssetCard({
           borderRadius: 2,
           backgroundColor: isYoutube
             ? hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.08)
+            : isLink
+              ? hexToRgba(AI_DIGITAL_COLORS.brightAqua, 0.12)
             : '#f8fafc',
         }}
       >
         {isYoutube ? (
           youtubeAsset.preview
-        ) : isImage && attachment.previewUrl ? (
+        ) : isLink && attachment.linkImageUrl ? (
           <Box
             component="img"
-            src={attachment.previewUrl}
+            src={attachment.linkImageUrl}
+            alt=""
+            sx={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+            }}
+          />
+        ) : isLink ? (
+          <LinkOutlinedIcon sx={{ fontSize: 42, color: AI_DIGITAL_COLORS.yvesKleinBlue }} />
+        ) : isImage && imagePreviewUrl ? (
+          <Box
+            component="img"
+            src={imagePreviewUrl}
             alt=""
             sx={{
               width: '100%',
@@ -247,7 +326,7 @@ function LessonAssetCard({
       >
         {title}
       </Typography>
-      {isYoutube && (
+      {(isYoutube || isLink) && (
         <Typography
           variant="caption"
           color="text.secondary"
@@ -260,7 +339,7 @@ function LessonAssetCard({
             whiteSpace: 'nowrap',
           }}
         >
-          {youtubeAsset.subtitle}
+          {isYoutube ? youtubeAsset.subtitle : attachment.linkSiteName || 'Web source'}
         </Typography>
       )}
       <OpenInNewOutlinedIcon sx={{ display: 'none' }} />
@@ -312,7 +391,7 @@ export default function LessonAttachments({
     : getSourceAttachments(sourceReferences);
 
   const handleOpenAttachment = async (attachment) => {
-    if (attachment.kind === 'youtube' && attachment.url) {
+    if ((attachment.kind === 'youtube' || attachment.kind === 'link') && attachment.url) {
       window.open(attachment.url, '_blank', 'noopener,noreferrer');
       return;
     }

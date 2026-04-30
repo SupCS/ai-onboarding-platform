@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Box,
@@ -23,11 +23,14 @@ import {
   Typography,
 } from '@mui/material';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
+import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
 import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined';
+import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import SourceOutlinedIcon from '@mui/icons-material/SourceOutlined';
@@ -124,6 +127,47 @@ function DetailPanel({ icon, title, children, accent = AI_DIGITAL_COLORS.yvesKle
   );
 }
 
+function normalizeLessonAssetForCard(asset) {
+  if (asset.kind === 'youtube') {
+    return {
+      id: asset.id,
+      name: asset.title || asset.name || 'YouTube video',
+      kind: 'youtube',
+      mimeType: 'video/youtube',
+      url: asset.url,
+      youtubeTitle: asset.title || '',
+      youtubeAuthorName: asset.metadata?.authorName || asset.description || '',
+      youtubeThumbnailUrl: asset.imageUrl || '',
+      sourceTitle: 'Lesson asset',
+    };
+  }
+
+  if (asset.kind === 'link') {
+    return {
+      id: asset.id,
+      name: asset.title || asset.name || 'Web link',
+      kind: 'link',
+      mimeType: 'text/html',
+      url: asset.url,
+      linkTitle: asset.title || '',
+      linkDescription: asset.description || '',
+      linkImageUrl: asset.imageUrl || '',
+      linkSiteName: asset.siteName || '',
+      sourceTitle: 'Lesson asset',
+    };
+  }
+
+  return {
+    id: asset.id,
+    name: asset.name || asset.title || 'Lesson file',
+    kind: asset.kind,
+    mimeType: asset.mimeType || '',
+    size: asset.size || 0,
+    storageKey: asset.storageKey || '',
+    sourceTitle: 'Lesson asset',
+  };
+}
+
 export default function LessonDetailsDialog({
   lesson,
   open,
@@ -133,6 +177,7 @@ export default function LessonDetailsDialog({
   onLessonUpdated,
 }) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isRevising, setIsRevising] = useState(false);
@@ -144,6 +189,10 @@ export default function LessonDetailsDialog({
   const [activityCount, setActivityCount] = useState(8);
   const [activityError, setActivityError] = useState('');
   const [activitySuccess, setActivitySuccess] = useState('');
+  const [assetUrl, setAssetUrl] = useState('');
+  const [assetError, setAssetError] = useState('');
+  const [isAddingAsset, setIsAddingAsset] = useState(false);
+  const assetFileInputRef = useRef(null);
   const initialHtml = useMemo(() => {
     return lesson?.contentHtml || markdownToHtml(lesson?.contentMarkdown || '');
   }, [lesson]);
@@ -153,6 +202,7 @@ export default function LessonDetailsDialog({
 
   useEffect(() => {
     setIsEditing(false);
+    setIsConfirmDeleteOpen(false);
     setDraftHtml(initialHtml);
     setDraftTitle(lesson?.title || '');
     setIsRevising(false);
@@ -163,6 +213,9 @@ export default function LessonDetailsDialog({
     setActivityCount(8);
     setActivityError('');
     setActivitySuccess('');
+    setAssetUrl('');
+    setAssetError('');
+    setIsAddingAsset(false);
     setIsRightPanelCollapsed(false);
   }, [initialHtml, lesson?.id, lesson?.title]);
 
@@ -180,13 +233,15 @@ export default function LessonDetailsDialog({
   const preparedMaterials = metadata.preparedMaterials || {};
   const sourceReferences = preparedMaterials.sourceReferences || [];
   const sourceAttachments = getSourceAttachments(sourceReferences);
+  const lessonAssets = (lesson.lessonAssets || []).map(normalizeLessonAssetForCard);
+  const allAssets = [...lessonAssets, ...sourceAttachments];
   const revisionHistory = Array.isArray(metadata.revisionHistory)
     ? metadata.revisionHistory
     : [];
   const lastRevision = revisionHistory[revisionHistory.length - 1] || null;
   const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
   const activitySettings = getActivityTypeSettings(activityType);
-  const hasAssets = sourceAttachments.length > 0;
+  const hasAssets = allAssets.length > 0;
   const isRightPanelVisible = !isRightPanelCollapsed;
 
   const handleSave = async () => {
@@ -225,15 +280,112 @@ export default function LessonDetailsDialog({
     setIsEditing(false);
   };
 
-  const handleDelete = async () => {
-    const confirmed = window.confirm(
-      `Delete lesson "${lesson.title}"? This removes it from the whole library and from every user's My Lessons.`
-    );
-
-    if (!confirmed) {
+  const handleAddUrlAsset = async () => {
+    if (!assetUrl.trim()) {
+      setAssetError('Add a link or YouTube URL first.');
       return;
     }
 
+    try {
+      setIsAddingAsset(true);
+      setAssetError('');
+
+      const response = await fetch(`/api/lessons/${lesson.id}/assets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          kind: 'url',
+          url: assetUrl.trim(),
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to add asset.');
+      }
+
+      setAssetUrl('');
+      await onLessonUpdated?.(data.lesson);
+    } catch (error) {
+      console.error('Failed to add lesson URL asset:', error);
+      setAssetError(error.message || 'Failed to add asset.');
+    } finally {
+      setIsAddingAsset(false);
+    }
+  };
+
+  const handleAddFileAsset = async (file) => {
+    if (!file) {
+      return;
+    }
+
+    try {
+      setIsAddingAsset(true);
+      setAssetError('');
+
+      const uploadUrlResponse = await fetch('/api/lessons/upload-url', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: file.type || 'application/octet-stream',
+          size: file.size,
+        }),
+      });
+      const uploadUrlData = await uploadUrlResponse.json();
+
+      if (!uploadUrlResponse.ok) {
+        throw new Error(uploadUrlData.error || 'Failed to prepare file upload.');
+      }
+
+      const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': file.type || 'application/octet-stream',
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Failed to upload file: ${file.name}`);
+      }
+
+      const response = await fetch(`/api/lessons/${lesson.id}/assets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          kind: file.type.startsWith('image/') ? 'image' : 'file',
+          originalName: file.name,
+          storageKey: uploadUrlData.storageKey,
+          mimeType: file.type || 'application/octet-stream',
+          sizeBytes: file.size,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to save uploaded asset.');
+      }
+
+      await onLessonUpdated?.(data.lesson);
+    } catch (error) {
+      console.error('Failed to add lesson file asset:', error);
+      setAssetError(error.message || 'Failed to add file asset.');
+    } finally {
+      setIsAddingAsset(false);
+      if (assetFileInputRef.current) {
+        assetFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleDelete = async () => {
     try {
       setIsDeleting(true);
 
@@ -248,6 +400,7 @@ export default function LessonDetailsDialog({
       }
 
       await onLessonDeleted?.(lesson.id);
+      setIsConfirmDeleteOpen(false);
     } catch (error) {
       console.error('Failed to delete lesson:', error);
     } finally {
@@ -398,8 +551,39 @@ export default function LessonDetailsDialog({
           background: `linear-gradient(115deg, ${AI_DIGITAL_COLORS.yvesKleinBlue} 0%, ${AI_DIGITAL_COLORS.violetPulse} 64%, ${AI_DIGITAL_COLORS.neonAzure} 100%)`,
         }}
       >
-        <Box sx={{ position: 'relative', px: { xs: 2, md: 3 }, py: { xs: 2, md: 2.5 }, pr: 8 }}>
+        <Box sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 2.5 } }}>
           <Stack spacing={1.5}>
+            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
+              <IconButton
+                aria-label="Delete lesson"
+                onClick={() => setIsConfirmDeleteOpen(true)}
+                disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
+                sx={{
+                  width: 34,
+                  height: 34,
+                  color: '#fff',
+                  backgroundColor: 'rgba(255,255,255,0.12)',
+                  '&:hover': { backgroundColor: 'rgba(255,255,255,0.22)' },
+                  '&.Mui-disabled': { color: 'rgba(255,255,255,0.42)' },
+                }}
+              >
+                <DeleteOutlineOutlinedIcon />
+              </IconButton>
+              <IconButton
+                aria-label="Close lesson details"
+                onClick={onClose}
+                sx={{
+                  width: 34,
+                  height: 34,
+                  color: '#fff',
+                  backgroundColor: 'rgba(255,255,255,0.12)',
+                  '&:hover': { backgroundColor: 'rgba(255,255,255,0.22)' },
+                }}
+              >
+                <CloseOutlinedIcon />
+              </IconButton>
+            </Stack>
+
             <Stack
               direction={{ xs: 'column', md: 'row' }}
               spacing={1.5}
@@ -501,20 +685,6 @@ export default function LessonDetailsDialog({
           </Stack>
         </Box>
 
-        <IconButton
-          aria-label="Close lesson details"
-          onClick={onClose}
-          sx={{
-            position: 'absolute',
-            right: 16,
-            top: 16,
-            color: '#fff',
-            backgroundColor: 'rgba(255,255,255,0.14)',
-            '&:hover': { backgroundColor: 'rgba(255,255,255,0.24)' },
-          }}
-        >
-          <CloseOutlinedIcon />
-        </IconButton>
       </DialogTitle>
 
       <DialogContent
@@ -817,6 +987,53 @@ export default function LessonDetailsDialog({
               </DetailPanel>
             )}
 
+            <DetailPanel
+              title="Add asset"
+              icon={<AddOutlinedIcon fontSize="small" />}
+              accent={AI_DIGITAL_COLORS.brightAqua}
+            >
+              <Stack spacing={1.25}>
+                {assetError && <Alert severity="error">{assetError}</Alert>}
+                <TextField
+                  label="Link or YouTube URL"
+                  value={assetUrl}
+                  onChange={(event) => setAssetUrl(event.target.value)}
+                  size="small"
+                  fullWidth
+                  disabled={isAddingAsset || isDeleting}
+                />
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<LinkOutlinedIcon />}
+                    onClick={handleAddUrlAsset}
+                    disabled={isAddingAsset || isDeleting || !assetUrl.trim()}
+                    sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 800 }}
+                  >
+                    {isAddingAsset ? 'Adding...' : 'Add link'}
+                  </Button>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<AttachFileOutlinedIcon />}
+                    onClick={() => assetFileInputRef.current?.click()}
+                    disabled={isAddingAsset || isDeleting}
+                    sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 800 }}
+                  >
+                    File
+                  </Button>
+                </Stack>
+                <Box
+                  component="input"
+                  type="file"
+                  ref={assetFileInputRef}
+                  onChange={(event) => handleAddFileAsset(event.target.files?.[0])}
+                  sx={{ display: 'none' }}
+                />
+              </Stack>
+            </DetailPanel>
+
             {hasAssets && (
               <DetailPanel
                 title="Assets"
@@ -824,7 +1041,7 @@ export default function LessonDetailsDialog({
                 accent={AI_DIGITAL_COLORS.neonAzure}
               >
                 <LessonAttachments
-                  attachments={sourceAttachments}
+                  attachments={allAssets}
                   onOpenSourceMaterial={onOpenSourceMaterial}
                   layout="column"
                   showTitle={false}
@@ -929,15 +1146,7 @@ export default function LessonDetailsDialog({
           backgroundColor: '#fff',
         }}
       >
-        <Button
-          onClick={handleDelete}
-          color="error"
-          startIcon={<DeleteOutlineOutlinedIcon />}
-          disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
-          sx={{ mr: 'auto' }}
-        >
-          {isDeleting ? 'Deleting...' : 'Delete lesson'}
-        </Button>
+        <Box sx={{ mr: 'auto' }} />
 
         {isEditing ? (
           <>
@@ -974,6 +1183,46 @@ export default function LessonDetailsDialog({
           Close
         </Button>
       </DialogActions>
+
+      <Dialog
+        open={isConfirmDeleteOpen}
+        onClose={() => {
+          if (!isDeleting) {
+            setIsConfirmDeleteOpen(false);
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Delete lesson?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 1 }}>
+            <Typography variant="body1">
+              This action will permanently remove <strong>{lesson.title}</strong>.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              The lesson will be removed from the library and from every user&apos;s My Lessons.
+            </Typography>
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={() => setIsConfirmDeleteOpen(false)}
+            color="inherit"
+            disabled={isDeleting}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="error"
+            variant="contained"
+            onClick={handleDelete}
+            disabled={isDeleting}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete permanently'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Dialog>
   );
 }

@@ -64,10 +64,12 @@ export const LESSON_INSTRUCTIONS = [
   '- Make the conceptual order easy to follow for digital marketing agency employees.',
   '- Use examples or analogies only when they are present in the sources or directly clarify a source statement.',
   '- If a source mentions a concept without enough context, add a short explanation of that concept. For example, if the source says keywords need appropriate match types, briefly explain broad, phrase, and exact match.',
-  '- The app always displays all source attachments as cards below the lesson, so you do not need to list general attachments in the lesson body.',
+  '- The app displays source assets as cards next to the lesson, so you do not need to list general attachments in the lesson body.',
   '- If an attachment is useful at a specific point in the explanation, mention it naturally by file name near that point. For example, if a step-by-step process is explained and a screenshot shows that step, refer to the screenshot next to that step.',
-  '- If an attachment is broad reference material and has no specific place in the explanation, do not force it into the lesson text. The user will find it in the attachment cards below the lesson.',
+  '- If an attachment is broad reference material and has no specific place in the explanation, do not force it into the lesson text. The user will find it in the source asset cards.',
   '- Do not invent direct download links or HTML attachment cards; the app renders the attachment cards.',
+  '- When a source web link is directly useful at a specific point, attach it inline as a short descriptive <a href="...">source chip</a>. Do not dump all links into a separate sources section.',
+  '- Use source links only when they clarify or support the nearby sentence. Keep link text short, such as the article title or "source article".',
   '- Prefer useful explanation over formal course scaffolding.',
   '- Do not write generic sections like "Why this matters" unless the source provides specific reasons.',
   '- Do not inflate short source notes into broad strategic advice.',
@@ -100,6 +102,19 @@ function formatSourceMaterial(material) {
       transcript.error ? `Reason: ${transcript.error}` : '',
     ].filter(Boolean).join('\n');
   });
+  const linkContextSections = (material.linkAssets || []).map((linkAsset, index) => {
+    const label = linkAsset.title || `Web link ${index + 1}`;
+    const parts = [
+      `Web source: ${label}`,
+      `URL: ${linkAsset.url}`,
+      linkAsset.siteName ? `Site: ${linkAsset.siteName}` : '',
+      linkAsset.description ? `Description:\n${linkAsset.description}` : '',
+      linkAsset.extractedText ? `Extracted page text:\n${linkAsset.extractedText}` : '',
+      linkAsset.metadataError ? `Link parsing note: ${linkAsset.metadataError}` : '',
+    ];
+
+    return parts.filter(Boolean).join('\n');
+  });
   const sections = [
     `Source ${material.sourceNumber}: ${material.title}`,
     material.description ? `Description:\n${material.description}` : '',
@@ -112,6 +127,9 @@ function formatSourceMaterial(material) {
       : '',
     material.links.length
       ? `Links:\n${material.links.map((url) => `- ${url}`).join('\n')}`
+      : '',
+    linkContextSections.length
+      ? `Parsed web link context:\n${linkContextSections.join('\n\n')}`
       : '',
     material.attachments.length
       ? `Attachments:\n${material.attachments

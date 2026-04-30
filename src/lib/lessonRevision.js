@@ -37,6 +37,19 @@ function formatSourceMaterial(material) {
       transcript.error ? `Reason: ${transcript.error}` : '',
     ].filter(Boolean).join('\n');
   });
+  const linkContextSections = (material.linkAssets || []).map((linkAsset, index) => {
+    const label = linkAsset.title || `Web link ${index + 1}`;
+    const parts = [
+      `Web source: ${label}`,
+      `URL: ${linkAsset.url}`,
+      linkAsset.siteName ? `Site: ${linkAsset.siteName}` : '',
+      linkAsset.description ? `Description:\n${linkAsset.description}` : '',
+      linkAsset.extractedText ? `Extracted page text:\n${linkAsset.extractedText}` : '',
+      linkAsset.metadataError ? `Link parsing note: ${linkAsset.metadataError}` : '',
+    ];
+
+    return parts.filter(Boolean).join('\n');
+  });
   const sections = [
     `Source ${material.sourceNumber}: ${material.title}`,
     material.description ? `Description:\n${material.description}` : '',
@@ -49,6 +62,9 @@ function formatSourceMaterial(material) {
       : '',
     material.links.length
       ? `Links:\n${material.links.map((url) => `- ${url}`).join('\n')}`
+      : '',
+    linkContextSections.length
+      ? `Parsed web link context:\n${linkContextSections.join('\n\n')}`
       : '',
     material.attachments.length
       ? `Attachments, metadata only:\n${material.attachments

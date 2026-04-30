@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import { db } from './db.js';
 import { ensureAuthSchema } from './auth.js';
+import { fetchLinkMetadata } from './linkMetadata.js';
+import { fetchYoutubeOEmbedMetadata } from './youtubeMetadata.js';
 import { LESSON_MVP_LIMITS } from './lessonConstants.js';
 export {
   LESSON_CONTENT_FORMAT,
@@ -8,7 +10,7 @@ export {
   LESSON_STATUSES,
 } from './lessonConstants.js';
 
-const LESSONS_SCHEMA_VERSION = 3;
+const LESSONS_SCHEMA_VERSION = 4;
 
 export async function ensureLessonsSchema(client = db) {
   const globalForLessons = globalThis;
@@ -175,6 +177,32 @@ async function ensureLessonsSchemaUncached(client = db) {
     CREATE INDEX IF NOT EXISTS user_lesson_activity_attempts_lesson_idx
     ON user_lesson_activity_attempts(user_id, lesson_id, created_at DESC)
   `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS lesson_assets (
+      id TEXT PRIMARY KEY,
+      lesson_id TEXT NOT NULL REFERENCES lessons(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL,
+      title TEXT NOT NULL DEFAULT '',
+      url TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      image_url TEXT NOT NULL DEFAULT '',
+      site_name TEXT NOT NULL DEFAULT '',
+      original_name TEXT NOT NULL DEFAULT '',
+      storage_key TEXT NOT NULL DEFAULT '',
+      mime_type TEXT NOT NULL DEFAULT '',
+      size_bytes BIGINT NOT NULL DEFAULT 0,
+      metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      CONSTRAINT lesson_assets_kind_check
+        CHECK (kind IN ('link', 'youtube', 'image', 'file'))
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS lesson_assets_lesson_id_idx
+    ON lesson_assets(lesson_id, created_at ASC)
+  `);
 }
 
 function mapLesson(row, materialIds = [], extra = {}) {
@@ -221,6 +249,25 @@ function mapLessonActivity(row) {
           isCompleted: Boolean(row.progress_completed_at),
         }
       : null,
+  };
+}
+
+function mapLessonAsset(row) {
+  return {
+    id: row.id,
+    lessonId: row.lesson_id,
+    kind: row.kind,
+    title: row.title || '',
+    name: row.original_name || row.title || 'Untitled asset',
+    url: row.url || '',
+    description: row.description || '',
+    imageUrl: row.image_url || '',
+    siteName: row.site_name || '',
+    storageKey: row.storage_key || '',
+    mimeType: row.mime_type || '',
+    size: Number(row.size_bytes || 0),
+    metadata: row.metadata || {},
+    createdAt: row.created_at,
   };
 }
 
@@ -512,6 +559,112 @@ export async function deleteLessonById(lessonId) {
   };
 }
 
+export async function createLessonAsset(lessonId, input = {}) {
+  await ensureLessonsSchema();
+
+  const lesson = await getLessonById(lessonId);
+
+  if (!lesson) {
+    return null;
+  }
+
+  const kind = input.kind;
+
+  if (!['link', 'youtube', 'image', 'file'].includes(kind)) {
+    throw new Error('Unsupported lesson asset type.');
+  }
+
+  let asset = {
+    kind,
+    title: input.title || '',
+    url: input.url || '',
+    description: input.description || '',
+    imageUrl: input.imageUrl || '',
+    siteName: input.siteName || '',
+    originalName: input.originalName || '',
+    storageKey: input.storageKey || '',
+    mimeType: input.mimeType || '',
+    sizeBytes: Number(input.sizeBytes || 0),
+    metadata: input.metadata || {},
+  };
+
+  if (kind === 'youtube') {
+    const metadata = await fetchYoutubeOEmbedMetadata(asset.url);
+    asset = {
+      ...asset,
+      title: asset.title || metadata.title || 'YouTube video',
+      description: asset.description || metadata.authorName || '',
+      imageUrl: asset.imageUrl || metadata.thumbnailUrl || '',
+      siteName: metadata.providerName || 'YouTube',
+      metadata: {
+        ...asset.metadata,
+        authorName: metadata.authorName || '',
+        authorUrl: metadata.authorUrl || '',
+        metadataError: metadata.error || '',
+      },
+    };
+  }
+
+  if (kind === 'link') {
+    const metadata = await fetchLinkMetadata(asset.url);
+    asset = {
+      ...asset,
+      title: asset.title || metadata.title || metadata.siteName || 'Web link',
+      description: asset.description || metadata.description || '',
+      imageUrl: asset.imageUrl || metadata.imageUrl || '',
+      siteName: asset.siteName || metadata.siteName || '',
+      metadata: {
+        ...asset.metadata,
+        extractedText: metadata.extractedText || '',
+        metadataError: metadata.error || '',
+      },
+    };
+  }
+
+  if ((kind === 'image' || kind === 'file') && !asset.storageKey) {
+    throw new Error('File storage key is required.');
+  }
+
+  const result = await db.query(
+    `
+      INSERT INTO lesson_assets (
+        id,
+        lesson_id,
+        kind,
+        title,
+        url,
+        description,
+        image_url,
+        site_name,
+        original_name,
+        storage_key,
+        mime_type,
+        size_bytes,
+        metadata
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      RETURNING *
+    `,
+    [
+      crypto.randomUUID(),
+      lessonId,
+      asset.kind,
+      asset.title,
+      asset.url,
+      asset.description,
+      asset.imageUrl,
+      asset.siteName,
+      asset.originalName,
+      asset.storageKey,
+      asset.mimeType,
+      asset.sizeBytes,
+      JSON.stringify(asset.metadata || {}),
+    ]
+  );
+
+  return mapLessonAsset(result.rows[0]);
+}
+
 export async function getEnrolledLessonIdsForUser(userId) {
   await ensureLessonsSchema();
 
@@ -645,6 +798,12 @@ export async function getAllLessons(userId = null) {
     ORDER BY sort_order ASC
   `);
 
+  const lessonAssetsResult = await db.query(`
+    SELECT *
+    FROM lesson_assets
+    ORDER BY lesson_id ASC, created_at ASC
+  `);
+
   const enrollmentRows = userId
     ? await db.query(
         `
@@ -663,9 +822,13 @@ export async function getAllLessons(userId = null) {
     const materialIds = lessonMaterialsResult.rows
       .filter((item) => item.lesson_id === lesson.id)
       .map((item) => item.material_id);
+    const lessonAssets = lessonAssetsResult.rows
+      .filter((item) => item.lesson_id === lesson.id)
+      .map(mapLessonAsset);
     const enrollment = enrollmentsByLessonId.get(lesson.id);
 
     return mapLesson(lesson, materialIds, {
+      lessonAssets,
       isEnrolled: Boolean(enrollment),
       enrolledAt: enrollment?.enrolled_at || null,
       completedAt: enrollment?.completed_at || null,
@@ -780,11 +943,23 @@ export async function getLessonById(lessonId) {
   );
 
   const activities = await getLessonActivities(lessonId);
+  const assetsResult = await db.query(
+    `
+      SELECT *
+      FROM lesson_assets
+      WHERE lesson_id = $1
+      ORDER BY created_at ASC
+    `,
+    [lessonId]
+  );
 
   return mapLesson(
     lessonResult.rows[0],
     lessonMaterialsResult.rows.map((item) => item.material_id),
-    { activities }
+    {
+      activities,
+      lessonAssets: assetsResult.rows.map(mapLessonAsset),
+    }
   );
 }
 
