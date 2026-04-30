@@ -1,4 +1,5 @@
 import { getOpenAIFileInputType } from './openaiFiles.js';
+import { buildOpenAIPromptCacheKey } from './openaiCache.js';
 
 const LESSON_ASSISTANT_PROMPT_VERSION = 'lesson-reader-assistant-v1';
 const MAX_LESSON_CONTEXT_CHARACTERS = 60000;
@@ -168,11 +169,11 @@ export function buildLessonAssistantPrompt({
 
   return {
     version: LESSON_ASSISTANT_PROMPT_VERSION,
-    cacheKey: [
+    cacheKey: buildOpenAIPromptCacheKey('lesson-assistant', [
       LESSON_ASSISTANT_PROMPT_VERSION,
       lesson.id || 'unknown-lesson',
       lesson.updatedAt ? new Date(lesson.updatedAt).getTime() : 'no-updated-at',
-    ].join(':'),
+    ]),
     instructions,
     input,
     fileInputs: collectOpenAIFileInputs(preparedMaterials),

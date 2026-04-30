@@ -5,19 +5,36 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
+function cleanEnvValue(value) {
+  return (value || '').trim().replace(/^["']|["']$/g, '');
+}
+
+function getStorageRegion() {
+  const region = cleanEnvValue(
+    process.env.RAILWAY_BUCKET_REGION || process.env.REGION
+  );
+
+  return !region || region === 'auto' ? 'us-east-1' : region;
+}
+
 export const storage = new S3Client({
-  region: process.env.RAILWAY_BUCKET_REGION || process.env.REGION || 'auto',
-  endpoint: process.env.RAILWAY_BUCKET_ENDPOINT || process.env.ENDPOINT,
+  region: getStorageRegion(),
+  endpoint: cleanEnvValue(
+    process.env.RAILWAY_BUCKET_ENDPOINT || process.env.ENDPOINT
+  ),
   credentials: {
-    accessKeyId:
-      process.env.RAILWAY_BUCKET_ACCESS_KEY_ID || process.env.ACCESS_KEY_ID,
-    secretAccessKey:
-      process.env.RAILWAY_BUCKET_SECRET_ACCESS_KEY || process.env.SECRET_ACCESS_KEY,
+    accessKeyId: cleanEnvValue(
+      process.env.RAILWAY_BUCKET_ACCESS_KEY_ID || process.env.ACCESS_KEY_ID
+    ),
+    secretAccessKey: cleanEnvValue(
+      process.env.RAILWAY_BUCKET_SECRET_ACCESS_KEY || process.env.SECRET_ACCESS_KEY
+    ),
   },
 });
 
-export const bucketName =
-  process.env.RAILWAY_BUCKET_BUCKET || process.env.BUCKET;
+export const bucketName = cleanEnvValue(
+  process.env.RAILWAY_BUCKET_BUCKET || process.env.BUCKET
+);
 
 export async function getObjectUrl(storageKey, options = {}) {
   const command = new GetObjectCommand({

@@ -1,4 +1,5 @@
 import { LESSON_INSTRUCTIONS } from './lessonPrompt.js';
+import { buildOpenAIPromptCacheKey } from './openaiCache.js';
 
 export const LESSON_REVISION_PLANNER_VERSION = 'lesson-revision-planner-v1';
 export const LESSON_REVISION_WRITER_VERSION = 'lesson-revision-writer-v1';
@@ -153,7 +154,10 @@ export function buildLessonRevisionPlannerPrompt({
 
   return {
     version: LESSON_REVISION_PLANNER_VERSION,
-    cacheKey: `${LESSON_REVISION_PLANNER_VERSION}:${lesson.id}`,
+    cacheKey: buildOpenAIPromptCacheKey('lesson-revision-plan', [
+      LESSON_REVISION_PLANNER_VERSION,
+      lesson.id || 'unknown-lesson',
+    ]),
     instructions,
     input,
   };
@@ -217,7 +221,10 @@ export function buildLessonRevisionWriterPrompt({
 
   return {
     version: LESSON_REVISION_WRITER_VERSION,
-    cacheKey: `${LESSON_REVISION_WRITER_VERSION}:${lesson.id}`,
+    cacheKey: buildOpenAIPromptCacheKey('lesson-revision-write', [
+      LESSON_REVISION_WRITER_VERSION,
+      lesson.id || 'unknown-lesson',
+    ]),
     instructions,
     input,
   };

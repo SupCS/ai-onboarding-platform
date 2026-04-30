@@ -1,4 +1,5 @@
 import { fetchTranscript } from 'youtube-transcript';
+import { buildOpenAIPromptCacheKey } from './openaiCache.js';
 
 const LONG_TRANSCRIPT_CHARACTER_THRESHOLD = 12000;
 const MAX_TRANSCRIPT_INPUT_CHARACTERS = 60000;
@@ -71,7 +72,11 @@ function splitIntoChunks(text, chunkSize = TRANSCRIPT_CHUNK_CHARACTERS) {
 function buildCompressionPrompt({ url, videoId, transcriptText, chunkLabel = '' }) {
   return {
     version: 'youtube-transcript-compression-v1',
-    cacheKey: `youtube-transcript-compression-v1:${videoId}:${chunkLabel}`,
+    cacheKey: buildOpenAIPromptCacheKey('youtube-transcript', [
+      'youtube-transcript-compression-v1',
+      videoId,
+      chunkLabel || 'single',
+    ]),
     instructions: [
       'You prepare YouTube transcripts for lesson generation.',
       'Remove filler, greetings, repetition, sponsor-like wording, and off-topic chatter.',

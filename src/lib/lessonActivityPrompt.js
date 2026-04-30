@@ -1,3 +1,5 @@
+import { buildOpenAIPromptCacheKey } from './openaiCache.js';
+
 export const LESSON_ACTIVITY_PROMPT_VERSION = 'lesson-activity-v1';
 
 export const LESSON_ACTIVITY_LIMITS = {
@@ -85,7 +87,6 @@ export function buildLessonActivityPrompt({ lesson, type, count }) {
   const normalizedType = ACTIVITY_LABELS[type] ? type : 'quiz';
   const normalizedCount = clampCount(normalizedType, count);
   const lessonText = stripHtml(lesson.contentHtml || lesson.contentMarkdown || '');
-  const shortLessonId = String(lesson.id || 'lesson').replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
 
   const instructions = [
     'You create practical learning activities from an internal onboarding lesson.',
@@ -125,7 +126,12 @@ export function buildLessonActivityPrompt({ lesson, type, count }) {
 
   return {
     version: LESSON_ACTIVITY_PROMPT_VERSION,
-    cacheKey: `${LESSON_ACTIVITY_PROMPT_VERSION}:${shortLessonId}:${normalizedType}:${normalizedCount}`,
+    cacheKey: buildOpenAIPromptCacheKey('lesson-activity', [
+      LESSON_ACTIVITY_PROMPT_VERSION,
+      lesson.id || 'unknown-lesson',
+      normalizedType,
+      normalizedCount,
+    ]),
     instructions,
     input,
   };
