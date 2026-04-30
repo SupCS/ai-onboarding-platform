@@ -13,11 +13,14 @@ import {
   MenuItem,
   Paper,
   Select,
+  ToggleButton,
+  ToggleButtonGroup,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
 import { useTaskTray } from '../providers/TaskTrayProvider';
+import { SimpleEditor } from '../tiptap/tiptap-templates/simple/simple-editor';
 
 const depthOptions = [
   { value: 'intro', label: 'Intro' },
@@ -43,11 +46,15 @@ export default function LessonPromptForm({
   onLessonGenerationStarted,
 }) {
   const { addTask, updateTask } = useTaskTray();
+  const [mode, setMode] = useState('ai');
   const [selectedMaterialIds, setSelectedMaterialIds] = useState([]);
   const [userInstructions, setUserInstructions] = useState('');
   const [depth, setDepth] = useState('standard');
   const [tone, setTone] = useState('clear');
   const [desiredFormat, setDesiredFormat] = useState('structured theoretical lesson');
+  const [manualTitle, setManualTitle] = useState('');
+  const [manualDescription, setManualDescription] = useState('');
+  const [manualContentHtml, setManualContentHtml] = useState('<h1>Lesson title</h1><p>Start writing the lesson here.</p>');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitAction, setSubmitAction] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
@@ -59,6 +66,8 @@ export default function LessonPromptForm({
     return materials.filter((material) => selectedIds.has(material.id));
   }, [materials, selectedMaterialIds]);
   const canSubmit = selectedMaterialIds.length > 0 || userInstructions.trim().length > 0;
+  const canSubmitManual = manualTitle.trim().length > 0 &&
+    manualContentHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length > 0;
 
   const handleMaterialToggle = (materialId) => {
     setSelectedMaterialIds((prev) => {
@@ -168,8 +177,61 @@ export default function LessonPromptForm({
     }
   };
 
+  const submitManualLesson = async () => {
+    setStatusMessage('');
+    setErrorMessage('');
+
+    if (!canSubmitManual) {
+      setErrorMessage('Add a title and lesson content before saving.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setSubmitAction('create-manual');
+
+      const response = await fetch('/api/lessons', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'create-manual',
+          title: manualTitle,
+          description: manualDescription,
+          contentHtml: manualContentHtml,
+        }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create lesson.');
+      }
+
+      setStatusMessage('Lesson created successfully.');
+      setManualTitle('');
+      setManualDescription('');
+      setManualContentHtml('<h1>Lesson title</h1><p>Start writing the lesson here.</p>');
+
+      if (data.lesson && onLessonGenerated) {
+        await onLessonGenerated(data.lesson);
+      }
+    } catch (error) {
+      console.error('Manual lesson creation failed:', error);
+      setErrorMessage(error.message || 'Manual lesson creation failed.');
+    } finally {
+      setIsSubmitting(false);
+      setSubmitAction('');
+    }
+  };
+
   const handleGenerateLesson = (event) => {
     event.preventDefault();
+    if (mode === 'manual') {
+      submitManualLesson();
+      return;
+    }
+
     submitLessonRequest('generate');
   };
 
@@ -188,16 +250,91 @@ export default function LessonPromptForm({
       <Stack spacing={3}>
         <Box>
           <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.75 }}>
-            Generate theoretical lesson
+            Create lesson
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            Select source materials or describe the lesson topic in extra instructions, then generate a saved rich-text lesson.
+            Generate a lesson with AI, or paste/write a ready lesson without AI changes.
           </Typography>
         </Box>
+
+        <ToggleButtonGroup
+          value={mode}
+          exclusive
+          onChange={(_event, nextMode) => {
+            if (nextMode) {
+              setMode(nextMode);
+              setStatusMessage('');
+              setErrorMessage('');
+            }
+          }}
+          color="primary"
+          sx={{
+            alignSelf: 'flex-start',
+            '& .MuiToggleButton-root': {
+              px: 2,
+              textTransform: 'none',
+              fontWeight: 850,
+            },
+          }}
+        >
+          <ToggleButton value="ai">Generate with AI</ToggleButton>
+          <ToggleButton value="manual">Ready lesson</ToggleButton>
+        </ToggleButtonGroup>
 
         {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
         {statusMessage && <Alert severity="success">{statusMessage}</Alert>}
 
+        {mode === 'manual' ? (
+          <Stack spacing={2}>
+            <TextField
+              label="Title"
+              value={manualTitle}
+              onChange={(event) => setManualTitle(event.target.value)}
+              fullWidth
+              required
+            />
+
+            <TextField
+              label="Description"
+              value={manualDescription}
+              onChange={(event) => setManualDescription(event.target.value)}
+              placeholder="Short summary shown on lesson cards."
+              fullWidth
+              multiline
+              minRows={2}
+            />
+
+            <Box
+              sx={{
+                height: { xs: 520, md: 620 },
+                border: '1px solid #e5e7eb',
+                borderRadius: 3,
+                overflow: 'hidden',
+                backgroundColor: '#fff',
+              }}
+            >
+              <SimpleEditor
+                content={manualContentHtml}
+                editable
+                onChange={(nextHtml) => setManualContentHtml(nextHtml)}
+                className="manual-lesson-editor"
+              />
+            </Box>
+
+            <Button
+              type="submit"
+              variant="contained"
+              size="large"
+              disabled={isSubmitting || !canSubmitManual}
+              sx={{ alignSelf: 'flex-start' }}
+            >
+              {isSubmitting && submitAction === 'create-manual'
+                ? 'Creating lesson...'
+                : 'Create ready lesson'}
+            </Button>
+          </Stack>
+        ) : (
+          <>
         <Stack spacing={1.5}>
           <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
             Source materials optional
@@ -352,6 +489,8 @@ export default function LessonPromptForm({
             </Button>
           </Stack>
         </Box>
+          </>
+        )}
       </Stack>
     </Paper>
   );

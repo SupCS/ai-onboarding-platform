@@ -167,6 +167,50 @@ export async function POST(request) {
     const depth = (body.depth || 'standard').trim();
     const tone = (body.tone || 'clear').trim();
     const desiredFormat = (body.desiredFormat || 'structured theoretical lesson').trim();
+    const manualTitle = (body.title || '').trim();
+    const manualDescription = (body.description || '').trim();
+    const manualContentHtml = (body.contentHtml || '').trim();
+
+    if (action === 'create-manual') {
+      if (!manualTitle) {
+        return Response.json(
+          { error: 'Lesson title is required.' },
+          { status: 400 }
+        );
+      }
+
+      if (!manualContentHtml || manualContentHtml === '<p></p>') {
+        return Response.json(
+          { error: 'Lesson content is required.' },
+          { status: 400 }
+        );
+      }
+
+      const lesson = await createLessonDraft({
+        title: manualTitle,
+        description: manualDescription || 'Manually created lesson.',
+        materialIds: [],
+        userInstructions: '',
+        depth: 'standard',
+        tone: 'clear',
+        desiredFormat: 'manual lesson',
+        createdBy: user.name,
+      });
+      const readyLesson = await markLessonReady(lesson.id, {
+        title: manualTitle,
+        contentMarkdown: '',
+        contentHtml: manualContentHtml,
+        generationMetadata: {
+          provider: 'manual',
+          createdManually: true,
+          createdAt: new Date().toISOString(),
+        },
+      });
+
+      return Response.json({
+        lesson: readyLesson,
+      }, { status: 201 });
+    }
 
     if (materialIds.length === 0 && !userInstructions) {
       return Response.json(
