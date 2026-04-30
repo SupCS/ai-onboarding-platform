@@ -20,6 +20,7 @@ export default function LibraryClient() {
   const [isLessonDialogOpen, setIsLessonDialogOpen] = useState(false);
   const [isRoadmapDialogOpen, setIsRoadmapDialogOpen] = useState(false);
   const [editingMaterial, setEditingMaterial] = useState(null);
+  const [editingRoadmap, setEditingRoadmap] = useState(null);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [materials, setMaterials] = useState([]);
@@ -31,6 +32,7 @@ export default function LibraryClient() {
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
   const [isSavingRoadmap, setIsSavingRoadmap] = useState(false);
   const [isDeletingMaterial, setIsDeletingMaterial] = useState(false);
+  const [isDeletingRoadmap, setIsDeletingRoadmap] = useState(false);
   const [toast, setToast] = useState({
     open: false,
     message: '',
@@ -170,6 +172,7 @@ export default function LibraryClient() {
     }
 
     if (activeTab === 'roadmaps') {
+      setEditingRoadmap(null);
       setIsRoadmapDialogOpen(true);
     }
   };
@@ -208,6 +211,7 @@ export default function LibraryClient() {
       return;
     }
 
+    setEditingRoadmap(null);
     setIsRoadmapDialogOpen(false);
   };
 
@@ -344,41 +348,120 @@ export default function LibraryClient() {
   };
 
   const handleSaveRoadmap = async (formData) => {
+    const roadmapBeingEdited = editingRoadmap;
+
     try {
       setIsSavingRoadmap(true);
 
-      const response = await fetch('/api/roadmaps', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(formData),
+      const response = await fetch(
+        roadmapBeingEdited ? `/api/roadmaps/${roadmapBeingEdited.id}` : '/api/roadmaps',
+        {
+          method: roadmapBeingEdited ? 'PUT' : 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error ||
+            (roadmapBeingEdited
+              ? 'Failed to update roadmap.'
+              : 'Failed to create roadmap.')
+        );
+      }
+
+      setRoadmaps((prev) =>
+        roadmapBeingEdited
+          ? prev.map((roadmap) =>
+              roadmap.id === data.roadmap.id ? data.roadmap : roadmap
+            )
+          : [data.roadmap, ...prev]
+      );
+      setEditingRoadmap(null);
+      setIsRoadmapDialogOpen(false);
+
+      setToast({
+        open: true,
+        message: roadmapBeingEdited
+          ? 'Roadmap updated successfully.'
+          : 'Roadmap created successfully.',
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error(
+        roadmapBeingEdited ? 'Failed to update roadmap:' : 'Failed to create roadmap:',
+        error
+      );
+
+      setToast({
+        open: true,
+        message:
+          error.message ||
+          (roadmapBeingEdited
+            ? 'Failed to update roadmap.'
+            : 'Failed to create roadmap.'),
+        severity: 'error',
+      });
+    } finally {
+      setIsSavingRoadmap(false);
+    }
+  };
+
+  const handleOpenRoadmap = (roadmap) => {
+    setEditingRoadmap(roadmap);
+    setIsRoadmapDialogOpen(true);
+  };
+
+  const handleDeleteRoadmap = async (roadmap) => {
+    if (isDeletingRoadmap) {
+      return;
+    }
+
+    const shouldDelete = window.confirm(
+      `Delete "${roadmap.title}"? This will remove the roadmap for everyone, but it will not delete the lessons.`
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    try {
+      setIsDeletingRoadmap(true);
+
+      const response = await fetch(`/api/roadmaps/${roadmap.id}`, {
+        method: 'DELETE',
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create roadmap.');
+        throw new Error(data.error || 'Failed to delete roadmap.');
       }
 
-      setRoadmaps((prev) => [data.roadmap, ...prev]);
+      setRoadmaps((prev) => prev.filter((item) => item.id !== roadmap.id));
+      setEditingRoadmap(null);
       setIsRoadmapDialogOpen(false);
 
       setToast({
         open: true,
-        message: 'Roadmap created successfully.',
+        message: 'Roadmap deleted successfully.',
         severity: 'success',
       });
     } catch (error) {
-      console.error('Failed to create roadmap:', error);
+      console.error('Failed to delete roadmap:', error);
 
       setToast({
         open: true,
-        message: error.message || 'Failed to create roadmap.',
+        message: error.message || 'Failed to delete roadmap.',
         severity: 'error',
       });
     } finally {
-      setIsSavingRoadmap(false);
+      setIsDeletingRoadmap(false);
     }
   };
 
@@ -751,6 +834,7 @@ export default function LibraryClient() {
               onUnenrollLesson={handleUnenrollLesson}
               onEnrollRoadmap={handleEnrollRoadmap}
               onUnenrollRoadmap={handleUnenrollRoadmap}
+              onOpenRoadmap={handleOpenRoadmap}
             />
           </Stack>
         </Paper>
@@ -792,11 +876,16 @@ export default function LibraryClient() {
       </Dialog>
 
       <RoadmapFormDialog
+        key={editingRoadmap ? `edit-${editingRoadmap.id}` : 'create-roadmap'}
         open={isRoadmapDialogOpen}
         lessons={sortedLessons}
         isSaving={isSavingRoadmap}
+        isDeleting={isDeletingRoadmap}
+        mode={editingRoadmap ? 'edit' : 'create'}
+        initialRoadmap={editingRoadmap}
         onClose={handleCloseRoadmapDialog}
         onSave={handleSaveRoadmap}
+        onDelete={handleDeleteRoadmap}
       />
 
       <MaterialDetailsDialog
@@ -804,6 +893,7 @@ export default function LibraryClient() {
         open={Boolean(selectedMaterial)}
         material={selectedMaterial}
         isDeleting={isDeletingMaterial}
+        allowDelete={!selectedLesson}
         onClose={handleCloseMaterial}
         onDelete={handleDeleteMaterial}
         onEdit={() => handleEditMaterial(selectedMaterial)}

@@ -17,6 +17,7 @@ export default function LibraryTabPanel({
   onUnenrollLesson,
   onEnrollRoadmap,
   onUnenrollRoadmap,
+  onOpenRoadmap,
 }) {
   if (activeTab === 'materials') {
     if (!isHydrated) {
@@ -84,6 +85,7 @@ export default function LibraryTabPanel({
         roadmaps={roadmaps}
         onEnrollRoadmap={onEnrollRoadmap}
         onUnenrollRoadmap={onUnenrollRoadmap}
+        onOpenRoadmap={onOpenRoadmap}
       />
     );
   }

@@ -541,6 +541,39 @@ export async function updateLessonContent(lessonId, input) {
 export async function deleteLessonById(lessonId) {
   await ensureLessonsSchema();
 
+  const roadmapUsageResult = await db.query(
+    `
+      SELECT roadmaps.title
+      FROM roadmap_lessons
+      JOIN roadmaps ON roadmaps.id = roadmap_lessons.roadmap_id
+      WHERE roadmap_lessons.lesson_id = $1
+      ORDER BY roadmaps.title ASC
+      LIMIT 3
+    `,
+    [lessonId]
+  );
+  const roadmapUsageCountResult = await db.query(
+    `
+      SELECT COUNT(*)::int AS count
+      FROM roadmap_lessons
+      WHERE lesson_id = $1
+    `,
+    [lessonId]
+  );
+  const roadmapUsageCount = Number(roadmapUsageCountResult.rows[0]?.count || 0);
+
+  if (roadmapUsageCount > 0) {
+    const roadmapTitles = roadmapUsageResult.rows
+      .map((row) => row.title)
+      .filter(Boolean);
+    const titleList = roadmapTitles.map((title) => `"${title}"`).join(', ');
+    const suffix = roadmapUsageCount > roadmapTitles.length ? ', and more' : '';
+
+    throw new Error(
+      `This lesson cannot be deleted because it is used in ${titleList}${suffix}. Remove it from the roadmap first.`
+    );
+  }
+
   const result = await db.query(
     `
       DELETE FROM lessons

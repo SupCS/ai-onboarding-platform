@@ -150,6 +150,131 @@ export async function createRoadmap(input) {
   }
 }
 
+export async function updateRoadmap(roadmapId, input) {
+  const lessonIds = [...new Set((input.lessonIds || []).filter(Boolean))];
+  const client = await db.connect();
+
+  try {
+    await client.query('BEGIN');
+    await ensureRoadmapsSchema(client);
+
+    if (lessonIds.length === 0) {
+      throw new Error('Select at least one lesson for the roadmap.');
+    }
+
+    const existingResult = await client.query(
+      `
+        SELECT id
+        FROM roadmaps
+        WHERE id = $1
+        LIMIT 1
+      `,
+      [roadmapId]
+    );
+
+    if (existingResult.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+
+    const readyLessonsResult = await client.query(
+      `
+        SELECT id
+        FROM lessons
+        WHERE id = ANY($1::text[])
+          AND status = 'ready'
+      `,
+      [lessonIds]
+    );
+    const readyLessonIds = new Set(readyLessonsResult.rows.map((row) => row.id));
+
+    if (readyLessonIds.size !== lessonIds.length) {
+      throw new Error('Roadmaps can include only existing ready lessons.');
+    }
+
+    await client.query(
+      `
+        UPDATE roadmaps
+        SET
+          title = $2,
+          description = $3,
+          updated_at = NOW()
+        WHERE id = $1
+      `,
+      [
+        roadmapId,
+        normalizeTitle(input.title),
+        input.description || '',
+      ]
+    );
+
+    await client.query(
+      `
+        DELETE FROM roadmap_lessons
+        WHERE roadmap_id = $1
+      `,
+      [roadmapId]
+    );
+
+    for (let index = 0; index < lessonIds.length; index += 1) {
+      await client.query(
+        `
+          INSERT INTO roadmap_lessons (roadmap_id, lesson_id, sort_order)
+          VALUES ($1, $2, $3)
+        `,
+        [roadmapId, lessonIds[index], index]
+      );
+    }
+
+    await client.query(
+      `
+        INSERT INTO user_lessons (user_id, lesson_id, enrolled_at)
+        SELECT
+          user_roadmaps.user_id,
+          roadmap_lessons.lesson_id,
+          NOW() - (roadmap_lessons.sort_order * INTERVAL '1 millisecond')
+        FROM user_roadmaps
+        JOIN roadmap_lessons ON roadmap_lessons.roadmap_id = user_roadmaps.roadmap_id
+        JOIN lessons ON lessons.id = roadmap_lessons.lesson_id
+        WHERE user_roadmaps.roadmap_id = $1
+          AND lessons.status = 'ready'
+        ON CONFLICT (user_id, lesson_id) DO NOTHING
+      `,
+      [roadmapId]
+    );
+
+    await client.query('COMMIT');
+
+    return getRoadmapById(roadmapId, input.userId || null);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+export async function deleteRoadmapById(roadmapId) {
+  await ensureRoadmapsSchema();
+
+  const result = await db.query(
+    `
+      DELETE FROM roadmaps
+      WHERE id = $1
+      RETURNING id
+    `,
+    [roadmapId]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return {
+    id: result.rows[0].id,
+  };
+}
+
 async function getRoadmapLessons(roadmapIds = [], userId = null) {
   if (roadmapIds.length === 0) {
     return new Map();

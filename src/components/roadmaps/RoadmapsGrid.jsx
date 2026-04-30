@@ -106,6 +106,7 @@ export default function RoadmapsGrid({
   roadmaps = [],
   onEnrollRoadmap,
   onUnenrollRoadmap,
+  onOpenRoadmap,
 }) {
   return (
     <Box
@@ -122,6 +123,7 @@ export default function RoadmapsGrid({
           <Paper
             key={roadmap.id}
             elevation={0}
+            onClick={() => onOpenRoadmap?.(roadmap)}
             sx={{
               p: { xs: 2.25, md: 3 },
               borderRadius: 4,
@@ -129,6 +131,15 @@ export default function RoadmapsGrid({
               background:
                 'linear-gradient(135deg, #ffffff 0%, #f8fffc 58%, #eefbf7 100%)',
               boxShadow: '0 18px 44px rgba(15, 23, 42, 0.06)',
+              cursor: onOpenRoadmap ? 'pointer' : 'default',
+              transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
+              '&:hover': onOpenRoadmap
+                ? {
+                    transform: 'translateY(-2px)',
+                    borderColor: '#99f6e4',
+                    boxShadow: '0 24px 56px rgba(15, 23, 42, 0.1)',
+                  }
+                : undefined,
             }}
           >
             <Stack spacing={3}>
@@ -287,7 +298,9 @@ export default function RoadmapsGrid({
                       <PlaylistAddOutlinedIcon />
                     )
                   }
-                  onClick={() => {
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
                     if (roadmap.isEnrolled) {
                       onUnenrollRoadmap?.(roadmap);
                       return;

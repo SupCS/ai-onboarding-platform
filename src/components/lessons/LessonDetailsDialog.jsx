@@ -179,6 +179,7 @@ export default function LessonDetailsDialog({
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isRevising, setIsRevising] = useState(false);
   const [isGeneratingActivity, setIsGeneratingActivity] = useState(false);
@@ -203,6 +204,7 @@ export default function LessonDetailsDialog({
   useEffect(() => {
     setIsEditing(false);
     setIsConfirmDeleteOpen(false);
+    setDeleteError('');
     setDraftHtml(initialHtml);
     setDraftTitle(lesson?.title || '');
     setIsRevising(false);
@@ -388,6 +390,7 @@ export default function LessonDetailsDialog({
   const handleDelete = async () => {
     try {
       setIsDeleting(true);
+      setDeleteError('');
 
       const response = await fetch(`/api/lessons/${lesson.id}`, {
         method: 'DELETE',
@@ -403,6 +406,7 @@ export default function LessonDetailsDialog({
       setIsConfirmDeleteOpen(false);
     } catch (error) {
       console.error('Failed to delete lesson:', error);
+      setDeleteError(error.message || 'Failed to delete lesson.');
     } finally {
       setIsDeleting(false);
     }
@@ -551,47 +555,21 @@ export default function LessonDetailsDialog({
           background: `linear-gradient(115deg, ${AI_DIGITAL_COLORS.yvesKleinBlue} 0%, ${AI_DIGITAL_COLORS.violetPulse} 64%, ${AI_DIGITAL_COLORS.neonAzure} 100%)`,
         }}
       >
-        <Box sx={{ px: { xs: 2, md: 3 }, py: { xs: 2, md: 2.5 } }}>
-          <Stack spacing={1.5}>
-            <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
-              <IconButton
-                aria-label="Delete lesson"
-                onClick={() => setIsConfirmDeleteOpen(true)}
-                disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
-                sx={{
-                  width: 34,
-                  height: 34,
-                  color: '#fff',
-                  backgroundColor: 'rgba(255,255,255,0.12)',
-                  '&:hover': { backgroundColor: 'rgba(255,255,255,0.22)' },
-                  '&.Mui-disabled': { color: 'rgba(255,255,255,0.42)' },
-                }}
-              >
-                <DeleteOutlineOutlinedIcon />
-              </IconButton>
-              <IconButton
-                aria-label="Close lesson details"
-                onClick={onClose}
-                sx={{
-                  width: 34,
-                  height: 34,
-                  color: '#fff',
-                  backgroundColor: 'rgba(255,255,255,0.12)',
-                  '&:hover': { backgroundColor: 'rgba(255,255,255,0.22)' },
-                }}
-              >
-                <CloseOutlinedIcon />
-              </IconButton>
-            </Stack>
-
-            <Stack
-              direction={{ xs: 'column', md: 'row' }}
-              spacing={1.5}
-              sx={{
-                alignItems: { xs: 'flex-start', md: isEditing ? 'stretch' : 'center' },
-                justifyContent: 'space-between',
-              }}
-            >
+        <Box
+          sx={{
+            px: { xs: 2, md: 3 },
+            py: isEditing ? { xs: 1.25, md: 1.5 } : { xs: 1.5, md: 2 },
+          }}
+        >
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) auto' },
+              gap: { xs: 1.25, md: 2 },
+              alignItems: 'start',
+            }}
+          >
+            <Stack spacing={isEditing ? 0.75 : 1}>
               <Box sx={{ minWidth: 0, flex: '1 1 auto', width: '100%' }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
                   <Chip
@@ -631,9 +609,11 @@ export default function LessonDetailsDialog({
                       color: '#fff',
                       backgroundColor: 'transparent',
                       fontFamily: 'Arial, sans-serif',
-                      fontSize: { xs: '1.65rem', md: '2.125rem' },
+                      fontSize: isEditing
+                        ? { xs: '1.2rem', md: '1.45rem' }
+                        : { xs: '1.65rem', md: '2.125rem' },
                       fontWeight: 950,
-                      lineHeight: 1.08,
+                      lineHeight: 1.14,
                       letterSpacing: 0,
                       '&::placeholder': {
                         color: 'rgba(255,255,255,0.68)',
@@ -660,29 +640,81 @@ export default function LessonDetailsDialog({
               </Box>
 
               {!isEditing && (
-                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', flex: '0 0 auto' }}>
+                <>
+                  {lesson.description && (
+                    <Typography sx={{ maxWidth: 900, color: 'rgba(255,255,255,0.84)', lineHeight: 1.45 }}>
+                      {lesson.description}
+                    </Typography>
+                  )}
+
+                  {(metadata.model || metadata.promptVersion || metadata.lastRevisionAt) && (
+                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                      {metadata.model && <Chip label={`Model: ${metadata.model}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
+                      {metadata.promptVersion && <Chip label={`Prompt: ${metadata.promptVersion}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
+                      {metadata.lastRevisionAt && <Chip label={`Revised ${formatDateTime(metadata.lastRevisionAt)}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
+                    </Stack>
+                  )}
+                </>
+              )}
+            </Stack>
+
+            <Stack
+              spacing={1}
+              sx={{
+                alignItems: { xs: 'flex-start', md: 'flex-end' },
+                minWidth: { md: 260 },
+              }}
+            >
+              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
+                <IconButton
+                  aria-label="Delete lesson"
+                  onClick={() => {
+                    setDeleteError('');
+                    setIsConfirmDeleteOpen(true);
+                  }}
+                  disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    color: '#fff',
+                    backgroundColor: 'rgba(255,255,255,0.12)',
+                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.22)' },
+                    '&.Mui-disabled': { color: 'rgba(255,255,255,0.42)' },
+                  }}
+                >
+                  <DeleteOutlineOutlinedIcon />
+                </IconButton>
+                <IconButton
+                  aria-label="Close lesson details"
+                  onClick={onClose}
+                  sx={{
+                    width: 34,
+                    height: 34,
+                    color: '#fff',
+                    backgroundColor: 'rgba(255,255,255,0.12)',
+                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.22)' },
+                  }}
+                >
+                  <CloseOutlinedIcon />
+                </IconButton>
+              </Stack>
+
+              {!isEditing && (
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  useFlexGap
+                  sx={{
+                    flexWrap: 'wrap',
+                    justifyContent: { xs: 'flex-start', md: 'flex-end' },
+                  }}
+                >
                   <Chip label={`Created ${formatDateTime(lesson.createdAt)}`} size="small" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.36)' }} variant="outlined" />
                   <Chip label={`By ${lesson.createdBy || 'AI Onboarding'}`} size="small" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.36)' }} variant="outlined" />
                 </Stack>
               )}
             </Stack>
-
-            {(lesson.description || metadata.model || metadata.promptVersion || metadata.lastRevisionAt) && (
-              <Stack spacing={1}>
-                {lesson.description && (
-                  <Typography sx={{ maxWidth: 900, color: 'rgba(255,255,255,0.84)', lineHeight: 1.55 }}>
-                    {lesson.description}
-                  </Typography>
-                )}
-
-                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                  {metadata.model && <Chip label={`Model: ${metadata.model}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
-                  {metadata.promptVersion && <Chip label={`Prompt: ${metadata.promptVersion}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
-                  {metadata.lastRevisionAt && <Chip label={`Revised ${formatDateTime(metadata.lastRevisionAt)}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
-                </Stack>
-              </Stack>
-            )}
-          </Stack>
+          </Box>
         </Box>
 
       </DialogTitle>
@@ -1146,7 +1178,22 @@ export default function LessonDetailsDialog({
           backgroundColor: '#fff',
         }}
       >
-        <Box sx={{ mr: 'auto' }} />
+        <Button
+          onClick={() => {
+            setDeleteError('');
+            setIsConfirmDeleteOpen(true);
+          }}
+          color="error"
+          startIcon={<DeleteOutlineOutlinedIcon />}
+          disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
+          sx={{
+            mr: 'auto',
+            textTransform: 'none',
+            fontWeight: 850,
+          }}
+        >
+          Delete lesson
+        </Button>
 
         {isEditing ? (
           <>
@@ -1203,6 +1250,11 @@ export default function LessonDetailsDialog({
             <Typography variant="body2" color="text.secondary">
               The lesson will be removed from the library and from every user&apos;s My Lessons.
             </Typography>
+            {deleteError && (
+              <Alert severity="error">
+                {deleteError}
+              </Alert>
+            )}
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 3 }}>

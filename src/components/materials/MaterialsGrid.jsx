@@ -167,6 +167,9 @@ export default function MaterialsGrid({
         const youtubeThumbnail = firstYoutubeUrl
           ? getYoutubeThumbnail(firstYoutubeUrl)
           : null;
+        const linkPreview = material.linkAssets?.find((item) => item.imageUrl) ||
+          material.linkAssets?.[0] ||
+          null;
         const imagePreview = material.attachments?.find(
           (item) => item.kind === 'image'
         );
@@ -217,6 +220,17 @@ export default function MaterialsGrid({
                   objectFit: 'cover',
                 }}
               />
+            ) : linkPreview?.imageUrl ? (
+              <Box
+                component="img"
+                src={linkPreview.imageUrl}
+                alt={linkPreview.title || material.title}
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover',
+                }}
+              />
             ) : imagePreview ? (
                 <Box
                 component="img"
@@ -228,6 +242,52 @@ export default function MaterialsGrid({
                     objectFit: 'cover',
                 }}
                 />
+            ) : linkPreview ? (
+              <Stack
+                spacing={1}
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  px: 2,
+                  textAlign: 'center',
+                  backgroundColor: '#eefbf7',
+                }}
+              >
+                <LinkOutlinedIcon sx={{ fontSize: 42, color: '#0f766e' }} />
+                <Typography
+                  variant="body2"
+                  sx={{
+                    maxWidth: '100%',
+                    fontWeight: 800,
+                    color: '#0f172a',
+                    display: '-webkit-box',
+                    overflow: 'hidden',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {linkPreview.title || linkPreview.siteName || 'Web link'}
+                </Typography>
+                {(linkPreview.siteName || linkPreview.description) && (
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{
+                      maxWidth: '100%',
+                      display: '-webkit-box',
+                      overflow: 'hidden',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {linkPreview.siteName || linkPreview.description}
+                  </Typography>
+                )}
+              </Stack>
             ) : filePreview ? (
               <Stack
                 spacing={1}

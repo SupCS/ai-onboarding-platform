@@ -400,6 +400,40 @@ export async function deleteMaterialById(materialId) {
       await client.query('ROLLBACK');
       return null;
     }
+
+    const lessonUsageResult = await client.query(
+      `
+        SELECT lessons.title
+        FROM lesson_materials
+        JOIN lessons ON lessons.id = lesson_materials.lesson_id
+        WHERE lesson_materials.material_id = $1
+        ORDER BY lessons.title ASC
+        LIMIT 3
+      `,
+      [materialId]
+    );
+    const lessonUsageCountResult = await client.query(
+      `
+        SELECT COUNT(*)::int AS count
+        FROM lesson_materials
+        WHERE material_id = $1
+      `,
+      [materialId]
+    );
+    const lessonUsageCount = Number(lessonUsageCountResult.rows[0]?.count || 0);
+
+    if (lessonUsageCount > 0) {
+      const lessonTitles = lessonUsageResult.rows
+        .map((row) => row.title)
+        .filter(Boolean);
+      const titleList = lessonTitles.map((title) => `"${title}"`).join(', ');
+      const suffix = lessonUsageCount > lessonTitles.length ? ', and more' : '';
+
+      throw new Error(
+        `This material cannot be deleted because it is used in ${titleList}${suffix}. Delete or update those lessons first.`
+      );
+    }
+
     await ensureMaterialFileOpenAIColumns(client);
     await ensureMaterialYoutubeMetadataColumns(client);
     await ensureMaterialLinkMetadataColumns(client);

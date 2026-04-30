@@ -14,7 +14,23 @@ import {
   Typography,
 } from '@mui/material';
 
-function buildInitialForm() {
+function buildInitialForm(initialRoadmap = null, lessons = []) {
+  if (initialRoadmap) {
+    const readyLessonsById = new Map(
+      lessons
+        .filter((lesson) => lesson.status === 'ready')
+        .map((lesson) => [lesson.id, lesson])
+    );
+
+    return {
+      title: initialRoadmap.title || '',
+      description: initialRoadmap.description || '',
+      selectedLessons: (initialRoadmap.lessonIds || [])
+        .map((lessonId) => readyLessonsById.get(lessonId))
+        .filter(Boolean),
+    };
+  }
+
   return {
     title: '',
     description: '',
@@ -26,11 +42,16 @@ export default function RoadmapFormDialog({
   open,
   lessons = [],
   isSaving = false,
+  isDeleting = false,
+  mode = 'create',
+  initialRoadmap = null,
   onClose,
   onSave,
+  onDelete,
 }) {
-  const [form, setForm] = useState(buildInitialForm);
+  const [form, setForm] = useState(() => buildInitialForm(initialRoadmap, lessons));
   const [errors, setErrors] = useState({});
+  const isEditMode = mode === 'edit';
   const readyLessons = useMemo(() => {
     return lessons.filter((lesson) => lesson.status === 'ready');
   }, [lessons]);
@@ -86,7 +107,7 @@ export default function RoadmapFormDialog({
   };
 
   const handleDialogClose = (...args) => {
-    if (isSaving) {
+    if (isSaving || isDeleting) {
       return;
     }
 
@@ -94,7 +115,7 @@ export default function RoadmapFormDialog({
   };
 
   const handleExited = () => {
-    setForm(buildInitialForm());
+    setForm(buildInitialForm(initialRoadmap, lessons));
     setErrors({});
   };
 
@@ -110,7 +131,7 @@ export default function RoadmapFormDialog({
         },
       }}
     >
-      <DialogTitle>Create Roadmap</DialogTitle>
+      <DialogTitle>{isEditMode ? 'Edit Roadmap' : 'Create Roadmap'}</DialogTitle>
 
       <DialogContent sx={{ pt: 2 }}>
         <Stack spacing={3} sx={{ mt: 1 }}>
@@ -177,16 +198,33 @@ export default function RoadmapFormDialog({
       </DialogContent>
 
       <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={handleDialogClose} color="inherit" disabled={isSaving}>
+        {isEditMode && (
+          <Button
+            onClick={() => onDelete?.(initialRoadmap)}
+            color="error"
+            disabled={isSaving || isDeleting}
+            sx={{
+              mr: 'auto',
+              textTransform: 'none',
+              fontWeight: 800,
+            }}
+          >
+            {isDeleting ? 'Deleting...' : 'Delete Roadmap'}
+          </Button>
+        )}
+
+        <Button onClick={handleDialogClose} color="inherit" disabled={isSaving || isDeleting}>
           Cancel
         </Button>
 
         <Button
           variant="contained"
           onClick={handleSubmit}
-          disabled={isSaving || readyLessons.length === 0}
+          disabled={isSaving || isDeleting || readyLessons.length === 0}
         >
-          {isSaving ? 'Creating...' : 'Create Roadmap'}
+          {isSaving
+            ? isEditMode ? 'Saving...' : 'Creating...'
+            : isEditMode ? 'Save Roadmap' : 'Create Roadmap'}
         </Button>
       </DialogActions>
     </Dialog>

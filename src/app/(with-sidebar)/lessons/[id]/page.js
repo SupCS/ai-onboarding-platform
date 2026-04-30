@@ -4,6 +4,7 @@ import { Box, Button, Chip, Container, Paper, Stack, Typography } from '@mui/mat
 import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
 import LessonActivityGate from '../../../../components/lessons/LessonActivityGate';
 import LessonAttachments from '../../../../components/lessons/LessonAttachments';
+import LessonAskAssistant from '../../../../components/lessons/LessonAskAssistant';
 import LessonReader from '../../../../components/lessons/LessonReader';
 import { getCurrentUser } from '../../../../lib/currentUser';
 import { markdownToHtml } from '../../../../lib/lessonContent';
@@ -173,6 +174,7 @@ export default async function LessonReadPage({ params }) {
           </Paper>
         </Stack>
       </Container>
+      <LessonAskAssistant lessonId={lesson.id} />
     </Box>
   );
 }
