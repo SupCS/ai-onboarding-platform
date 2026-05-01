@@ -78,9 +78,8 @@ function RoadmapStepIcon({ active, completed, className }) {
 function getRoadmapProgress(roadmap) {
   const completedCount = roadmap.lessons.filter((lesson) => lesson.isCompleted).length;
   const totalCount = roadmap.lessons.length;
-  const activeStep = totalCount === 0
-    ? 0
-    : Math.min(completedCount, totalCount - 1);
+  const firstIncompleteIndex = roadmap.lessons.findIndex((lesson) => !lesson.isCompleted);
+  const activeStep = firstIncompleteIndex === -1 ? -1 : firstIncompleteIndex;
 
   return {
     activeStep,

@@ -602,39 +602,22 @@ export default function LibraryClient() {
     const uploadedAttachments = [];
 
     for (const file of files) {
-      const uploadUrlResponse = await fetch('/api/materials/upload-url', {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+
+      const uploadResponse = await fetch('/api/materials/upload-file', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type || 'application/octet-stream',
-          size: file.size,
-        }),
+        body: uploadFormData,
       });
-
-      const uploadUrlData = await uploadUrlResponse.json();
-
-      if (!uploadUrlResponse.ok) {
-        throw new Error(uploadUrlData.error || 'Failed to prepare file upload.');
-      }
-
-      const uploadResponse = await fetch(uploadUrlData.uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': file.type || 'application/octet-stream',
-        },
-        body: file,
-      });
+      const uploadData = await uploadResponse.json();
 
       if (!uploadResponse.ok) {
-        throw new Error(`Failed to upload file: ${file.name}`);
+        throw new Error(uploadData.error || `Failed to upload file: ${file.name}`);
       }
 
       uploadedAttachments.push({
         originalName: file.name,
-        storageKey: uploadUrlData.storageKey,
+        storageKey: uploadData.storageKey,
         mimeType: file.type || 'application/octet-stream',
         sizeBytes: file.size,
         kind: file.type.startsWith('image/') ? 'image' : 'file',

@@ -1,6 +1,6 @@
 import { buildOpenAIPromptCacheKey } from './openaiCache.js';
 
-export const LESSON_ACTIVITY_PROMPT_VERSION = 'lesson-activity-v1';
+export const LESSON_ACTIVITY_PROMPT_VERSION = 'lesson-activity-v2-flashcard-front-prompts';
 
 export const LESSON_ACTIVITY_LIMITS = {
   quiz: {
@@ -59,7 +59,7 @@ function getActivityShape(type) {
       '  "title": "short activity title",',
       '  "cards": [',
       '    {',
-      '      "front": "term, concept, abbreviation, or scenario prompt",',
+      '      "front": "complete study question or recall prompt, not just a term",',
       '      "back": "clear answer and any useful explanation"',
       '    }',
       '  ]',
@@ -107,7 +107,11 @@ export function buildLessonActivityPrompt({ lesson, type, count }) {
       : [
           'Flashcard requirements:',
           '- Focus on terms, abbreviations, key concepts, platform mechanics, useful distinctions, and compact scenario prompts from the lesson.',
-          '- Front should be short enough to study from.',
+          '- Front must be a complete study prompt that tells the learner what to recall or explain.',
+          '- Never put only a bare term, abbreviation, or phrase on the front. For definitions, write a question like "What is broad match?" or a recall prompt like "Explain what broad match means and when it is used."',
+          '- If the card checks a distinction, make the front explicit, for example "How is broad match different from phrase match?"',
+          '- If the card checks a scenario, make the task explicit, for example "What match type would you choose in this situation, and why?"',
+          '- Front should still be short enough to study from, usually one sentence.',
           '- Back should be concise but complete. Include the explanation directly in the back text when it helps retention.',
           '- Do not make cards that are just vague trivia.',
         ].join('\n'),

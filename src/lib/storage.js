@@ -1,6 +1,7 @@
 import {
   DeleteObjectsCommand,
   GetObjectCommand,
+  PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
@@ -66,6 +67,17 @@ export async function getObjectBuffer(storageKey) {
   }
 
   return Buffer.concat(chunks);
+}
+
+export async function putStorageObject(storageKey, body, options = {}) {
+  await storage.send(
+    new PutObjectCommand({
+      Bucket: bucketName,
+      Key: storageKey,
+      Body: body,
+      ContentType: options.contentType || 'application/octet-stream',
+    })
+  );
 }
 
 export async function deleteStorageObjects(storageKeys = []) {

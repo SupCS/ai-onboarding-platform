@@ -232,6 +232,13 @@ export default function LessonActivityGate({
             );
           })}
         </Stack>
+
+        {allCompleted && (
+          <LessonCompletionButton
+            lessonId={lessonId}
+            initialIsCompleted={initialIsCompleted}
+          />
+        )}
       </Stack>
     </Box>
   );

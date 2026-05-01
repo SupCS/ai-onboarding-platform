@@ -13,16 +13,52 @@ import {
   Typography,
 } from '@mui/material';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
-import ClearOutlinedIcon from '@mui/icons-material/ClearOutlined';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
+import DeleteSweepOutlinedIcon from '@mui/icons-material/DeleteSweepOutlined';
 import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
 import { AI_DIGITAL_COLORS, hexToRgba } from '../../lib/brandColors';
+import { markdownToHtml } from '../../lib/lessonContent';
 
 const STARTER_QUESTIONS = [
   'Explain the core idea in simpler words.',
   'What should I remember from this lesson?',
   'Give me an example from the lesson.',
 ];
+
+function AssistantMarkdown({ content }) {
+  return (
+    <Box
+      dangerouslySetInnerHTML={{ __html: markdownToHtml(content) }}
+      sx={{
+        fontSize: '0.875rem',
+        lineHeight: 1.55,
+        '& p': {
+          my: 0,
+        },
+        '& p + p, & p + ul, & p + ol, & ul + p, & ol + p': {
+          mt: 0.85,
+        },
+        '& ul, & ol': {
+          my: 0.75,
+          pl: 2.25,
+        },
+        '& li + li': {
+          mt: 0.35,
+        },
+        '& strong': {
+          fontWeight: 850,
+        },
+        '& code': {
+          px: 0.4,
+          py: 0.1,
+          borderRadius: 0.75,
+          fontSize: '0.82em',
+          backgroundColor: 'rgba(15, 23, 42, 0.08)',
+        },
+      }}
+    />
+  );
+}
 
 export default function LessonAskAssistant({ lessonId }) {
   const [question, setQuestion] = useState('');
@@ -186,27 +222,29 @@ export default function LessonAskAssistant({ lessonId }) {
           </Box>
         </Stack>
 
-        <Tooltip title="Clear chat">
-          <span>
+        <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
+          <Tooltip title="Clear chat">
+            <span>
+              <IconButton
+                size="small"
+                onClick={clearChat}
+                disabled={messages.length === 0 && !question && !error}
+                aria-label="Clear lesson assistant chat"
+              >
+                <DeleteSweepOutlinedIcon fontSize="small" />
+              </IconButton>
+            </span>
+          </Tooltip>
+          <Tooltip title="Close chat">
             <IconButton
               size="small"
-              onClick={clearChat}
-              disabled={messages.length === 0 && !question && !error}
-              aria-label="Clear lesson assistant chat"
+              onClick={() => setIsOpen(false)}
+              aria-label="Close lesson assistant chat"
             >
-              <ClearOutlinedIcon fontSize="small" />
+              <CloseOutlinedIcon fontSize="small" />
             </IconButton>
-          </span>
-        </Tooltip>
-        <Tooltip title="Close chat">
-          <IconButton
-            size="small"
-            onClick={() => setIsOpen(false)}
-            aria-label="Close lesson assistant chat"
-          >
-            <CloseOutlinedIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
+          </Tooltip>
+        </Stack>
       </Stack>
 
       <Box
@@ -263,13 +301,16 @@ export default function LessonAskAssistant({ lessonId }) {
                       ? AI_DIGITAL_COLORS.yvesKleinBlue
                       : '#f1f5f9',
                   color: message.role === 'user' ? '#fff' : '#172033',
-                  whiteSpace: 'pre-wrap',
                   overflowWrap: 'anywhere',
                 }}
               >
-                <Typography variant="body2" sx={{ lineHeight: 1.55 }}>
-                  {message.content}
-                </Typography>
+                {message.role === 'assistant' ? (
+                  <AssistantMarkdown content={message.content} />
+                ) : (
+                  <Typography variant="body2" sx={{ lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>
+                    {message.content}
+                  </Typography>
+                )}
               </Box>
             ))}
             {isLoading && (
