@@ -3,6 +3,11 @@ import { db } from './db.js';
 
 export const AUTH_COOKIE_NAME = 'ai_onboarding_session';
 export const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+export const USER_ROLES = {
+  ADMIN: 'admin',
+  TEAMLEAD: 'teamlead',
+  MEMBER: 'member',
+};
 
 const PASSWORD_ITERATIONS = 310000;
 const PASSWORD_KEY_LENGTH = 32;
@@ -61,6 +66,7 @@ async function ensureAuthSchemaUncached(client = db) {
     CREATE INDEX IF NOT EXISTS auth_sessions_expires_at_idx
     ON auth_sessions(expires_at)
   `);
+
 }
 
 export function normalizeEmail(email = '') {

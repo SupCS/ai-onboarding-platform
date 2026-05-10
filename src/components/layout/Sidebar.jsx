@@ -20,6 +20,8 @@ import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined';
 import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
 import RouteOutlinedIcon from '@mui/icons-material/RouteOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
+import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 
 const EXPANDED_WIDTH = 280;
 const COLLAPSED_WIDTH = 84;
@@ -40,6 +42,11 @@ const sidebarItems = [
     href: '/roadmaps',
     icon: <RouteOutlinedIcon />,
   },
+  {
+    label: 'Teams',
+    href: '/teams',
+    icon: <GroupsOutlinedIcon />,
+  },
 ];
 
 export default function Sidebar({ currentUser }) {
@@ -51,6 +58,17 @@ export default function Sidebar({ currentUser }) {
     email: '',
     role: 'member',
   };
+  const visibleSidebarItems =
+    user.role === 'admin'
+      ? [
+          ...sidebarItems,
+          {
+            label: 'Admin',
+            href: '/admin',
+            icon: <AdminPanelSettingsOutlinedIcon />,
+          },
+        ]
+      : sidebarItems;
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', {
@@ -162,7 +180,7 @@ export default function Sidebar({ currentUser }) {
       <Divider />
 
       <List sx={{ p: 0 }}>
-        {sidebarItems.map((item) => {
+        {visibleSidebarItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
 
@@ -242,7 +260,9 @@ export default function Sidebar({ currentUser }) {
             flexShrink: 0,
           }}
         >
-          <Avatar>{user.name.charAt(0)}</Avatar>
+          <Avatar sx={{ bgcolor: 'primary.main', color: '#fff', fontWeight: 700 }}>
+            {user.name.charAt(0)}
+          </Avatar>
         </Box>
 
         <Box

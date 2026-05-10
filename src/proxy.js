@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-export function middleware(request) {
+export function proxy(request) {
   const start = Date.now();
   const response = NextResponse.next();
   const pathname = request.nextUrl.pathname;
