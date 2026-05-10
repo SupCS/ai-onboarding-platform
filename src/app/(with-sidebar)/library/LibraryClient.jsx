@@ -33,6 +33,7 @@ export default function LibraryClient() {
   const [isSavingRoadmap, setIsSavingRoadmap] = useState(false);
   const [isDeletingMaterial, setIsDeletingMaterial] = useState(false);
   const [isDeletingRoadmap, setIsDeletingRoadmap] = useState(false);
+  const [materialFormResetKey, setMaterialFormResetKey] = useState(0);
   const [toast, setToast] = useState({
     open: false,
     message: '',
@@ -717,6 +718,10 @@ export default function LibraryClient() {
           : 'Material saved successfully.',
         severity: 'success',
       });
+
+      if (!materialBeingEdited) {
+        setMaterialFormResetKey((prev) => prev + 1);
+      }
     } catch (error) {
       console.error('Failed to save material:', error);
 
@@ -831,6 +836,7 @@ export default function LibraryClient() {
         isSaving={isSavingMaterial}
         mode={editingMaterial ? 'edit' : 'create'}
         initialMaterial={editingMaterial}
+        resetKey={materialFormResetKey}
       />
 
       <Dialog

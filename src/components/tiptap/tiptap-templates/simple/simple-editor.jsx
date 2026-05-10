@@ -65,6 +65,24 @@ import { useCursorVisibility } from "@/hooks/use-cursor-visibility"
 // --- Styles ---
 import "@/components/tiptap-templates/simple/simple-editor.scss"
 
+function getImageFilesFromDataTransfer(dataTransfer) {
+  if (!dataTransfer) {
+    return []
+  }
+
+  const itemFiles = Array.from(dataTransfer.items || [])
+    .filter((item) => item.kind === "file" && item.type?.startsWith("image/"))
+    .map((item) => item.getAsFile())
+    .filter(Boolean)
+
+  if (itemFiles.length > 0) {
+    return itemFiles
+  }
+
+  return Array.from(dataTransfer.files || [])
+    .filter((file) => file.type?.startsWith("image/"))
+}
+
 const MainToolbarContent = ({
   onHighlighterClick,
   onLinkClick,
@@ -146,6 +164,7 @@ export function SimpleEditor({
   content = "",
   editable = true,
   onChange,
+  onImageUpload,
   className = "",
 }) {
   const isMobile = useIsBreakpoint()
@@ -154,6 +173,11 @@ export function SimpleEditor({
   const toolbarRef = useRef(null)
   const latestContentRef = useRef(content)
   const editableRef = useRef(editable)
+  const imageUploadRef = useRef(onImageUpload)
+
+  useEffect(() => {
+    imageUploadRef.current = onImageUpload
+  }, [onImageUpload])
 
   const editor = useEditor({
     immediatelyRender: false,
@@ -178,6 +202,58 @@ export function SimpleEditor({
         }
 
         window.open(link.href, "_blank", "noopener,noreferrer")
+        return true
+      },
+      handlePaste: (view, event) => {
+        if (!editableRef.current || !imageUploadRef.current) {
+          return false
+        }
+
+        const imageFiles = getImageFilesFromDataTransfer(event.clipboardData)
+
+        if (imageFiles.length === 0) {
+          return false
+        }
+
+        event.preventDefault()
+
+        const insertPosition = view.state.selection.from
+
+        Promise.all(
+          imageFiles.map(async (file) => {
+            const image = await imageUploadRef.current(file)
+
+            if (!image?.src) {
+              return null
+            }
+
+            return {
+              type: "image",
+              attrs: {
+                src: image.src,
+                alt: image.alt || file.name,
+                title: image.title || file.name,
+              },
+            }
+          })
+        )
+          .then((imageNodes) => {
+            const nodes = imageNodes.filter(Boolean)
+
+            if (!nodes.length || view.isDestroyed) {
+              return
+            }
+
+            editor
+              ?.chain()
+              .focus()
+              .insertContentAt(insertPosition, nodes)
+              .run()
+          })
+          .catch((error) => {
+            console.error("Failed to paste image into editor:", error)
+          })
+
         return true
       },
     },

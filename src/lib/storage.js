@@ -10,32 +10,59 @@ function cleanEnvValue(value) {
   return (value || '').trim().replace(/^["']|["']$/g, '');
 }
 
+function firstEnvValue(names = []) {
+  for (const name of names) {
+    const value = cleanEnvValue(process.env[name]);
+
+    if (value) {
+      return value;
+    }
+  }
+
+  return '';
+}
+
 function getStorageRegion() {
-  const region = cleanEnvValue(
-    process.env.RAILWAY_BUCKET_REGION || process.env.REGION
-  );
+  const region = firstEnvValue([
+    'REGION',
+    'AWS_REGION',
+    'S3_REGION',
+    'RAILWAY_BUCKET_REGION',
+  ]);
 
   return !region || region === 'auto' ? 'us-east-1' : region;
 }
 
 export const storage = new S3Client({
   region: getStorageRegion(),
-  endpoint: cleanEnvValue(
-    process.env.RAILWAY_BUCKET_ENDPOINT || process.env.ENDPOINT
-  ),
+  endpoint: firstEnvValue([
+    'ENDPOINT',
+    'AWS_ENDPOINT',
+    'S3_ENDPOINT',
+    'RAILWAY_BUCKET_ENDPOINT',
+  ]),
   credentials: {
-    accessKeyId: cleanEnvValue(
-      process.env.RAILWAY_BUCKET_ACCESS_KEY_ID || process.env.ACCESS_KEY_ID
-    ),
-    secretAccessKey: cleanEnvValue(
-      process.env.RAILWAY_BUCKET_SECRET_ACCESS_KEY || process.env.SECRET_ACCESS_KEY
-    ),
+    accessKeyId: firstEnvValue([
+      'ACCESS_KEY_ID',
+      'AWS_ACCESS_KEY_ID',
+      'S3_ACCESS_KEY_ID',
+      'RAILWAY_BUCKET_ACCESS_KEY_ID',
+    ]),
+    secretAccessKey: firstEnvValue([
+      'SECRET_ACCESS_KEY',
+      'AWS_SECRET_ACCESS_KEY',
+      'S3_SECRET_ACCESS_KEY',
+      'RAILWAY_BUCKET_SECRET_ACCESS_KEY',
+    ]),
   },
 });
 
-export const bucketName = cleanEnvValue(
-  process.env.RAILWAY_BUCKET_BUCKET || process.env.BUCKET
-);
+export const bucketName = firstEnvValue([
+  'BUCKET',
+  'AWS_BUCKET',
+  'S3_BUCKET',
+  'RAILWAY_BUCKET_BUCKET',
+]);
 
 export async function getObjectUrl(storageKey, options = {}) {
   const command = new GetObjectCommand({

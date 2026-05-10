@@ -371,6 +371,63 @@ export default function LessonDetailsDialog({
     }
   };
 
+  const uploadLessonImageAsset = async (file) => {
+    if (!file || !file.type?.startsWith('image/')) {
+      throw new Error('Only image files can be pasted into the editor.');
+    }
+
+    try {
+      setIsAddingAsset(true);
+      setAssetError('');
+
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+
+      const uploadResponse = await fetch('/api/lessons/upload-file', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+      const uploadData = await uploadResponse.json();
+
+      if (!uploadResponse.ok) {
+        throw new Error(uploadData.error || `Failed to upload image: ${file.name}`);
+      }
+
+      const assetResponse = await fetch(`/api/lessons/${lesson.id}/assets`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          kind: 'image',
+          originalName: file.name,
+          storageKey: uploadData.storageKey,
+          mimeType: file.type || 'application/octet-stream',
+          sizeBytes: file.size,
+        }),
+      });
+      const assetData = await assetResponse.json();
+
+      if (!assetResponse.ok) {
+        throw new Error(assetData.error || 'Failed to save pasted image asset.');
+      }
+
+      await onLessonUpdated?.(assetData.lesson);
+
+      return {
+        src: `/api/files/object?storageKey=${encodeURIComponent(uploadData.storageKey)}`,
+        alt: file.name,
+        title: file.name,
+      };
+    } catch (error) {
+      console.error('Failed to paste lesson image asset:', error);
+      setAssetError(error.message || 'Failed to paste image asset.');
+      throw error;
+    } finally {
+      setIsAddingAsset(false);
+    }
+  };
+
   const handleDelete = async () => {
     try {
       setIsDeleting(true);
@@ -835,6 +892,7 @@ export default function LessonDetailsDialog({
                     content={draftHtml}
                     editable={isEditing}
                     onChange={(nextHtml) => setDraftHtml(nextHtml)}
+                    onImageUpload={uploadLessonImageAsset}
                     className="lesson-details-editor"
                   />
                 </Box>

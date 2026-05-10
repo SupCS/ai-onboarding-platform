@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -87,11 +87,17 @@ export default function UploadMaterialDialog({
   isSaving = false,
   mode = 'create',
   initialMaterial = null,
+  resetKey = 0,
 }) {
   const [form, setForm] = useState(buildInitialForm(initialMaterial));
   const [errors, setErrors] = useState({});
 
   const isEditMode = mode === 'edit';
+
+  useEffect(() => {
+    setForm(buildInitialForm(initialMaterial));
+    setErrors({});
+  }, [initialMaterial, resetKey]);
 
   const handleChange = (field) => (event) => {
     const value = event.target.value;
