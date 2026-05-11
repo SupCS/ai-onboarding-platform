@@ -875,9 +875,13 @@ export async function getAllLessons(userId = null) {
             lesson_activities.type,
             lesson_activities.title,
             lesson_activities.item_count,
+            lesson_activities.payload,
+            lesson_activities.generation_metadata,
+            lesson_activities.created_by,
             lesson_activities.created_at,
             user_lesson_activity_progress.status AS progress_status,
             user_lesson_activity_progress.score AS progress_score,
+            user_lesson_activity_progress.metadata AS progress_metadata,
             user_lesson_activity_progress.started_at AS progress_started_at,
             user_lesson_activity_progress.completed_at AS progress_completed_at
           FROM lesson_activities
@@ -897,7 +901,7 @@ export async function getAllLessons(userId = null) {
 
   lessonActivitiesResult.rows.forEach((activityRow) => {
     const activities = activitiesByLessonId.get(activityRow.lesson_id) || [];
-    activities.push(mapLessonActivitySummary(activityRow));
+    activities.push(mapLessonActivity(activityRow));
     activitiesByLessonId.set(activityRow.lesson_id, activities);
   });
 

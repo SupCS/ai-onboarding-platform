@@ -11,7 +11,6 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import ExpandLessOutlinedIcon from '@mui/icons-material/ExpandLessOutlined';
@@ -30,10 +29,6 @@ function createTaskId() {
 }
 
 function getTaskIcon(status) {
-  if (status === 'success') {
-    return <CheckCircleOutlineOutlinedIcon sx={{ color: '#16a34a' }} />;
-  }
-
   if (status === 'error') {
     return <ErrorOutlineOutlinedIcon sx={{ color: '#dc2626' }} />;
   }
@@ -42,10 +37,6 @@ function getTaskIcon(status) {
 }
 
 function getStatusLabel(status) {
-  if (status === 'success') {
-    return 'Done';
-  }
-
   if (status === 'error') {
     return 'Failed';
   }
@@ -54,9 +45,10 @@ function getStatusLabel(status) {
 }
 
 function TaskTray({ tasks, onDismiss, onDismissCompleted }) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const hasTasks = tasks.length > 0;
   const activeCount = tasks.filter((task) => task.status === 'running').length;
+  const errorCount = tasks.filter((task) => task.status === 'error').length;
 
   if (!hasTasks) {
     return null;
@@ -70,31 +62,34 @@ function TaskTray({ tasks, onDismiss, onDismissCompleted }) {
         right: 24,
         bottom: 24,
         zIndex: 1500,
-        width: { xs: 'calc(100vw - 32px)', sm: 380 },
+        width: { xs: 'calc(100vw - 32px)', sm: isExpanded ? 320 : 260 },
         overflow: 'hidden',
         borderRadius: 2,
-        border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.16)}`,
+        border: `1px solid ${hexToRgba(errorCount > 0 ? '#dc2626' : AI_DIGITAL_COLORS.yvesKleinBlue, 0.16)}`,
         backgroundColor: '#fff',
-        boxShadow: `0 24px 72px ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.18)}`,
+        boxShadow: `0 16px 42px ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.14)}`,
+        transition: 'width 0.18s ease',
       }}
     >
       <Stack
         direction="row"
         spacing={1}
         sx={{
-          px: 2,
-          py: 1.25,
+          px: 1.25,
+          py: 0.9,
           alignItems: 'center',
-          backgroundColor: AI_DIGITAL_COLORS.midnightCharcoal,
+          backgroundColor: errorCount > 0 ? '#7f1d1d' : AI_DIGITAL_COLORS.midnightCharcoal,
           color: '#fff',
         }}
       >
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography variant="subtitle2" sx={{ fontWeight: 900, lineHeight: 1.2 }}>
-            Background tasks
+          <Typography variant="body2" noWrap sx={{ fontWeight: 900, lineHeight: 1.2 }}>
+            {errorCount > 0 ? 'Task failed' : 'Working...'}
           </Typography>
-          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.72)' }}>
-            {activeCount > 0 ? `${activeCount} running` : 'All caught up'}
+          <Typography variant="caption" noWrap sx={{ display: 'block', color: 'rgba(255,255,255,0.72)' }}>
+            {errorCount > 0
+              ? `${errorCount} error${errorCount === 1 ? '' : 's'}`
+              : `${activeCount} running`}
           </Typography>
         </Box>
 
@@ -108,28 +103,38 @@ function TaskTray({ tasks, onDismiss, onDismissCompleted }) {
         </IconButton>
       </Stack>
 
+      {!isExpanded && activeCount > 0 && errorCount === 0 && (
+        <LinearProgress
+          sx={{
+            height: 3,
+            backgroundColor: hexToRgba(AI_DIGITAL_COLORS.skywave, 0.28),
+            '& .MuiLinearProgress-bar': {
+              backgroundColor: AI_DIGITAL_COLORS.yvesKleinBlue,
+            },
+          }}
+        />
+      )}
+
       <Collapse in={isExpanded}>
-        <Stack spacing={0} sx={{ maxHeight: 360, overflow: 'auto' }}>
+        <Stack spacing={0} sx={{ maxHeight: 280, overflow: 'auto' }}>
           {tasks.map((task) => (
             <Box
               key={task.id}
               sx={{
-                px: 2,
-                py: 1.5,
+                px: 1.25,
+                py: 1,
                 borderTop: '1px solid #eef2f7',
                 backgroundColor:
                   task.status === 'error'
                     ? '#fff7f7'
-                    : task.status === 'success'
-                      ? '#f7fff9'
-                      : '#fff',
+                    : '#fff',
               }}
             >
-              <Stack direction="row" spacing={1.25} sx={{ alignItems: 'flex-start' }}>
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
                 <Box sx={{ pt: 0.15 }}>{getTaskIcon(task.status)}</Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
                   <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                    <Typography variant="body2" sx={{ fontWeight: 900, flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" noWrap sx={{ fontWeight: 900, flex: 1, minWidth: 0 }}>
                       {task.title}
                     </Typography>
                     <Typography
@@ -153,7 +158,14 @@ function TaskTray({ tasks, onDismiss, onDismissCompleted }) {
                     <Typography
                       variant="caption"
                       color="text.secondary"
-                      sx={{ display: 'block', mt: 0.35, lineHeight: 1.35 }}
+                      sx={{
+                        display: '-webkit-box',
+                        mt: 0.25,
+                        lineHeight: 1.3,
+                        overflow: 'hidden',
+                        WebkitLineClamp: task.status === 'error' ? 3 : 1,
+                        WebkitBoxOrient: 'vertical',
+                      }}
                     >
                       {task.description}
                     </Typography>
@@ -162,8 +174,8 @@ function TaskTray({ tasks, onDismiss, onDismissCompleted }) {
                   {task.status === 'running' && (
                     <LinearProgress
                       sx={{
-                        mt: 1,
-                        height: 5,
+                        mt: 0.75,
+                        height: 4,
                         borderRadius: 999,
                         backgroundColor: hexToRgba(AI_DIGITAL_COLORS.skywave, 0.28),
                         '& .MuiLinearProgress-bar': {
@@ -174,25 +186,23 @@ function TaskTray({ tasks, onDismiss, onDismissCompleted }) {
                   )}
                 </Box>
 
-                {task.status !== 'running' && (
-                  <IconButton
-                    aria-label="Dismiss task"
-                    size="small"
-                    onClick={() => onDismiss(task.id)}
-                    sx={{ mt: -0.5 }}
-                  >
-                    <CloseOutlinedIcon fontSize="small" />
-                  </IconButton>
-                )}
+                <IconButton
+                  aria-label={task.status === 'running' ? 'Hide task' : 'Dismiss task'}
+                  size="small"
+                  onClick={() => onDismiss(task.id)}
+                  sx={{ mt: -0.5 }}
+                >
+                  <CloseOutlinedIcon fontSize="small" />
+                </IconButton>
               </Stack>
             </Box>
           ))}
         </Stack>
 
-        {tasks.some((task) => task.status !== 'running') && (
-          <Box sx={{ px: 2, py: 1.25, borderTop: '1px solid #eef2f7' }}>
-            <Button size="small" onClick={onDismissCompleted}>
-              Clear completed
+        {tasks.some((task) => task.status === 'error') && (
+          <Box sx={{ px: 1.25, py: 0.75, borderTop: '1px solid #eef2f7' }}>
+            <Button size="small" onClick={onDismissCompleted} sx={{ textTransform: 'none', fontWeight: 800 }}>
+              Clear errors
             </Button>
           </Box>
         )}
@@ -213,6 +223,7 @@ export function TaskTrayProvider({ children }) {
         title: task.title || 'Task',
         description: task.description || '',
         status: task.status || 'running',
+        hidden: false,
         createdAt: Date.now(),
       },
       ...prev,
@@ -222,24 +233,37 @@ export function TaskTrayProvider({ children }) {
   }, []);
 
   const updateTask = useCallback((id, patch) => {
-    setTasks((prev) =>
-      prev.map((task) =>
+    setTasks((prev) => {
+      if (patch.status === 'success') {
+        return prev.filter((task) => task.id !== id);
+      }
+
+      return prev.map((task) =>
         task.id === id
           ? {
               ...task,
               ...patch,
+              hidden: patch.status === 'error' ? false : task.hidden,
             }
           : task
-      )
-    );
+      );
+    });
   }, []);
 
   const dismissTask = useCallback((id) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
+    setTasks((prev) =>
+      prev
+        .map((task) =>
+          task.id === id && task.status === 'running'
+            ? { ...task, hidden: true }
+            : task
+        )
+        .filter((task) => task.id !== id || task.status === 'running')
+    );
   }, []);
 
   const dismissCompleted = useCallback(() => {
-    setTasks((prev) => prev.filter((task) => task.status === 'running'));
+    setTasks((prev) => prev.filter((task) => task.status !== 'error'));
   }, []);
 
   const value = useMemo(
@@ -255,7 +279,7 @@ export function TaskTrayProvider({ children }) {
     <TaskTrayContext.Provider value={value}>
       {children}
       <TaskTray
-        tasks={tasks}
+        tasks={tasks.filter((task) => !task.hidden)}
         onDismiss={dismissTask}
         onDismissCompleted={dismissCompleted}
       />
