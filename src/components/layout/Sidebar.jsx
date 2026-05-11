@@ -33,12 +33,12 @@ const sidebarItems = [
     icon: <LibraryBooksOutlinedIcon />,
   },
   {
-    label: 'Lessons',
+    label: 'My Lessons',
     href: '/lessons',
     icon: <SchoolOutlinedIcon />,
   },
   {
-    label: 'Roadmaps',
+    label: 'My Roadmaps',
     href: '/roadmaps',
     icon: <RouteOutlinedIcon />,
   },
@@ -133,12 +133,16 @@ export default function Sidebar({ currentUser }) {
         }}
       >
         <Box
+          component={Link}
+          href="/"
           sx={{
             width: 40,
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
             flexShrink: 0,
+            color: 'inherit',
+            textDecoration: 'none',
             transition: 'all 0.3s ease',
             '&:hover': {
               filter: 'drop-shadow(0 0 12px rgba(25, 118, 210, 0.6))',

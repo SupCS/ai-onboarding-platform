@@ -48,7 +48,7 @@ export default function LoginForm() {
         throw new Error(data.error || 'Authentication failed.');
       }
 
-      router.replace('/library');
+      router.replace('/');
       router.refresh();
     } catch (submitError) {
       setError(submitError.message);
