@@ -162,15 +162,15 @@ export default function RoadmapFormDialog({
             getOptionLabel={(lesson) => lesson.title}
             isOptionEqualToValue={(option, value) => option.id === value.id}
             noOptionsText="No ready lessons available"
-            renderTags={(value, getTagProps) =>
+            renderValue={(value, getItemProps) =>
               value.map((option, index) => {
-                const { key, ...tagProps } = getTagProps({ index });
+                const { key, ...itemProps } = getItemProps({ index });
 
                 return (
                   <Chip
                     key={key}
                     label={option.title}
-                    {...tagProps}
+                    {...itemProps}
                   />
                 );
               })

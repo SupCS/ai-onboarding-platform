@@ -1030,6 +1030,36 @@ export async function createLessonActivity(input) {
   return mapLessonActivity(result.rows[0]);
 }
 
+export async function updateLessonActivity(lessonId, activityId, input = {}) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      UPDATE lesson_activities
+      SET
+        title = $3,
+        item_count = $4,
+        payload = $5
+      WHERE lesson_id = $1
+        AND id = $2
+      RETURNING *
+    `,
+    [
+      lessonId,
+      activityId,
+      input.title || '',
+      input.itemCount || 0,
+      JSON.stringify(input.payload || {}),
+    ]
+  );
+
+  if (result.rows.length === 0) {
+    return null;
+  }
+
+  return mapLessonActivity(result.rows[0]);
+}
+
 export async function getLessonActivities(lessonId) {
   await ensureLessonsSchema();
 

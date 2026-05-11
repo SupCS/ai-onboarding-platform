@@ -16,8 +16,11 @@ import {
   MenuItem,
   IconButton,
   Paper,
+  Radio,
   Select,
   Stack,
+  Tab,
+  Tabs,
   TextField,
   Tooltip,
   Typography,
@@ -34,6 +37,7 @@ import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import SourceOutlinedIcon from '@mui/icons-material/SourceOutlined';
+import StyleOutlinedIcon from '@mui/icons-material/StyleOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
 import ViewSidebarOutlinedIcon from '@mui/icons-material/ViewSidebarOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
@@ -168,6 +172,332 @@ function normalizeLessonAssetForCard(asset) {
   };
 }
 
+function getActivityItems(activity) {
+  if (activity?.type === 'flashcards') {
+    return Array.isArray(activity.payload?.cards) ? activity.payload.cards : [];
+  }
+
+  return Array.isArray(activity?.payload?.items) ? activity.payload.items : [];
+}
+
+function createActivityDraft(activity) {
+  if (!activity) {
+    return null;
+  }
+
+  if (activity.type === 'flashcards') {
+    return {
+      id: activity.id,
+      type: activity.type,
+      title: activity.title || activity.payload?.title || 'Lesson flashcards',
+      cards: getActivityItems(activity).map((card) => ({
+        front: card.front || '',
+        back: card.back || '',
+        explanation: card.explanation || '',
+      })),
+    };
+  }
+
+  return {
+    id: activity.id,
+    type: activity.type,
+    title: activity.title || activity.payload?.title || 'Lesson quiz',
+    items: getActivityItems(activity).map((item) => ({
+      question: item.question || '',
+      options: Array.from({ length: 4 }, (_, index) => item.options?.[index] || ''),
+      correctAnswer: item.correctAnswer || '',
+      explanation: item.explanation || '',
+    })),
+  };
+}
+
+function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
+  if (!activity || !draft) {
+    return (
+      <Stack spacing={1.5} sx={{ p: { xs: 2, md: 3 } }}>
+        <Typography variant="h6" sx={{ fontWeight: 900 }}>
+          Activity not found
+        </Typography>
+        <Typography color="text.secondary">
+          Generate an activity first, then it will appear as an editor tab here.
+        </Typography>
+      </Stack>
+    );
+  }
+
+  const isFlashcards = activity.type === 'flashcards';
+
+  const updateDraft = (updater) => {
+    onDraftChange((current) => {
+      const currentDraft = current[activity.id] || createActivityDraft(activity);
+
+      return {
+        ...current,
+        [activity.id]: updater(currentDraft),
+      };
+    });
+  };
+
+  const updateQuizItem = (itemIndex, nextItem) => {
+    updateDraft((currentDraft) => ({
+      ...currentDraft,
+      items: currentDraft.items.map((item, index) => (
+        index === itemIndex ? nextItem : item
+      )),
+    }));
+  };
+
+  const updateCard = (cardIndex, nextCard) => {
+    updateDraft((currentDraft) => ({
+      ...currentDraft,
+      cards: currentDraft.cards.map((card, index) => (
+        index === cardIndex ? nextCard : card
+      )),
+    }));
+  };
+
+  return (
+    <Stack sx={{ minHeight: 0, height: '100%' }}>
+      <Box
+        sx={{
+          px: { xs: 1.5, md: 2 },
+          py: 1.5,
+          borderBottom: '1px solid #e8edf5',
+          backgroundColor: '#fff',
+        }}
+      >
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ justifyContent: 'space-between' }}>
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+            {isFlashcards ? (
+              <StyleOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} />
+            ) : (
+              <QuizOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} />
+            )}
+            <Box>
+              <Typography variant="subtitle2" sx={{ fontWeight: 900, lineHeight: 1.2 }}>
+                {isFlashcards ? 'Flashcards editor' : 'Quiz editor'}
+              </Typography>
+              <Typography variant="caption" color="text.secondary">
+                Edit saved activity content. Changes are saved into this lesson activity.
+              </Typography>
+            </Box>
+          </Stack>
+
+          <Chip
+            label={`${isFlashcards ? draft.cards.length : draft.items.length} item${(isFlashcards ? draft.cards.length : draft.items.length) === 1 ? '' : 's'}`}
+            size="small"
+            sx={{
+              alignSelf: { xs: 'flex-start', md: 'center' },
+              fontWeight: 800,
+              color: AI_DIGITAL_COLORS.yvesKleinBlue,
+              backgroundColor: hexToRgba(AI_DIGITAL_COLORS.skywave, 0.24),
+            }}
+          />
+        </Stack>
+      </Box>
+
+      <Box sx={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto', p: { xs: 1.5, md: 2 } }}>
+        <Stack spacing={2}>
+          <TextField
+            label={isFlashcards ? 'Flashcards title' : 'Quiz title'}
+            value={draft.title}
+            onChange={(event) => updateDraft((currentDraft) => ({
+              ...currentDraft,
+              title: event.target.value,
+            }))}
+            disabled={disabled}
+            fullWidth
+          />
+
+          {isFlashcards ? (
+            <>
+              {draft.cards.map((card, cardIndex) => (
+                <Paper
+                  key={`card-${cardIndex}`}
+                  elevation={0}
+                  sx={{
+                    p: { xs: 1.5, md: 2 },
+                    borderRadius: 2,
+                    border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.12)}`,
+                    backgroundColor: '#fff',
+                  }}
+                >
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Chip label={`Card ${cardIndex + 1}`} size="small" sx={{ fontWeight: 900 }} />
+                      <IconButton
+                        aria-label="Remove flashcard"
+                        size="small"
+                        disabled={disabled || draft.cards.length <= 1}
+                        onClick={() => updateDraft((currentDraft) => ({
+                          ...currentDraft,
+                          cards: currentDraft.cards.filter((_, index) => index !== cardIndex),
+                        }))}
+                      >
+                        <DeleteOutlineOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                    <TextField
+                      label="Front"
+                      value={card.front}
+                      onChange={(event) => updateCard(cardIndex, { ...card, front: event.target.value })}
+                      disabled={disabled}
+                      multiline
+                      minRows={2}
+                      fullWidth
+                    />
+                    <TextField
+                      label="Back"
+                      value={card.back}
+                      onChange={(event) => updateCard(cardIndex, { ...card, back: event.target.value })}
+                      disabled={disabled}
+                      multiline
+                      minRows={2}
+                      fullWidth
+                    />
+                    <TextField
+                      label="Explanation"
+                      value={card.explanation}
+                      onChange={(event) => updateCard(cardIndex, { ...card, explanation: event.target.value })}
+                      disabled={disabled}
+                      multiline
+                      minRows={2}
+                      fullWidth
+                    />
+                  </Stack>
+                </Paper>
+              ))}
+              <Button
+                variant="outlined"
+                startIcon={<AddOutlinedIcon />}
+                disabled={disabled}
+                onClick={() => updateDraft((currentDraft) => ({
+                  ...currentDraft,
+                  cards: [...currentDraft.cards, { front: '', back: '', explanation: '' }],
+                }))}
+                sx={{ alignSelf: 'flex-start', textTransform: 'none', fontWeight: 800 }}
+              >
+                Add card
+              </Button>
+            </>
+          ) : (
+            <>
+              {draft.items.map((item, itemIndex) => (
+                <Paper
+                  key={`question-${itemIndex}`}
+                  elevation={0}
+                  sx={{
+                    p: { xs: 1.5, md: 2 },
+                    borderRadius: 2,
+                    border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.12)}`,
+                    backgroundColor: '#fff',
+                  }}
+                >
+                  <Stack spacing={1.5}>
+                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+                      <Chip label={`Question ${itemIndex + 1}`} size="small" sx={{ fontWeight: 900 }} />
+                      <IconButton
+                        aria-label="Remove question"
+                        size="small"
+                        disabled={disabled || draft.items.length <= 1}
+                        onClick={() => updateDraft((currentDraft) => ({
+                          ...currentDraft,
+                          items: currentDraft.items.filter((_, index) => index !== itemIndex),
+                        }))}
+                      >
+                        <DeleteOutlineOutlinedIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                    <TextField
+                      label="Question"
+                      value={item.question}
+                      onChange={(event) => updateQuizItem(itemIndex, { ...item, question: event.target.value })}
+                      disabled={disabled}
+                      multiline
+                      minRows={2}
+                      fullWidth
+                    />
+                    <Stack spacing={1}>
+                      {item.options.map((option, optionIndex) => (
+                        <Box
+                          key={`option-${optionIndex}`}
+                          sx={{
+                            display: 'grid',
+                            gridTemplateColumns: 'auto minmax(0, 1fr)',
+                            gap: 1,
+                            alignItems: 'center',
+                          }}
+                        >
+                          <Radio
+                            checked={item.correctAnswer === option && Boolean(option)}
+                            disabled={disabled || !option}
+                            onChange={() => updateQuizItem(itemIndex, { ...item, correctAnswer: option })}
+                            size="small"
+                          />
+                          <TextField
+                            label={`Option ${optionIndex + 1}`}
+                            value={option}
+                            onChange={(event) => {
+                              const nextOptions = item.options.map((currentOption, index) => (
+                                index === optionIndex ? event.target.value : currentOption
+                              ));
+                              const nextCorrectAnswer = item.correctAnswer === option
+                                ? event.target.value
+                                : item.correctAnswer;
+
+                              updateQuizItem(itemIndex, {
+                                ...item,
+                                options: nextOptions,
+                                correctAnswer: nextCorrectAnswer,
+                              });
+                            }}
+                            disabled={disabled}
+                            size="small"
+                            fullWidth
+                          />
+                        </Box>
+                      ))}
+                    </Stack>
+                    <TextField
+                      label="Explanation"
+                      value={item.explanation}
+                      onChange={(event) => updateQuizItem(itemIndex, { ...item, explanation: event.target.value })}
+                      disabled={disabled}
+                      multiline
+                      minRows={2}
+                      fullWidth
+                    />
+                  </Stack>
+                </Paper>
+              ))}
+              <Button
+                variant="outlined"
+                startIcon={<AddOutlinedIcon />}
+                disabled={disabled}
+                onClick={() => updateDraft((currentDraft) => ({
+                  ...currentDraft,
+                  items: [
+                    ...currentDraft.items,
+                    {
+                      question: '',
+                      options: ['', '', '', ''],
+                      correctAnswer: '',
+                      explanation: '',
+                    },
+                  ],
+                }))}
+                sx={{ alignSelf: 'flex-start', textTransform: 'none', fontWeight: 800 }}
+              >
+                Add question
+              </Button>
+            </>
+          )}
+        </Stack>
+      </Box>
+    </Stack>
+  );
+}
+
 export default function LessonDetailsDialog({
   lesson,
   open,
@@ -190,6 +520,11 @@ export default function LessonDetailsDialog({
   const [activityCount, setActivityCount] = useState(8);
   const [activityError, setActivityError] = useState('');
   const [activitySuccess, setActivitySuccess] = useState('');
+  const [activeView, setActiveView] = useState('lesson');
+  const [activityDrafts, setActivityDrafts] = useState({});
+  const [activitySaveError, setActivitySaveError] = useState('');
+  const [activitySaveSuccess, setActivitySaveSuccess] = useState('');
+  const [isSavingActivity, setIsSavingActivity] = useState(false);
   const [assetUrl, setAssetUrl] = useState('');
   const [assetError, setAssetError] = useState('');
   const [isAddingAsset, setIsAddingAsset] = useState(false);
@@ -215,6 +550,11 @@ export default function LessonDetailsDialog({
     setActivityCount(8);
     setActivityError('');
     setActivitySuccess('');
+    setActiveView('lesson');
+    setActivityDrafts({});
+    setActivitySaveError('');
+    setActivitySaveSuccess('');
+    setIsSavingActivity(false);
     setAssetUrl('');
     setAssetError('');
     setIsAddingAsset(false);
@@ -226,6 +566,16 @@ export default function LessonDetailsDialog({
       setIsRightPanelCollapsed(true);
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    const nextActivities = Array.isArray(lesson?.activities) ? lesson.activities : [];
+    const hasQuiz = nextActivities.some((activity) => activity.type === 'quiz');
+    const hasFlashcards = nextActivities.some((activity) => activity.type === 'flashcards');
+
+    if ((activeView === 'quiz' && !hasQuiz) || (activeView === 'flashcards' && !hasFlashcards)) {
+      setActiveView('lesson');
+    }
+  }, [activeView, lesson?.activities]);
 
   if (!lesson) {
     return null;
@@ -242,9 +592,20 @@ export default function LessonDetailsDialog({
     : [];
   const lastRevision = revisionHistory[revisionHistory.length - 1] || null;
   const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
+  const quizActivity = activities.find((activity) => activity.type === 'quiz') || null;
+  const flashcardsActivity = activities.find((activity) => activity.type === 'flashcards') || null;
+  const activeActivity = activeView === 'quiz'
+    ? quizActivity
+    : activeView === 'flashcards'
+      ? flashcardsActivity
+      : null;
+  const activeActivityDraft = activeActivity
+    ? activityDrafts[activeActivity.id] || createActivityDraft(activeActivity)
+    : null;
   const activitySettings = getActivityTypeSettings(activityType);
   const hasAssets = allAssets.length > 0;
   const isRightPanelVisible = !isRightPanelCollapsed;
+
 
   const handleSave = async () => {
     try {
@@ -559,11 +920,50 @@ export default function LessonDetailsDialog({
         ...lesson,
         activities: [data.activity, ...activities],
       });
+      setActiveView(data.activity.type);
     } catch (error) {
       console.error('Failed to generate lesson activity:', error);
       setActivityError(error.message || 'Failed to generate activity.');
     } finally {
       setIsGeneratingActivity(false);
+    }
+  };
+
+  const handleSaveActivity = async () => {
+    if (!activeActivity || !activeActivityDraft) {
+      return;
+    }
+
+    try {
+      setIsSavingActivity(true);
+      setActivitySaveError('');
+      setActivitySaveSuccess('');
+
+      const response = await fetch(`/api/lessons/${lesson.id}/activities/${activeActivity.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(activeActivityDraft),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to update activity.');
+      }
+
+      setActivityDrafts((current) => {
+        const nextDrafts = { ...current };
+        delete nextDrafts[activeActivity.id];
+        return nextDrafts;
+      });
+      setActivitySaveSuccess('Activity saved.');
+      await onLessonUpdated?.(data.lesson);
+    } catch (error) {
+      console.error('Failed to save lesson activity:', error);
+      setActivitySaveError(error.message || 'Failed to update activity.');
+    } finally {
+      setIsSavingActivity(false);
     }
   };
 
@@ -713,7 +1113,7 @@ export default function LessonDetailsDialog({
                     setDeleteError('');
                     setIsConfirmDeleteOpen(true);
                   }}
-                  disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
+                  disabled={isSaving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
                   sx={{
                     width: 34,
                     height: 34,
@@ -758,6 +1158,57 @@ export default function LessonDetailsDialog({
           </Box>
         </Box>
 
+        <Box sx={{ px: { xs: 1, md: 3 }, pb: 1.25 }}>
+          <Tabs
+            value={activeView}
+            onChange={(_event, nextView) => {
+              setActiveView(nextView);
+              setActivitySaveError('');
+              setActivitySaveSuccess('');
+            }}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              minHeight: 40,
+              '& .MuiTabs-indicator': {
+                height: 3,
+                borderRadius: 999,
+                backgroundColor: AI_DIGITAL_COLORS.lime,
+              },
+              '& .MuiTab-root': {
+                minHeight: 40,
+                mr: 1,
+                px: 1.5,
+                borderRadius: 1.5,
+                color: 'rgba(255,255,255,0.78)',
+                textTransform: 'none',
+                fontWeight: 900,
+              },
+              '& .Mui-selected': {
+                color: '#fff',
+                backgroundColor: 'rgba(255,255,255,0.14)',
+              },
+            }}
+          >
+            <Tab value="lesson" label="Lesson" />
+            {quizActivity && (
+              <Tab
+                value="quiz"
+                icon={<QuizOutlinedIcon fontSize="small" />}
+                iconPosition="start"
+                label="Quiz"
+              />
+            )}
+            {flashcardsActivity && (
+              <Tab
+                value="flashcards"
+                icon={<StyleOutlinedIcon fontSize="small" />}
+                iconPosition="start"
+                label="Flashcards"
+              />
+            )}
+          </Tabs>
+        </Box>
       </DialogTitle>
 
       <DialogContent
@@ -778,7 +1229,9 @@ export default function LessonDetailsDialog({
             display: 'grid',
             gridTemplateColumns: {
               xs: '1fr',
-              lg: isRightPanelVisible ? 'minmax(0, 1fr) 340px' : 'minmax(0, 1fr)',
+              lg: activeView === 'lesson' && isRightPanelVisible
+                ? 'minmax(0, 1fr) 340px'
+                : 'minmax(0, 1fr)',
             },
             gap: 2.5,
             alignItems: 'stretch',
@@ -802,7 +1255,22 @@ export default function LessonDetailsDialog({
                 : `0 18px 44px ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.06)}`,
             }}
           >
-            {lesson.status === 'failed' ? (
+            {activeView !== 'lesson' ? (
+              <Stack sx={{ minHeight: 0, overflow: 'hidden', height: '100%' }}>
+                {(activitySaveError || activitySaveSuccess) && (
+                  <Box sx={{ p: { xs: 1.5, md: 2 }, pb: 0 }}>
+                    {activitySaveError && <Alert severity="error">{activitySaveError}</Alert>}
+                    {activitySaveSuccess && <Alert severity="success">{activitySaveSuccess}</Alert>}
+                  </Box>
+                )}
+                <ActivityEditor
+                  activity={activeActivity}
+                  draft={activeActivityDraft}
+                  onDraftChange={setActivityDrafts}
+                  disabled={isSavingActivity || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                />
+              </Stack>
+            ) : lesson.status === 'failed' ? (
               <Stack spacing={1.5} sx={{ p: { xs: 2, md: 3 } }}>
                 <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
                   <ErrorOutlineOutlinedIcon color="error" />
@@ -901,7 +1369,7 @@ export default function LessonDetailsDialog({
             )}
           </Paper>
 
-          {isRightPanelVisible && (
+          {activeView === 'lesson' && isRightPanelVisible && (
             <Stack
               spacing={2}
               sx={{
@@ -1227,7 +1695,7 @@ export default function LessonDetailsDialog({
           }}
           color="error"
           startIcon={<DeleteOutlineOutlinedIcon />}
-          disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
+          disabled={isSaving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
           sx={{
             mr: 'auto',
             textTransform: 'none',
@@ -1237,16 +1705,25 @@ export default function LessonDetailsDialog({
           Delete lesson
         </Button>
 
-        {isEditing ? (
+        {activeView !== 'lesson' ? (
+          <Button
+            onClick={handleSaveActivity}
+            variant="contained"
+            startIcon={<SaveOutlinedIcon />}
+            disabled={isDeleting || isSaving || isRevising || isGeneratingActivity || isSavingActivity}
+          >
+            {isSavingActivity ? 'Saving activity...' : 'Save activity'}
+          </Button>
+        ) : isEditing ? (
           <>
-            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isDeleting || isGeneratingActivity}>
+            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isDeleting || isGeneratingActivity || isSavingActivity}>
               Cancel
             </Button>
             <Button
               onClick={handleSave}
               variant="contained"
               startIcon={<SaveOutlinedIcon />}
-              disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
+              disabled={isSaving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
             >
               {isSaving ? 'Saving...' : 'Save changes'}
             </Button>
@@ -1257,7 +1734,7 @@ export default function LessonDetailsDialog({
               onClick={() => setIsEditing(true)}
               variant="contained"
               startIcon={<EditOutlinedIcon />}
-              disabled={isDeleting || isRevising || isGeneratingActivity}
+              disabled={isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
             >
               Edit lesson
             </Button>
@@ -1267,7 +1744,7 @@ export default function LessonDetailsDialog({
           onClick={onClose}
           color="inherit"
           startIcon={<LibraryBooksOutlinedIcon />}
-          disabled={isSaving || isDeleting || isRevising || isGeneratingActivity}
+          disabled={isSaving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
         >
           Close
         </Button>
