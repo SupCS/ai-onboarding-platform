@@ -9,12 +9,15 @@ export default function LibraryTabPanel({
   activeTab,
   materials = [],
   lessons = [],
+  totalLessons = lessons.length,
+  hasActiveLessonFilters = false,
   roadmaps = [],
   isHydrated = true,
   onOpenMaterial,
   onOpenLesson,
   onEnrollLesson,
   onUnenrollLesson,
+  onResetLessonFilters,
   onEnrollRoadmap,
   onUnenrollRoadmap,
   onOpenRoadmap,
@@ -46,11 +49,22 @@ export default function LibraryTabPanel({
       return <LessonsLoadingState showAction />;
     }
 
-    if (lessons.length === 0) {
+    if (totalLessons === 0) {
       return (
         <EmptyState
           title="No lessons yet"
           description="Click Create Lesson to generate a theoretical lesson from existing materials."
+        />
+      );
+    }
+
+    if (lessons.length === 0 && hasActiveLessonFilters) {
+      return (
+        <EmptyState
+          title="No lessons match these filters"
+          description="Try a different search term, remove a tag, or reset the filters."
+          actionLabel="Reset filters"
+          onAction={onResetLessonFilters}
         />
       );
     }

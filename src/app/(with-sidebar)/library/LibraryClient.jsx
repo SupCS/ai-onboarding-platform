@@ -7,6 +7,7 @@ import LibraryToolbar from '../../../components/library/LibraryToolbar';
 import LibraryTabs from '../../../components/library/LibraryTabs';
 import LibraryTabPanel from '../../../components/library/LibraryTabPanel';
 import LessonDetailsDialog from '../../../components/lessons/LessonDetailsDialog';
+import LessonLibraryFilters from '../../../components/lessons/LessonLibraryFilters';
 import LessonPromptForm from '../../../components/lessons/LessonPromptForm';
 import UploadMaterialDialog from '../../../components/materials/UploadMaterialDialog';
 import MaterialDetailsDialog from '../../../components/materials/MaterialDetailsDialog';
@@ -26,6 +27,11 @@ export default function LibraryClient() {
   const [materials, setMaterials] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [roadmaps, setRoadmaps] = useState([]);
+  const [lessonSearchQuery, setLessonSearchQuery] = useState('');
+  const [lessonSelectedTags, setLessonSelectedTags] = useState([]);
+  const [lessonActivityFilter, setLessonActivityFilter] = useState('all');
+  const [lessonEnrollmentFilter, setLessonEnrollmentFilter] = useState('all');
+  const [areLessonFiltersOpen, setAreLessonFiltersOpen] = useState(false);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
   const [isLoadingLessons, setIsLoadingLessons] = useState(true);
   const [isLoadingRoadmaps, setIsLoadingRoadmaps] = useState(true);
@@ -51,6 +57,97 @@ export default function LibraryClient() {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
   }, [lessons]);
+
+  const lessonAvailableTags = useMemo(() => {
+    const tagSet = new Set();
+
+    lessons.forEach((lesson) => {
+      (Array.isArray(lesson.tags) ? lesson.tags : []).forEach((tag) => {
+        if (tag) {
+          tagSet.add(tag);
+        }
+      });
+    });
+
+    return [...tagSet].sort((a, b) => a.localeCompare(b));
+  }, [lessons]);
+
+  const filteredLessons = useMemo(() => {
+    const normalizedQuery = lessonSearchQuery.trim().toLowerCase();
+
+    return sortedLessons.filter((lesson) => {
+      const tags = Array.isArray(lesson.tags) ? lesson.tags : [];
+      const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
+
+      if (normalizedQuery) {
+        const searchableText = [
+          lesson.title,
+          lesson.description,
+          lesson.createdBy,
+          lesson.status,
+          ...tags,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        if (!searchableText.includes(normalizedQuery)) {
+          return false;
+        }
+      }
+
+      if (
+        lessonSelectedTags.length > 0 &&
+        !lessonSelectedTags.every((tag) => tags.includes(tag))
+      ) {
+        return false;
+      }
+
+      if (lessonActivityFilter === 'quiz' && !activities.some((activity) => activity.type === 'quiz')) {
+        return false;
+      }
+
+      if (
+        lessonActivityFilter === 'flashcards' &&
+        !activities.some((activity) => activity.type === 'flashcards')
+      ) {
+        return false;
+      }
+
+      if (lessonActivityFilter === 'no-activities' && activities.length > 0) {
+        return false;
+      }
+
+      if (lessonEnrollmentFilter === 'enrolled' && !lesson.isEnrolled) {
+        return false;
+      }
+
+      if (lessonEnrollmentFilter === 'not-enrolled' && lesson.isEnrolled) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    lessonActivityFilter,
+    lessonEnrollmentFilter,
+    lessonSearchQuery,
+    lessonSelectedTags,
+    sortedLessons,
+  ]);
+
+  const hasActiveLessonFilters =
+    lessonSearchQuery.trim().length > 0 ||
+    lessonSelectedTags.length > 0 ||
+    lessonActivityFilter !== 'all' ||
+    lessonEnrollmentFilter !== 'all';
+
+  const resetLessonFilters = () => {
+    setLessonSearchQuery('');
+    setLessonSelectedTags([]);
+    setLessonActivityFilter('all');
+    setLessonEnrollmentFilter('all');
+  };
 
   const sortedRoadmaps = useMemo(() => {
     return [...roadmaps].sort((a, b) => {
@@ -801,13 +898,37 @@ export default function LibraryClient() {
           <LibraryTabs
             activeTab={activeTab}
             onTabChange={handleTabChange}
+            actionSlot={
+              activeTab === 'lessons' && sortedLessons.length > 0 ? (
+                <LessonLibraryFilters
+                  query={lessonSearchQuery}
+                  onQueryChange={setLessonSearchQuery}
+                  selectedTags={lessonSelectedTags}
+                  onSelectedTagsChange={setLessonSelectedTags}
+                  availableTags={lessonAvailableTags}
+                  activity={lessonActivityFilter}
+                  onActivityChange={setLessonActivityFilter}
+                  enrollment={lessonEnrollmentFilter}
+                  onEnrollmentChange={setLessonEnrollmentFilter}
+                  totalCount={sortedLessons.length}
+                  resultCount={filteredLessons.length}
+                  hasActiveFilters={hasActiveLessonFilters}
+                  filtersOpen={areLessonFiltersOpen}
+                  onToggleFilters={() => setAreLessonFiltersOpen((prev) => !prev)}
+                  onReset={resetLessonFilters}
+                />
+              ) : null
+            }
           />
 
           <Stack spacing={3}>
             <LibraryTabPanel
               activeTab={activeTab}
               materials={sortedMaterials}
-              lessons={sortedLessons}
+              lessons={filteredLessons}
+              totalLessons={sortedLessons.length}
+              hasActiveLessonFilters={hasActiveLessonFilters}
+              onResetLessonFilters={resetLessonFilters}
               roadmaps={sortedRoadmaps}
               isHydrated={
                 activeTab === 'lessons'

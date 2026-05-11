@@ -865,6 +865,42 @@ export async function getAllLessons(userId = null) {
     ORDER BY lesson_id ASC, created_at ASC
   `);
 
+  const lessonIds = lessonsResult.rows.map((lesson) => lesson.id);
+  const lessonActivitiesResult = lessonIds.length > 0
+    ? await db.query(
+        `
+          SELECT
+            lesson_activities.id,
+            lesson_activities.lesson_id,
+            lesson_activities.type,
+            lesson_activities.title,
+            lesson_activities.item_count,
+            lesson_activities.created_at,
+            user_lesson_activity_progress.status AS progress_status,
+            user_lesson_activity_progress.score AS progress_score,
+            user_lesson_activity_progress.started_at AS progress_started_at,
+            user_lesson_activity_progress.completed_at AS progress_completed_at
+          FROM lesson_activities
+          LEFT JOIN user_lesson_activity_progress
+            ON user_lesson_activity_progress.activity_id = lesson_activities.id
+            AND user_lesson_activity_progress.user_id = $2
+          WHERE lesson_activities.lesson_id = ANY($1::text[])
+          ORDER BY
+            lesson_activities.lesson_id,
+            CASE lesson_activities.type WHEN 'flashcards' THEN 0 WHEN 'quiz' THEN 1 ELSE 2 END,
+            lesson_activities.created_at ASC
+        `,
+        [lessonIds, userId]
+      )
+    : { rows: [] };
+  const activitiesByLessonId = new Map();
+
+  lessonActivitiesResult.rows.forEach((activityRow) => {
+    const activities = activitiesByLessonId.get(activityRow.lesson_id) || [];
+    activities.push(mapLessonActivitySummary(activityRow));
+    activitiesByLessonId.set(activityRow.lesson_id, activities);
+  });
+
   const enrollmentRows = userId
     ? await db.query(
         `
@@ -894,6 +930,7 @@ export async function getAllLessons(userId = null) {
       enrolledAt: enrollment?.enrolled_at || null,
       completedAt: enrollment?.completed_at || null,
       isCompleted: Boolean(enrollment?.completed_at),
+      activities: activitiesByLessonId.get(lesson.id) || [],
     });
   });
 }
