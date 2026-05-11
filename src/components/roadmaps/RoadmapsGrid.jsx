@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   Box,
   Button,
@@ -268,7 +269,28 @@ export default function RoadmapsGrid({
                   {roadmap.lessons.map((lesson) => (
                     <Step key={lesson.id} completed={lesson.isCompleted}>
                       <StepLabel slots={{ stepIcon: RoadmapStepIcon }}>
-                        {lesson.title}
+                        <Box
+                          component={Link}
+                          href={`/lessons/${lesson.id}`}
+                          onClick={(event) => event.stopPropagation()}
+                          sx={{
+                            color: 'inherit',
+                            textDecoration: 'none',
+                            borderRadius: 1,
+                            px: 0.5,
+                            py: 0.25,
+                            display: 'inline-block',
+                            transition: 'background-color 0.15s ease, color 0.15s ease',
+                            '&:hover': {
+                              color: ACCENT_GREEN_DARK,
+                              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                              textDecoration: 'underline',
+                              textUnderlineOffset: 3,
+                            },
+                          }}
+                        >
+                          {lesson.title}
+                        </Box>
                       </StepLabel>
                     </Step>
                   ))}
