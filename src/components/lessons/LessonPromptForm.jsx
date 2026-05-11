@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Checkbox,
@@ -21,6 +22,7 @@ import {
 } from '@mui/material';
 import { useTaskTray } from '../providers/TaskTrayProvider';
 import { SimpleEditor } from '../tiptap/tiptap-templates/simple/simple-editor';
+import { normalizeLessonTagInput, suggestedLessonTags } from '../../lib/lessonTags';
 
 const depthOptions = [
   { value: 'intro', label: 'Intro' },
@@ -52,6 +54,7 @@ export default function LessonPromptForm({
   const [depth, setDepth] = useState('standard');
   const [tone, setTone] = useState('clear');
   const [desiredFormat, setDesiredFormat] = useState('structured theoretical lesson');
+  const [tags, setTags] = useState([]);
   const [manualTitle, setManualTitle] = useState('');
   const [manualDescription, setManualDescription] = useState('');
   const [manualContentHtml, setManualContentHtml] = useState('<h1>Lesson title</h1><p>Start writing the lesson here.</p>');
@@ -121,6 +124,7 @@ export default function LessonPromptForm({
           depth,
           tone,
           desiredFormat,
+          tags,
         }),
       });
 
@@ -200,6 +204,7 @@ export default function LessonPromptForm({
           title: manualTitle,
           description: manualDescription,
           contentHtml: manualContentHtml,
+          tags,
         }),
       });
       const data = await response.json();
@@ -212,6 +217,7 @@ export default function LessonPromptForm({
       setManualTitle('');
       setManualDescription('');
       setManualContentHtml('<h1>Lesson title</h1><p>Start writing the lesson here.</p>');
+      setTags([]);
 
       if (data.lesson && onLessonGenerated) {
         await onLessonGenerated(data.lesson);
@@ -302,6 +308,22 @@ export default function LessonPromptForm({
               fullWidth
               multiline
               minRows={2}
+            />
+
+            <Autocomplete
+              multiple
+              freeSolo
+              options={suggestedLessonTags}
+              value={tags}
+              onChange={(_event, nextTags) => setTags(normalizeLessonTagInput(nextTags))}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Tags"
+                  placeholder="Add a tag"
+                  helperText="Use tags like Google SEM, Meta, Finance, Invoicing."
+                />
+              )}
             />
 
             <Box
@@ -419,6 +441,22 @@ export default function LessonPromptForm({
           minRows={4}
           multiline
           fullWidth
+        />
+
+        <Autocomplete
+          multiple
+          freeSolo
+          options={suggestedLessonTags}
+          value={tags}
+          onChange={(_event, nextTags) => setTags(normalizeLessonTagInput(nextTags))}
+          renderInput={(params) => (
+            <TextField
+              {...params}
+              label="Tags"
+              placeholder="Add a tag"
+              helperText="Optional categories for filtering and scanning lessons."
+            />
+          )}
         />
 
         <Stack

@@ -160,6 +160,19 @@ export default async function LessonReadPage({ params }) {
                   {lesson.description}
                 </Typography>
               )}
+              {lesson.tags?.length > 0 && (
+                <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                  {lesson.tags.map((tag) => (
+                    <Chip
+                      key={tag}
+                      label={tag}
+                      size="small"
+                      variant="outlined"
+                      sx={{ fontWeight: 800, backgroundColor: '#fff' }}
+                    />
+                  ))}
+                </Stack>
+              )}
             </Stack>
 
             <LessonReader html={html} />

@@ -2,6 +2,7 @@ import { requireApiUser } from '../../../../lib/apiAuth';
 import {
   deleteLessonById,
   getLessonById,
+  normalizeLessonTags,
   updateLessonContent,
 } from '../../../../lib/lessons';
 import { extractHtmlTitle, looksLikeHtml, markdownToHtml } from '../../../../lib/lessonContent';
@@ -73,6 +74,7 @@ export async function PUT(request, { params }) {
     const body = await request.json();
     const contentHtml = (body.contentHtml || '').trim();
     const title = (body.title || '').trim();
+    const tags = normalizeLessonTags(body.tags || []);
 
     if (!id) {
       return Response.json(
@@ -91,6 +93,7 @@ export async function PUT(request, { params }) {
     const lesson = await updateLessonContent(id, {
       title,
       contentHtml,
+      tags,
     });
 
     if (!lesson) {

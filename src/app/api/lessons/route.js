@@ -6,6 +6,7 @@ import {
   markLessonFailed,
   markLessonGenerating,
   markLessonReady,
+  normalizeLessonTags,
 } from '../../../lib/lessons';
 import { extractHtmlTitle, looksLikeHtml, markdownToHtml } from '../../../lib/lessonContent';
 import { loadAndPrepareMaterialsForLesson } from '../../../lib/materialPreparation';
@@ -170,6 +171,7 @@ export async function POST(request) {
     const manualTitle = (body.title || '').trim();
     const manualDescription = (body.description || '').trim();
     const manualContentHtml = (body.contentHtml || '').trim();
+    const tags = normalizeLessonTags(body.tags || []);
 
     if (action === 'create-manual') {
       if (!manualTitle) {
@@ -194,6 +196,7 @@ export async function POST(request) {
         depth: 'standard',
         tone: 'clear',
         desiredFormat: 'manual lesson',
+        tags,
         createdBy: user.name,
       });
       const readyLesson = await markLessonReady(lesson.id, {
@@ -232,6 +235,7 @@ export async function POST(request) {
         depth,
         tone,
         desiredFormat,
+        tags,
         createdBy: user.name,
       });
       let promptVersion = 'file-input-preparation-or-generation';

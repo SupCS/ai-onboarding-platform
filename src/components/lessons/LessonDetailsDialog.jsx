@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -45,6 +46,7 @@ import LessonAttachments, { getSourceAttachments } from './LessonAttachments';
 import { SimpleEditor } from '../tiptap/tiptap-templates/simple/simple-editor';
 import { markdownToHtml } from '../../lib/lessonContent';
 import { AI_DIGITAL_COLORS, hexToRgba } from '../../lib/brandColors';
+import { normalizeLessonTagInput, suggestedLessonTags } from '../../lib/lessonTags';
 
 function formatDateTime(isoString) {
   try {
@@ -532,8 +534,13 @@ export default function LessonDetailsDialog({
   const initialHtml = useMemo(() => {
     return lesson?.contentHtml || markdownToHtml(lesson?.contentMarkdown || '');
   }, [lesson]);
+  const lessonTagsKey = useMemo(() => {
+    return normalizeLessonTagInput(lesson?.tags || []).join('\n');
+  }, [lesson?.tags]);
+  const lessonResetKey = `${lesson?.title || ''}\n${lessonTagsKey}`;
   const [draftHtml, setDraftHtml] = useState(initialHtml);
   const [draftTitle, setDraftTitle] = useState(lesson?.title || '');
+  const [draftTags, setDraftTags] = useState(() => normalizeLessonTagInput(lesson?.tags || []));
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
 
   useEffect(() => {
@@ -542,6 +549,7 @@ export default function LessonDetailsDialog({
     setDeleteError('');
     setDraftHtml(initialHtml);
     setDraftTitle(lesson?.title || '');
+    setDraftTags(normalizeLessonTagInput(lesson?.tags || []));
     setIsRevising(false);
     setRevisionRequest('');
     setSelectedRevisionOptions([]);
@@ -559,7 +567,9 @@ export default function LessonDetailsDialog({
     setAssetError('');
     setIsAddingAsset(false);
     setIsRightPanelCollapsed(false);
-  }, [initialHtml, lesson?.id, lesson?.title]);
+  // Keep the dependency array shape stable for React while still resetting when title or tags change.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialHtml, lesson?.id, lessonResetKey]);
 
   useEffect(() => {
     if (isEditing) {
@@ -619,6 +629,7 @@ export default function LessonDetailsDialog({
         body: JSON.stringify({
           title: draftTitle.trim(),
           contentHtml: draftHtml,
+          tags: draftTags,
         }),
       });
 
@@ -640,6 +651,7 @@ export default function LessonDetailsDialog({
   const handleCancelEdit = () => {
     setDraftHtml(initialHtml);
     setDraftTitle(lesson.title || '');
+    setDraftTags(normalizeLessonTagInput(lesson.tags || []));
     setIsEditing(false);
   };
 
@@ -1077,6 +1089,60 @@ export default function LessonDetailsDialog({
                   >
                     {lesson.title}
                   </Typography>
+                )}
+
+                {isEditing ? (
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    options={suggestedLessonTags}
+                    value={draftTags}
+                    onChange={(_event, nextTags) => setDraftTags(normalizeLessonTagInput(nextTags))}
+                    sx={{
+                      maxWidth: 760,
+                      mt: 1.25,
+                      '& .MuiOutlinedInput-root': {
+                        color: '#fff',
+                        backgroundColor: 'rgba(255,255,255,0.12)',
+                        '& fieldset': { borderColor: 'rgba(255,255,255,0.34)' },
+                        '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.58)' },
+                        '&.Mui-focused fieldset': { borderColor: AI_DIGITAL_COLORS.lime },
+                      },
+                      '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.76)' },
+                      '& .MuiInputLabel-root.Mui-focused': { color: '#fff' },
+                      '& .MuiChip-root': {
+                        color: AI_DIGITAL_COLORS.midnightCharcoal,
+                        backgroundColor: AI_DIGITAL_COLORS.lime,
+                        fontWeight: 800,
+                      },
+                      '& .MuiSvgIcon-root': { color: '#fff' },
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Tags"
+                        placeholder="Add a tag"
+                        size="small"
+                      />
+                    )}
+                  />
+                ) : lesson.tags?.length > 0 && (
+                  <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', mt: 1.25 }}>
+                    {lesson.tags.map((tag) => (
+                      <Chip
+                        key={tag}
+                        label={tag}
+                        size="small"
+                        sx={{
+                          color: '#fff',
+                          borderColor: 'rgba(255,255,255,0.38)',
+                          backgroundColor: 'rgba(255,255,255,0.12)',
+                          fontWeight: 800,
+                        }}
+                        variant="outlined"
+                      />
+                    ))}
+                  </Stack>
                 )}
               </Box>
 

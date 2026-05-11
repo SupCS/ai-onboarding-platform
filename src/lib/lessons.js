@@ -10,7 +10,7 @@ export {
   LESSON_STATUSES,
 } from './lessonConstants.js';
 
-const LESSONS_SCHEMA_VERSION = 4;
+const LESSONS_SCHEMA_VERSION = 5;
 
 export async function ensureLessonsSchema(client = db) {
   const globalForLessons = globalThis;
@@ -70,6 +70,11 @@ async function ensureLessonsSchemaUncached(client = db) {
   await client.query(`
     ALTER TABLE lessons
     ADD COLUMN IF NOT EXISTS content_html TEXT NOT NULL DEFAULT ''
+  `);
+
+  await client.query(`
+    ALTER TABLE lessons
+    ADD COLUMN IF NOT EXISTS tags JSONB NOT NULL DEFAULT '[]'::jsonb
   `);
 
   await client.query(`
@@ -219,6 +224,7 @@ function mapLesson(row, materialIds = [], extra = {}) {
     contentFormat: row.content_format,
     contentMarkdown: row.content_markdown,
     contentHtml: row.content_html || '',
+    tags: Array.isArray(row.tags) ? row.tags : [],
     generationMetadata: row.generation_metadata,
     errorMessage: row.error_message,
     createdBy: row.created_by,
@@ -327,8 +333,22 @@ function normalizeLessonTitle(value) {
   return title || 'Untitled theoretical lesson';
 }
 
+export function normalizeLessonTags(tags = []) {
+  if (!Array.isArray(tags)) {
+    return [];
+  }
+
+  const normalizedTags = tags
+    .map((tag) => (typeof tag === 'string' ? tag.trim().replace(/\s+/g, ' ') : ''))
+    .filter(Boolean)
+    .map((tag) => (tag.length > 48 ? tag.slice(0, 48).trim() : tag));
+
+  return [...new Set(normalizedTags)].slice(0, 12);
+}
+
 export async function createLessonDraft(input) {
   const materialIds = validateMaterialIds(input.materialIds || []);
+  const tags = normalizeLessonTags(input.tags || []);
   const client = await db.connect();
 
   try {
@@ -347,9 +367,10 @@ export async function createLessonDraft(input) {
           depth,
           tone,
           desired_format,
+          tags,
           created_by
         )
-        VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8)
+        VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8, $9)
         RETURNING *
       `,
       [
@@ -360,6 +381,7 @@ export async function createLessonDraft(input) {
         input.depth || 'standard',
         input.tone || 'clear',
         input.desiredFormat || 'structured theoretical lesson',
+        JSON.stringify(tags),
         input.createdBy || '',
       ]
     );
@@ -494,6 +516,12 @@ export async function updateLessonContent(lessonId, input) {
   if (typeof input.contentMarkdown === 'string') {
     fields.push(`content_markdown = $${index}`);
     values.push(input.contentMarkdown);
+    index += 1;
+  }
+
+  if (input.tags !== undefined) {
+    fields.push(`tags = $${index}`);
+    values.push(JSON.stringify(normalizeLessonTags(input.tags)));
     index += 1;
   }
 

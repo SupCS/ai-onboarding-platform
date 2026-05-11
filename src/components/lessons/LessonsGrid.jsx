@@ -167,6 +167,7 @@ export default function LessonsGrid({
       {lessons.map((lesson) => {
         const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
         const activitySummary = getActivitySummary(activities);
+        const tags = Array.isArray(lesson.tags) ? lesson.tags : [];
 
         return (
           <Paper
@@ -286,6 +287,32 @@ export default function LessonsGrid({
             >
               {getLessonPreview(lesson)}
             </Typography>
+
+            {tags.length > 0 && (
+              <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', mb: 1.5 }}>
+                {tags.slice(0, 4).map((tag) => (
+                  <Chip
+                    key={tag}
+                    label={tag}
+                    size="small"
+                    variant="outlined"
+                    sx={{
+                      height: 24,
+                      maxWidth: '100%',
+                      fontWeight: 750,
+                      backgroundColor: '#fff',
+                    }}
+                  />
+                ))}
+                {tags.length > 4 && (
+                  <Chip
+                    label={`+${tags.length - 4}`}
+                    size="small"
+                    sx={{ height: 24, fontWeight: 800 }}
+                  />
+                )}
+              </Stack>
+            )}
 
             {activities.length > 0 && (
               <Box
