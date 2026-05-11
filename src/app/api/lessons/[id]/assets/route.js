@@ -15,7 +15,7 @@ function isHttpUrl(url) {
 
 export async function POST(request, { params }) {
   try {
-    const { response } = await requireApiUser();
+    const { user, response } = await requireApiUser();
 
     if (response) {
       return response;
@@ -34,6 +34,22 @@ export async function POST(request, { params }) {
       return Response.json(
         { error: 'Lesson id is required.' },
         { status: 400 }
+      );
+    }
+
+    const existingLesson = await getLessonById(id);
+
+    if (!existingLesson) {
+      return Response.json(
+        { error: 'Lesson not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (user.role !== 'admin' && existingLesson.createdByUserId !== user.id) {
+      return Response.json(
+        { error: 'You cannot add assets to this lesson.' },
+        { status: 403 }
       );
     }
 

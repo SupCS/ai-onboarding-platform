@@ -1,8 +1,9 @@
 import { requireApiUser } from '../../../../../lib/apiAuth';
 import {
-  addTeamMemberByEmail,
+  addTeamMemberByEmailOrName,
+  addTeamMemberByUserId,
   canManageTeam,
-  getUserByEmail,
+  getUserByEmailOrName,
   getUserById,
   removeTeamMember,
 } from '../../../../../lib/teams';
@@ -36,20 +37,23 @@ export async function POST(request, { params }) {
     }
 
     const body = await request.json();
-    const email = String(body.email || '').trim();
+    const memberId = String(body.memberId || '').trim();
+    const member = String(body.member || body.email || '').trim();
 
-    if (!email) {
+    if (!memberId && !member) {
       return Response.json(
-        { error: 'Member email is required.' },
+        { error: 'Member name or email is required.' },
         { status: 400 }
       );
     }
 
-    const targetUser = await getUserByEmail(email);
+    const targetUser = memberId
+      ? await getUserById(memberId)
+      : await getUserByEmailOrName(member);
 
     if (!targetUser) {
       return Response.json(
-        { error: 'No user with this email exists.' },
+        { error: 'No user with this name or email exists.' },
         { status: 404 }
       );
     }
@@ -61,9 +65,11 @@ export async function POST(request, { params }) {
       );
     }
 
-    const member = await addTeamMemberByEmail(leadId, email);
+    const addedMember = memberId
+      ? await addTeamMemberByUserId(leadId, memberId)
+      : await addTeamMemberByEmailOrName(leadId, member);
 
-    return Response.json({ member });
+    return Response.json({ member: addedMember });
   } catch (error) {
     console.error('POST /api/teams/[leadId]/members failed:', error);
 

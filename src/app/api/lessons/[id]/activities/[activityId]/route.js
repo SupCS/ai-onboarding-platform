@@ -82,7 +82,7 @@ function getItemCount(type, payload) {
 
 export async function PUT(request, { params }) {
   try {
-    const { response } = await requireApiUser();
+    const { user, response } = await requireApiUser();
 
     if (response) {
       return response;
@@ -104,6 +104,13 @@ export async function PUT(request, { params }) {
       return Response.json(
         { error: 'Lesson not found.' },
         { status: 404 }
+      );
+    }
+
+    if (user.role !== 'admin' && lesson.createdByUserId !== user.id) {
+      return Response.json(
+        { error: 'You cannot edit activities for this lesson.' },
+        { status: 403 }
       );
     }
 

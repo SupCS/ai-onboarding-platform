@@ -1,7 +1,7 @@
 import { Container, Paper, Stack, Typography } from '@mui/material';
 import TeamsClient from '../../../components/teams/TeamsClient';
 import { getCurrentUser } from '../../../lib/currentUser';
-import { getTeams, isTeamManager } from '../../../lib/teams';
+import { getAllUsers, getTeams, isTeamManager } from '../../../lib/teams';
 
 export const metadata = {
   title: 'Teams',
@@ -10,6 +10,7 @@ export const metadata = {
 export default async function TeamsPage() {
   const currentUser = await getCurrentUser();
   const teams = await getTeams();
+  const users = await getAllUsers();
 
   return (
     <Container maxWidth={false} disableGutters>
@@ -37,6 +38,7 @@ export default async function TeamsPage() {
 
           <TeamsClient
             initialTeams={teams}
+            users={users}
             permissions={{
               canManageAnyTeam: currentUser?.role === 'admin',
               canManageTeams: isTeamManager(currentUser),

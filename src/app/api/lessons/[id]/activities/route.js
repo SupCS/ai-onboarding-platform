@@ -51,6 +51,13 @@ export async function POST(request, { params }) {
       );
     }
 
+    if (user.role !== 'admin' && lesson.createdByUserId !== user.id) {
+      return Response.json(
+        { error: 'You cannot generate activities for this lesson.' },
+        { status: 403 }
+      );
+    }
+
     if (lesson.status !== 'ready') {
       return Response.json(
         { error: 'Only ready lessons can have generated activities.' },

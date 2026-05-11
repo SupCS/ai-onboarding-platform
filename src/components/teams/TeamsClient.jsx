@@ -6,6 +6,7 @@ import {
   AccordionDetails,
   AccordionSummary,
   Alert,
+  Autocomplete,
   Avatar,
   Box,
   Button,
@@ -31,10 +32,12 @@ function getInitials(name = '', email = '') {
 
 export default function TeamsClient({
   initialTeams = [],
+  users = [],
   permissions = {},
 }) {
   const [teams, setTeams] = useState(initialTeams);
-  const [emailByLeadId, setEmailByLeadId] = useState({});
+  const [memberInputByLeadId, setMemberInputByLeadId] = useState({});
+  const [selectedMemberByLeadId, setSelectedMemberByLeadId] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
   const [toast, setToast] = useState({
     open: false,
@@ -74,10 +77,11 @@ export default function TeamsClient({
   };
 
   const addMember = async (leadId) => {
-    const email = (emailByLeadId[leadId] || '').trim();
+    const selectedMember = selectedMemberByLeadId[leadId] || null;
+    const memberInput = (memberInputByLeadId[leadId] || '').trim();
 
-    if (!email) {
-      showToast('Enter a member email first.', 'warning');
+    if (!selectedMember && !memberInput) {
+      showToast('Enter a member name or email first.', 'warning');
       return;
     }
 
@@ -89,7 +93,11 @@ export default function TeamsClient({
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify(
+          selectedMember
+            ? { memberId: selectedMember.id }
+            : { member: memberInput }
+        ),
       });
       const data = await response.json();
 
@@ -97,9 +105,13 @@ export default function TeamsClient({
         throw new Error(data.error || 'Failed to add team member.');
       }
 
-      setEmailByLeadId((prev) => ({
+      setMemberInputByLeadId((prev) => ({
         ...prev,
         [leadId]: '',
+      }));
+      setSelectedMemberByLeadId((prev) => ({
+        ...prev,
+        [leadId]: null,
       }));
       await refreshTeams();
       showToast('Team member added.');
@@ -152,6 +164,8 @@ export default function TeamsClient({
             const canManage = canManageLead(lead.id);
             const isAddingMember =
               pendingAction?.type === 'add-member' && pendingAction.leadId === lead.id;
+            const memberIds = new Set(team.members.map((member) => member.id));
+            const availableUsers = users.filter((user) => user.id !== lead.id);
 
             return (
               <Accordion
@@ -200,18 +214,71 @@ export default function TeamsClient({
                   <Stack spacing={2}>
                     {canManage && (
                       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-                        <TextField
+                        <Autocomplete
+                          freeSolo
+                          autoHighlight
                           size="small"
-                          type="email"
-                          label="Member email"
-                          value={emailByLeadId[lead.id] || ''}
+                          options={availableUsers}
+                          value={selectedMemberByLeadId[lead.id] || null}
+                          inputValue={memberInputByLeadId[lead.id] || ''}
                           disabled={Boolean(pendingAction)}
-                          onChange={(event) =>
-                            setEmailByLeadId((prev) => ({
+                          getOptionLabel={(option) =>
+                            typeof option === 'string'
+                              ? option
+                              : `${option.name || option.email} (${option.email})`
+                          }
+                          isOptionEqualToValue={(option, value) => option.id === value.id}
+                          getOptionDisabled={(option) => memberIds.has(option.id)}
+                          onInputChange={(_event, nextInput) =>
+                            setMemberInputByLeadId((prev) => ({
                               ...prev,
-                              [lead.id]: event.target.value,
+                              [lead.id]: nextInput,
                             }))
                           }
+                          onChange={(_event, nextMember) => {
+                            setSelectedMemberByLeadId((prev) => ({
+                              ...prev,
+                              [lead.id]: typeof nextMember === 'string' ? null : nextMember,
+                            }));
+                          }}
+                          renderOption={(props, option) => {
+                            const { key, ...optionProps } = props;
+
+                            return (
+                              <Box component="li" key={key} {...optionProps}>
+                                <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', width: '100%' }}>
+                                  <Avatar
+                                    sx={{
+                                      width: 30,
+                                      height: 30,
+                                      bgcolor: 'primary.main',
+                                      color: '#fff',
+                                      fontWeight: 700,
+                                      fontSize: 13,
+                                    }}
+                                  >
+                                    {getInitials(option.name, option.email)}
+                                  </Avatar>
+                                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                                    <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>
+                                      {option.name}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary" noWrap>
+                                      {option.email}
+                                    </Typography>
+                                  </Box>
+                                  <Chip size="small" label={option.role} variant="outlined" />
+                                </Stack>
+                              </Box>
+                            );
+                          }}
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              label="Member name or email"
+                              placeholder="Start typing a name or email"
+                            />
+                          )}
                           fullWidth
                         />
                         <Button

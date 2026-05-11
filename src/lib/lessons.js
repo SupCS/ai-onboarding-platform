@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { db } from './db.js';
 import { ensureAuthSchema } from './auth.js';
+import { ensureTeamsSchema } from './teams.js';
 import { fetchLinkMetadata } from './linkMetadata.js';
 import { fetchYoutubeOEmbedMetadata } from './youtubeMetadata.js';
 import { LESSON_MVP_LIMITS } from './lessonConstants.js';
@@ -10,7 +11,7 @@ export {
   LESSON_STATUSES,
 } from './lessonConstants.js';
 
-const LESSONS_SCHEMA_VERSION = 5;
+const LESSONS_SCHEMA_VERSION = 6;
 
 export async function ensureLessonsSchema(client = db) {
   const globalForLessons = globalThis;
@@ -41,6 +42,7 @@ export async function ensureLessonsSchema(client = db) {
 
 async function ensureLessonsSchemaUncached(client = db) {
   await ensureAuthSchema(client);
+  await ensureTeamsSchema(client);
 
   await client.query(`
     CREATE TABLE IF NOT EXISTS lessons (
@@ -57,6 +59,9 @@ async function ensureLessonsSchemaUncached(client = db) {
       content_html TEXT NOT NULL DEFAULT '',
       generation_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
       error_message TEXT NOT NULL DEFAULT '',
+      publication_status TEXT NOT NULL DEFAULT 'published',
+      published_at TIMESTAMPTZ,
+      created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
       created_by TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -75,6 +80,28 @@ async function ensureLessonsSchemaUncached(client = db) {
   await client.query(`
     ALTER TABLE lessons
     ADD COLUMN IF NOT EXISTS tags JSONB NOT NULL DEFAULT '[]'::jsonb
+  `);
+
+  await client.query(`
+    ALTER TABLE lessons
+    ADD COLUMN IF NOT EXISTS publication_status TEXT NOT NULL DEFAULT 'published'
+  `);
+
+  await client.query(`
+    ALTER TABLE lessons
+    ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ
+  `);
+
+  await client.query(`
+    ALTER TABLE lessons
+    ADD COLUMN IF NOT EXISTS created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL
+  `);
+
+  await client.query(`
+    UPDATE lessons
+    SET published_at = COALESCE(published_at, created_at)
+    WHERE publication_status = 'published'
+      AND published_at IS NULL
   `);
 
   await client.query(`
@@ -225,6 +252,11 @@ function mapLesson(row, materialIds = [], extra = {}) {
     contentMarkdown: row.content_markdown,
     contentHtml: row.content_html || '',
     tags: Array.isArray(row.tags) ? row.tags : [],
+    publicationStatus: row.publication_status || 'published',
+    isPublished: (row.publication_status || 'published') === 'published',
+    publishedAt: row.published_at,
+    createdByUserId: row.created_by_user_id,
+    viewerCanAccessPrivate: Boolean(row.viewer_can_access_private),
     generationMetadata: row.generation_metadata,
     errorMessage: row.error_message,
     createdBy: row.created_by,
@@ -367,10 +399,12 @@ export async function createLessonDraft(input) {
           depth,
           tone,
           desired_format,
+          publication_status,
+          created_by_user_id,
           tags,
           created_by
         )
-        VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, $8, $9)
+        VALUES ($1, $2, $3, 'draft', $4, $5, $6, $7, 'private', $8, $9, $10)
         RETURNING *
       `,
       [
@@ -381,6 +415,7 @@ export async function createLessonDraft(input) {
         input.depth || 'standard',
         input.tone || 'clear',
         input.desiredFormat || 'structured theoretical lesson',
+        input.createdByUserId || null,
         JSON.stringify(tags),
         input.createdBy || '',
       ]
@@ -557,6 +592,30 @@ export async function updateLessonContent(lessonId, input) {
       RETURNING *
     `,
     values
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return getLessonById(lessonId);
+}
+
+export async function publishLesson(lessonId) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      UPDATE lessons
+      SET
+        publication_status = 'published',
+        published_at = COALESCE(published_at, NOW()),
+        updated_at = NOW()
+      WHERE id = $1
+        AND status = 'ready'
+      RETURNING *
+    `,
+    [lessonId]
   );
 
   if (result.rowCount === 0) {
@@ -755,6 +814,7 @@ export async function enrollUserInLesson(userId, lessonId) {
       FROM lessons
       WHERE lessons.id = $2
         AND lessons.status = 'ready'
+        AND lessons.publication_status = 'published'
       ON CONFLICT (user_id, lesson_id) DO UPDATE
         SET enrolled_at = user_lessons.enrolled_at
       RETURNING enrolled_at
@@ -844,14 +904,72 @@ export async function unenrollUserFromLesson(userId, lessonId) {
   );
 }
 
-export async function getAllLessons(userId = null) {
+function normalizeLessonViewer(viewer = null) {
+  if (!viewer) {
+    return null;
+  }
+
+  if (typeof viewer === 'string') {
+    return { id: viewer, role: 'member' };
+  }
+
+  return viewer;
+}
+
+export function canManageLesson(user, lesson) {
+  if (!user || !lesson) {
+    return false;
+  }
+
+  return user.role === 'admin' || lesson.createdByUserId === user.id;
+}
+
+export function canViewLesson(user, lesson) {
+  if (!lesson) {
+    return false;
+  }
+
+  if (lesson.isPublished) {
+    return true;
+  }
+
+  if (!user) {
+    return false;
+  }
+
+  return user.role === 'admin' || lesson.createdByUserId === user.id || Boolean(lesson.viewerCanAccessPrivate);
+}
+
+export async function getAllLessons(viewer = null) {
   await ensureLessonsSchema();
 
-  const lessonsResult = await db.query(`
-    SELECT *
-    FROM lessons
-    ORDER BY created_at DESC
-  `);
+  const currentViewer = normalizeLessonViewer(viewer);
+  const userId = currentViewer?.id || null;
+  const isAdminViewer = currentViewer?.role === 'admin';
+
+  const lessonsResult = await db.query(
+    `
+      SELECT
+        lessons.*,
+        CASE
+          WHEN lessons.publication_status = 'published' THEN true
+          WHEN $2::boolean THEN true
+          WHEN lessons.created_by_user_id = $1::uuid THEN true
+          WHEN team_members.lead_user_id IS NOT NULL THEN true
+          ELSE false
+        END AS viewer_can_access_private
+      FROM lessons
+      LEFT JOIN team_members
+        ON team_members.member_user_id = lessons.created_by_user_id
+        AND team_members.lead_user_id = $1::uuid
+      WHERE lessons.publication_status = 'published'
+        OR $2::boolean
+        OR lessons.created_by_user_id = $1::uuid
+        OR team_members.lead_user_id IS NOT NULL
+      ORDER BY lessons.created_at DESC
+    `,
+    [userId, isAdminViewer]
+  );
 
   const lessonMaterialsResult = await db.query(`
     SELECT lesson_id, material_id
@@ -935,6 +1053,7 @@ export async function getAllLessons(userId = null) {
       completedAt: enrollment?.completed_at || null,
       isCompleted: Boolean(enrollment?.completed_at),
       activities: activitiesByLessonId.get(lesson.id) || [],
+      viewerCanManage: isAdminViewer || lesson.created_by_user_id === userId,
     });
   });
 }
@@ -948,6 +1067,7 @@ export async function getLessonsForUser(userId) {
       FROM user_lessons
       JOIN lessons ON lessons.id = user_lessons.lesson_id
       WHERE user_lessons.user_id = $1
+        AND lessons.publication_status = 'published'
       ORDER BY user_lessons.completed_at ASC NULLS FIRST, user_lessons.enrolled_at DESC
     `,
     [userId]

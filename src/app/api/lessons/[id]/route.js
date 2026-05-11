@@ -3,6 +3,7 @@ import {
   deleteLessonById,
   getLessonById,
   normalizeLessonTags,
+  publishLesson,
   updateLessonContent,
 } from '../../../../lib/lessons';
 import { extractHtmlTitle, looksLikeHtml, markdownToHtml } from '../../../../lib/lessonContent';
@@ -62,6 +63,10 @@ function buildUpdatedGenerationMetadata(lesson, revisionEntry) {
   };
 }
 
+function canManageExistingLesson(user, lesson) {
+  return user?.role === 'admin' || lesson?.createdByUserId === user?.id;
+}
+
 export async function PUT(request, { params }) {
   try {
     const { response } = await requireApiUser();
@@ -90,18 +95,27 @@ export async function PUT(request, { params }) {
       );
     }
 
-    const lesson = await updateLessonContent(id, {
-      title,
-      contentHtml,
-      tags,
-    });
+    const existingLesson = await getLessonById(id);
 
-    if (!lesson) {
+    if (!existingLesson) {
       return Response.json(
         { error: 'Lesson not found.' },
         { status: 404 }
       );
     }
+
+    if (!canManageExistingLesson(user, existingLesson)) {
+      return Response.json(
+        { error: 'You cannot edit this lesson.' },
+        { status: 403 }
+      );
+    }
+
+    const lesson = await updateLessonContent(id, {
+      title,
+      contentHtml,
+      tags,
+    });
 
     return Response.json({ lesson });
   } catch (error) {
@@ -149,6 +163,13 @@ export async function POST(request, { params }) {
       return Response.json(
         { error: 'Lesson not found.' },
         { status: 404 }
+      );
+    }
+
+    if (!canManageExistingLesson(user, lesson)) {
+      return Response.json(
+        { error: 'You cannot revise this lesson.' },
+        { status: 403 }
       );
     }
 
@@ -256,9 +277,70 @@ export async function POST(request, { params }) {
   }
 }
 
+export async function PATCH(request, { params }) {
+  try {
+    const { user, response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
+    const { id } = await params;
+    const body = await request.json().catch(() => ({}));
+
+    if (!id) {
+      return Response.json(
+        { error: 'Lesson id is required.' },
+        { status: 400 }
+      );
+    }
+
+    if (body.action !== 'publish') {
+      return Response.json(
+        { error: 'Unsupported lesson action.' },
+        { status: 400 }
+      );
+    }
+
+    const existingLesson = await getLessonById(id);
+
+    if (!existingLesson) {
+      return Response.json(
+        { error: 'Lesson not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (!canManageExistingLesson(user, existingLesson)) {
+      return Response.json(
+        { error: 'You cannot publish this lesson.' },
+        { status: 403 }
+      );
+    }
+
+    const lesson = await publishLesson(id);
+
+    if (!lesson) {
+      return Response.json(
+        { error: 'Only ready lessons can be published.' },
+        { status: 400 }
+      );
+    }
+
+    return Response.json({ lesson });
+  } catch (error) {
+    console.error('PATCH /api/lessons/[id] failed:', error);
+
+    return Response.json(
+      { error: error.message || 'Failed to publish lesson.' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function DELETE(_request, { params }) {
   try {
-    const { response } = await requireApiUser();
+    const { user, response } = await requireApiUser();
 
     if (response) {
       return response;
@@ -270,6 +352,22 @@ export async function DELETE(_request, { params }) {
       return Response.json(
         { error: 'Lesson id is required.' },
         { status: 400 }
+      );
+    }
+
+    const existingLesson = await getLessonById(id);
+
+    if (!existingLesson) {
+      return Response.json(
+        { error: 'Lesson not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (!canManageExistingLesson(user, existingLesson)) {
+      return Response.json(
+        { error: 'You cannot delete this lesson.' },
+        { status: 403 }
       );
     }
 

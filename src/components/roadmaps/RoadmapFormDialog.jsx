@@ -18,7 +18,7 @@ function buildInitialForm(initialRoadmap = null, lessons = []) {
   if (initialRoadmap) {
     const readyLessonsById = new Map(
       lessons
-        .filter((lesson) => lesson.status === 'ready')
+        .filter((lesson) => lesson.status === 'ready' && lesson.isPublished)
         .map((lesson) => [lesson.id, lesson])
     );
 
@@ -53,7 +53,7 @@ export default function RoadmapFormDialog({
   const [errors, setErrors] = useState({});
   const isEditMode = mode === 'edit';
   const readyLessons = useMemo(() => {
-    return lessons.filter((lesson) => lesson.status === 'ready');
+    return lessons.filter((lesson) => lesson.status === 'ready' && lesson.isPublished);
   }, [lessons]);
 
   const handleChange = (field) => (event) => {

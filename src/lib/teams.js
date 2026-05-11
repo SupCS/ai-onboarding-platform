@@ -152,6 +152,33 @@ export async function getUserByEmail(email) {
   return mapUser(result.rows[0]);
 }
 
+export async function getUserByEmailOrName(value) {
+  await ensureTeamsSchema();
+
+  const normalizedValue = String(value || '').trim();
+
+  if (!normalizedValue) {
+    return null;
+  }
+
+  const result = await db.query(
+    `
+      SELECT id, name, email, role
+      FROM users
+      WHERE email = $1
+        OR LOWER(name) = LOWER($2)
+      ORDER BY
+        CASE WHEN email = $1 THEN 0 ELSE 1 END,
+        name ASC,
+        email ASC
+      LIMIT 1
+    `,
+    [normalizeEmail(normalizedValue), normalizedValue]
+  );
+
+  return mapUser(result.rows[0]);
+}
+
 export async function getUserById(userId) {
   await ensureTeamsSchema();
 
@@ -232,6 +259,26 @@ export async function addTeamMemberByEmail(leadUserId, email) {
 
   const member = await getUserByEmail(email);
 
+  return addTeamMember(leadUserId, member);
+}
+
+export async function addTeamMemberByUserId(leadUserId, memberUserId) {
+  await ensureTeamsSchema();
+
+  const member = await getUserById(memberUserId);
+
+  return addTeamMember(leadUserId, member);
+}
+
+export async function addTeamMemberByEmailOrName(leadUserId, value) {
+  await ensureTeamsSchema();
+
+  const member = await getUserByEmailOrName(value);
+
+  return addTeamMember(leadUserId, member);
+}
+
+async function addTeamMember(leadUserId, member) {
   if (!member) {
     return null;
   }

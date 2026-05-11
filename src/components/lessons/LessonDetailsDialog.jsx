@@ -36,6 +36,7 @@ import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined';
 import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
+import RocketLaunchOutlinedIcon from '@mui/icons-material/RocketLaunchOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import SourceOutlinedIcon from '@mui/icons-material/SourceOutlined';
 import StyleOutlinedIcon from '@mui/icons-material/StyleOutlined';
@@ -513,6 +514,7 @@ export default function LessonDetailsDialog({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
   const [isRevising, setIsRevising] = useState(false);
   const [isGeneratingActivity, setIsGeneratingActivity] = useState(false);
   const [revisionRequest, setRevisionRequest] = useState('');
@@ -550,6 +552,7 @@ export default function LessonDetailsDialog({
     setDraftHtml(initialHtml);
     setDraftTitle(lesson?.title || '');
     setDraftTags(normalizeLessonTagInput(lesson?.tags || []));
+    setIsPublishing(false);
     setIsRevising(false);
     setRevisionRequest('');
     setSelectedRevisionOptions([]);
@@ -615,6 +618,11 @@ export default function LessonDetailsDialog({
   const activitySettings = getActivityTypeSettings(activityType);
   const hasAssets = allAssets.length > 0;
   const isRightPanelVisible = !isRightPanelCollapsed;
+  const canManageCurrentLesson = Boolean(lesson.viewerCanManage);
+  const canPublishLesson =
+    lesson.status === 'ready' &&
+    !lesson.isPublished &&
+    canManageCurrentLesson;
 
 
   const handleSave = async () => {
@@ -645,6 +653,32 @@ export default function LessonDetailsDialog({
       console.error('Failed to save lesson:', error);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    try {
+      setIsPublishing(true);
+
+      const response = await fetch(`/api/lessons/${lesson.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'publish' }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to publish lesson.');
+      }
+
+      await onLessonUpdated?.(data.lesson);
+    } catch (error) {
+      console.error('Failed to publish lesson:', error);
+      setRevisionError(error.message || 'Failed to publish lesson.');
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -1042,6 +1076,17 @@ export default function LessonDetailsDialog({
                     size="small"
                     sx={{ backgroundColor: 'rgba(255,255,255,0.16)', color: '#fff', fontWeight: 800 }}
                   />
+                  <Chip
+                    label={lesson.isPublished ? 'Published' : 'Private draft'}
+                    size="small"
+                    sx={{
+                      backgroundColor: lesson.isPublished
+                        ? 'rgba(255,255,255,0.16)'
+                        : AI_DIGITAL_COLORS.lime,
+                      color: lesson.isPublished ? '#fff' : AI_DIGITAL_COLORS.midnightCharcoal,
+                      fontWeight: 900,
+                    }}
+                  />
                 </Stack>
 
                 {isEditing ? (
@@ -1179,7 +1224,7 @@ export default function LessonDetailsDialog({
                     setDeleteError('');
                     setIsConfirmDeleteOpen(true);
                   }}
-                  disabled={isSaving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+                  disabled={!canManageCurrentLesson || isSaving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
                   sx={{
                     width: 34,
                     height: 34,
@@ -1333,7 +1378,7 @@ export default function LessonDetailsDialog({
                   activity={activeActivity}
                   draft={activeActivityDraft}
                   onDraftChange={setActivityDrafts}
-                  disabled={isSavingActivity || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                  disabled={!canManageCurrentLesson || isSavingActivity || isDeleting || isSaving || isRevising || isGeneratingActivity}
                 />
               </Stack>
             ) : lesson.status === 'failed' ? (
@@ -1557,7 +1602,7 @@ export default function LessonDetailsDialog({
                     multiline
                     placeholder="Example: keep the factual content, but make the explanation less course-like and add one clear example for naming conventions."
                     fullWidth
-                    disabled={isEditing || isDeleting || isSaving || isRevising}
+                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isRevising}
                   />
 
                   {lastRevision && (
@@ -1587,7 +1632,7 @@ export default function LessonDetailsDialog({
                     variant="contained"
                     startIcon={<AutoAwesomeOutlinedIcon />}
                     onClick={handleRevise}
-                    disabled={isEditing || isDeleting || isSaving || isRevising}
+                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isRevising}
                   >
                     {isRevising ? 'Revising lesson...' : 'Revise lesson'}
                   </Button>
@@ -1608,7 +1653,7 @@ export default function LessonDetailsDialog({
                   onChange={(event) => setAssetUrl(event.target.value)}
                   size="small"
                   fullWidth
-                  disabled={isAddingAsset || isDeleting}
+                  disabled={!canManageCurrentLesson || isAddingAsset || isDeleting}
                 />
                 <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                   <Button
@@ -1616,7 +1661,7 @@ export default function LessonDetailsDialog({
                     size="small"
                     startIcon={<LinkOutlinedIcon />}
                     onClick={handleAddUrlAsset}
-                    disabled={isAddingAsset || isDeleting || !assetUrl.trim()}
+                    disabled={!canManageCurrentLesson || isAddingAsset || isDeleting || !assetUrl.trim()}
                     sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 800 }}
                   >
                     {isAddingAsset ? 'Adding...' : 'Add link'}
@@ -1626,7 +1671,7 @@ export default function LessonDetailsDialog({
                     size="small"
                     startIcon={<AttachFileOutlinedIcon />}
                     onClick={() => assetFileInputRef.current?.click()}
-                    disabled={isAddingAsset || isDeleting}
+                    disabled={!canManageCurrentLesson || isAddingAsset || isDeleting}
                     sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 800 }}
                   >
                     File
@@ -1680,7 +1725,7 @@ export default function LessonDetailsDialog({
                       value={activityType}
                       label="Activity type"
                       onChange={(event) => handleActivityTypeChange(event.target.value)}
-                      disabled={isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                      disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
                     >
                       {activityTypeOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
@@ -1704,7 +1749,7 @@ export default function LessonDetailsDialog({
                       },
                     }}
                     helperText={`Allowed: ${activitySettings.min}-${activitySettings.max}`}
-                    disabled={isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
                   />
 
                   {activities.length > 0 && (
@@ -1733,7 +1778,7 @@ export default function LessonDetailsDialog({
                     variant="contained"
                     startIcon={<QuizOutlinedIcon />}
                     onClick={handleGenerateActivity}
-                    disabled={isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
                   >
                     {isGeneratingActivity ? 'Generating activity...' : 'Generate activity'}
                   </Button>
@@ -1761,7 +1806,7 @@ export default function LessonDetailsDialog({
           }}
           color="error"
           startIcon={<DeleteOutlineOutlinedIcon />}
-          disabled={isSaving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+          disabled={!canManageCurrentLesson || isSaving || isPublishing || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
           sx={{
             mr: 'auto',
             textTransform: 'none',
@@ -1776,41 +1821,54 @@ export default function LessonDetailsDialog({
             onClick={handleSaveActivity}
             variant="contained"
             startIcon={<SaveOutlinedIcon />}
-            disabled={isDeleting || isSaving || isRevising || isGeneratingActivity || isSavingActivity}
+            disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isRevising || isGeneratingActivity || isSavingActivity}
           >
             {isSavingActivity ? 'Saving activity...' : 'Save activity'}
           </Button>
         ) : isEditing ? (
           <>
-            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isDeleting || isGeneratingActivity || isSavingActivity}>
+            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isPublishing || isDeleting || isGeneratingActivity || isSavingActivity}>
               Cancel
             </Button>
             <Button
               onClick={handleSave}
               variant="contained"
               startIcon={<SaveOutlinedIcon />}
-              disabled={isSaving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+              disabled={!canManageCurrentLesson || isSaving || isPublishing || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
             >
               {isSaving ? 'Saving...' : 'Save changes'}
             </Button>
           </>
         ) : (
           lesson.status !== 'failed' && (
-            <Button
-              onClick={() => setIsEditing(true)}
-              variant="contained"
-              startIcon={<EditOutlinedIcon />}
-              disabled={isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
-            >
-              Edit lesson
-            </Button>
+            <>
+              {canPublishLesson && (
+                <Button
+                  onClick={handlePublish}
+                  variant="contained"
+                  color="success"
+                  startIcon={<RocketLaunchOutlinedIcon />}
+                  disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isRevising || isGeneratingActivity || isSavingActivity}
+                >
+                  {isPublishing ? 'Publishing...' : 'Publish lesson'}
+                </Button>
+              )}
+              <Button
+                onClick={() => setIsEditing(true)}
+                variant="contained"
+                startIcon={<EditOutlinedIcon />}
+                disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isRevising || isGeneratingActivity || isSavingActivity}
+              >
+                Edit lesson
+              </Button>
+            </>
           )
         )}
         <Button
           onClick={onClose}
           color="inherit"
           startIcon={<LibraryBooksOutlinedIcon />}
-          disabled={isSaving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+          disabled={isSaving || isPublishing || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
         >
           Close
         </Button>
@@ -1854,7 +1912,7 @@ export default function LessonDetailsDialog({
             color="error"
             variant="contained"
             onClick={handleDelete}
-            disabled={isDeleting}
+            disabled={!canManageCurrentLesson || isDeleting}
           >
             {isDeleting ? 'Deleting...' : 'Delete permanently'}
           </Button>

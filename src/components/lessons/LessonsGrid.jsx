@@ -244,7 +244,7 @@ export default function LessonsGrid({
             <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: 'center' }}>
               <AutoStoriesOutlinedIcon fontSize="small" color="action" />
               <Chip
-                label={lesson.status}
+                label={lesson.isPublished ? lesson.status : 'private'}
                 color={getStatusColor(lesson.status)}
                 size="small"
                 variant="outlined"
@@ -405,7 +405,7 @@ export default function LessonsGrid({
                     )
                   }
                   color={lesson.isEnrolled ? 'inherit' : 'primary'}
-                  disabled={lesson.status !== 'ready'}
+                  disabled={lesson.status !== 'ready' || !lesson.isPublished}
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -424,7 +424,11 @@ export default function LessonsGrid({
                     fontWeight: 700,
                   }}
                 >
-                  {lesson.isEnrolled ? 'Remove from My Lessons' : 'Add to My Lessons'}
+                  {lesson.isEnrolled
+                    ? 'Remove from My Lessons'
+                    : lesson.isPublished
+                      ? 'Add to My Lessons'
+                      : 'Publish before adding'}
                 </Button>
               )}
 

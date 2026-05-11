@@ -140,7 +140,7 @@ export async function GET() {
       return response;
     }
 
-    const lessons = await getAllLessons(user.id);
+    const lessons = await getAllLessons(user);
 
     return Response.json({ lessons });
   } catch (error) {
@@ -197,6 +197,7 @@ export async function POST(request) {
         tone: 'clear',
         desiredFormat: 'manual lesson',
         tags,
+        createdByUserId: user.id,
         createdBy: user.name,
       });
       const readyLesson = await markLessonReady(lesson.id, {
@@ -236,6 +237,7 @@ export async function POST(request) {
         tone,
         desiredFormat,
         tags,
+        createdByUserId: user.id,
         createdBy: user.name,
       });
       let promptVersion = 'file-input-preparation-or-generation';
