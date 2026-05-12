@@ -48,6 +48,26 @@ function getStatusColor(status) {
   return 'default';
 }
 
+function getPublicationLabel(lesson) {
+  if (lesson.isArchived || lesson.publicationStatus === 'archived') {
+    return 'archived';
+  }
+
+  if (!lesson.isPublished) {
+    return 'private';
+  }
+
+  return lesson.status;
+}
+
+function getPublicationColor(lesson) {
+  if (lesson.isArchived || lesson.publicationStatus === 'archived') {
+    return 'default';
+  }
+
+  return getStatusColor(lesson.status);
+}
+
 function getLessonPreview(lesson) {
   if (lesson.contentHtml) {
     const plainHtmlText = lesson.contentHtml
@@ -244,8 +264,8 @@ export default function LessonsGrid({
             <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: 'center' }}>
               <AutoStoriesOutlinedIcon fontSize="small" color="action" />
               <Chip
-                label={lesson.isPublished ? lesson.status : 'private'}
-                color={getStatusColor(lesson.status)}
+                label={getPublicationLabel(lesson)}
+                color={getPublicationColor(lesson)}
                 size="small"
                 variant="outlined"
               />
@@ -405,7 +425,7 @@ export default function LessonsGrid({
                     )
                   }
                   color={lesson.isEnrolled ? 'inherit' : 'primary'}
-                  disabled={lesson.status !== 'ready' || !lesson.isPublished}
+                  disabled={lesson.status !== 'ready' || !lesson.isPublished || lesson.isArchived}
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
@@ -426,9 +446,11 @@ export default function LessonsGrid({
                 >
                   {lesson.isEnrolled
                     ? 'Remove from My Lessons'
-                    : lesson.isPublished
-                      ? 'Add to My Lessons'
-                      : 'Publish before adding'}
+                    : lesson.isArchived
+                      ? 'Archived'
+                      : lesson.isPublished
+                        ? 'Add to My Lessons'
+                        : 'Publish before adding'}
                 </Button>
               )}
 

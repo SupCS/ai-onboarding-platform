@@ -1,12 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Autocomplete,
   Box,
   Button,
   Chip,
-  Collapse,
   MenuItem,
+  Popover,
   Stack,
   TextField,
 } from '@mui/material';
@@ -28,9 +29,18 @@ const enrollmentOptions = [
   { value: 'not-enrolled', label: 'Not in My Lessons' },
 ];
 
+const lessonStatusOptions = [
+  { value: 'ready', label: 'Ready' },
+  { value: 'archived', label: 'Archived' },
+  { value: 'pending', label: 'Pending' },
+  { value: 'all', label: 'All' },
+];
+
 export default function LessonLibraryFilters({
   query,
   onQueryChange,
+  status,
+  onStatusChange,
   selectedTags = [],
   onSelectedTagsChange,
   availableTags = [],
@@ -45,6 +55,27 @@ export default function LessonLibraryFilters({
   onToggleFilters,
   onReset,
 }) {
+  const [filtersAnchorEl, setFiltersAnchorEl] = useState(null);
+
+  const handleToggleFilters = (event) => {
+    if (filtersOpen) {
+      setFiltersAnchorEl(null);
+      onToggleFilters?.();
+      return;
+    }
+
+    setFiltersAnchorEl(event.currentTarget);
+    onToggleFilters?.();
+  };
+
+  const handleCloseFilters = () => {
+    setFiltersAnchorEl(null);
+
+    if (filtersOpen) {
+      onToggleFilters?.();
+    }
+  };
+
   return (
     <Box>
       <Stack spacing={1.25}>
@@ -61,6 +92,7 @@ export default function LessonLibraryFilters({
             size="small"
             sx={{
               maxWidth: { md: 420 },
+              flex: '0 1 420px',
               '& .MuiInputBase-root': {
                 borderRadius: 2.5,
                 backgroundColor: '#fff',
@@ -85,7 +117,7 @@ export default function LessonLibraryFilters({
               variant={filtersOpen ? 'contained' : 'outlined'}
               color="inherit"
               startIcon={<TuneOutlinedIcon />}
-              onClick={onToggleFilters}
+              onClick={handleToggleFilters}
               sx={{
                 minWidth: 102,
                 textTransform: 'none',
@@ -102,93 +134,141 @@ export default function LessonLibraryFilters({
             >
               Filters
             </Button>
+          </Stack>
+        </Stack>
+
+        <Popover
+          open={filtersOpen && Boolean(filtersAnchorEl)}
+          anchorEl={filtersAnchorEl}
+          onClose={handleCloseFilters}
+          disableScrollLock
+          anchorOrigin={{
+            vertical: 'bottom',
+            horizontal: 'right',
+          }}
+          transformOrigin={{
+            vertical: 'top',
+            horizontal: 'right',
+          }}
+          slotProps={{
+            paper: {
+              sx: {
+                mt: 1,
+                p: 2,
+                width: { xs: 'calc(100vw - 32px)', sm: 560 },
+                maxWidth: 'calc(100vw - 32px)',
+                borderRadius: 3,
+                border: '1px solid #e5e7eb',
+                boxShadow: '0 22px 60px rgba(15, 23, 42, 0.16)',
+              },
+            },
+          }}
+        >
+          <Stack spacing={1.5}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: {
+                  xs: '1fr',
+                  sm: 'repeat(2, minmax(0, 1fr))',
+                },
+                gap: 1,
+                '& .MuiInputBase-root': {
+                  minWidth: 0,
+                },
+                '& .MuiInputBase-input': {
+                  minWidth: 0,
+                },
+              }}
+            >
+              <Autocomplete
+                multiple
+                options={availableTags}
+                value={selectedTags}
+                onChange={(_event, nextTags) => onSelectedTagsChange(nextTags)}
+                size="small"
+                renderValue={(value, getItemProps) =>
+                  value.map((tag, index) => {
+                    const { key, ...itemProps } = getItemProps({ index });
+
+                    return (
+                      <Chip
+                        key={key}
+                        label={tag}
+                        size="small"
+                        {...itemProps}
+                      />
+                    );
+                  })
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Tags"
+                    placeholder="Choose tags"
+                  />
+                )}
+              />
+
+              <TextField
+                select
+                label="Status"
+                value={status}
+                onChange={(event) => onStatusChange(event.target.value)}
+                size="small"
+                fullWidth
+              >
+                {lessonStatusOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="Activity"
+                value={activity}
+                onChange={(event) => onActivityChange(event.target.value)}
+                size="small"
+                fullWidth
+              >
+                {activityOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+
+              <TextField
+                select
+                label="My Lessons"
+                value={enrollment}
+                onChange={(event) => onEnrollmentChange(event.target.value)}
+                size="small"
+                fullWidth
+              >
+                {enrollmentOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </TextField>
+            </Box>
+
             {hasActiveFilters && (
               <Button
                 variant="text"
                 color="inherit"
                 startIcon={<RestartAltOutlinedIcon />}
                 onClick={onReset}
-                sx={{ textTransform: 'none', fontWeight: 800 }}
+                sx={{ alignSelf: 'flex-start', textTransform: 'none', fontWeight: 800 }}
               >
-                Reset
+                Reset filters
               </Button>
             )}
           </Stack>
-        </Stack>
-
-        <Collapse in={filtersOpen} timeout="auto" unmountOnExit>
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                md: 'minmax(240px, 1fr) repeat(2, minmax(170px, 0.55fr))',
-              },
-              gap: 1,
-              pt: 1,
-              borderTop: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.08)}`,
-            }}
-          >
-            <Autocomplete
-              multiple
-              options={availableTags}
-              value={selectedTags}
-              onChange={(_event, nextTags) => onSelectedTagsChange(nextTags)}
-              size="small"
-              renderValue={(value, getItemProps) =>
-                value.map((tag, index) => {
-                  const { key, ...itemProps } = getItemProps({ index });
-
-                  return (
-                    <Chip
-                      key={key}
-                      label={tag}
-                      size="small"
-                      {...itemProps}
-                    />
-                  );
-                })
-              }
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Tags"
-                  placeholder="Choose tags"
-                />
-              )}
-            />
-
-            <TextField
-              select
-              label="Activity"
-              value={activity}
-              onChange={(event) => onActivityChange(event.target.value)}
-              size="small"
-              fullWidth
-            >
-              {activityOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </TextField>
-
-            <TextField
-              select
-              label="My Lessons"
-              value={enrollment}
-              onChange={(event) => onEnrollmentChange(event.target.value)}
-              size="small"
-              fullWidth
-            >
-              {enrollmentOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </TextField>
-          </Box>
-        </Collapse>
+        </Popover>
       </Stack>
     </Box>
   );

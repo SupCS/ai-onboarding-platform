@@ -22,8 +22,8 @@ export default function LibraryTabs({ activeTab, onTabChange, actionSlot }) {
         sx={{
           display: 'flex',
           alignItems: { xs: 'stretch', md: 'center' },
-          justifyContent: 'space-between',
-          gap: 1,
+          justifyContent: 'flex-start',
+          gap: 2,
           flexDirection: { xs: 'column', md: 'row' },
         }}
       >
@@ -34,7 +34,8 @@ export default function LibraryTabs({ activeTab, onTabChange, actionSlot }) {
           scrollButtons="auto"
           sx={{
             px: 1,
-            minWidth: 0,
+            flex: '0 0 auto',
+            minWidth: 'max-content',
             '& .MuiTab-root': {
               textTransform: 'none',
               fontWeight: 600,
@@ -53,7 +54,7 @@ export default function LibraryTabs({ activeTab, onTabChange, actionSlot }) {
         </Tabs>
 
         {actionSlot && (
-          <Box sx={{ flex: '0 1 640px', minWidth: { md: 420 } }}>
+          <Box sx={{ flex: '1 1 auto', minWidth: { md: 0 } }}>
             {actionSlot}
           </Box>
         )}

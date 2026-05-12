@@ -28,6 +28,7 @@ import {
 } from '@mui/material';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
+import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
 import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
 import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
@@ -41,6 +42,7 @@ import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
 import SourceOutlinedIcon from '@mui/icons-material/SourceOutlined';
 import StyleOutlinedIcon from '@mui/icons-material/StyleOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
+import UnarchiveOutlinedIcon from '@mui/icons-material/UnarchiveOutlined';
 import ViewSidebarOutlinedIcon from '@mui/icons-material/ViewSidebarOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import LessonAttachments, { getSourceAttachments } from './LessonAttachments';
@@ -511,10 +513,13 @@ export default function LessonDetailsDialog({
 }) {
   const [isEditing, setIsEditing] = useState(false);
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false);
+  const [isConfirmArchiveOpen, setIsConfirmArchiveOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
+  const [archiveError, setArchiveError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [isRevising, setIsRevising] = useState(false);
   const [isGeneratingActivity, setIsGeneratingActivity] = useState(false);
   const [revisionRequest, setRevisionRequest] = useState('');
@@ -548,11 +553,14 @@ export default function LessonDetailsDialog({
   useEffect(() => {
     setIsEditing(false);
     setIsConfirmDeleteOpen(false);
+    setIsConfirmArchiveOpen(false);
     setDeleteError('');
+    setArchiveError('');
     setDraftHtml(initialHtml);
     setDraftTitle(lesson?.title || '');
     setDraftTags(normalizeLessonTagInput(lesson?.tags || []));
     setIsPublishing(false);
+    setIsArchiving(false);
     setIsRevising(false);
     setRevisionRequest('');
     setSelectedRevisionOptions([]);
@@ -619,10 +627,17 @@ export default function LessonDetailsDialog({
   const hasAssets = allAssets.length > 0;
   const isRightPanelVisible = !isRightPanelCollapsed;
   const canManageCurrentLesson = Boolean(lesson.viewerCanManage);
+  const isLessonArchived = lesson.isArchived || lesson.publicationStatus === 'archived';
   const canPublishLesson =
     lesson.status === 'ready' &&
     !lesson.isPublished &&
+    !isLessonArchived &&
     canManageCurrentLesson;
+  const publicationLabel = isLessonArchived
+    ? 'Archived'
+    : lesson.isPublished
+      ? 'Published'
+      : 'Private draft';
 
 
   const handleSave = async () => {
@@ -677,6 +692,61 @@ export default function LessonDetailsDialog({
     } catch (error) {
       console.error('Failed to publish lesson:', error);
       setRevisionError(error.message || 'Failed to publish lesson.');
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleArchive = async () => {
+    try {
+      setIsArchiving(true);
+      setArchiveError('');
+
+      const response = await fetch(`/api/lessons/${lesson.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'archive' }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to archive lesson.');
+      }
+
+      await onLessonUpdated?.(data.lesson);
+      setIsConfirmArchiveOpen(false);
+    } catch (error) {
+      console.error('Failed to archive lesson:', error);
+      setArchiveError(error.message || 'Failed to archive lesson.');
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const handleRestore = async () => {
+    try {
+      setIsPublishing(true);
+      setRevisionError('');
+
+      const response = await fetch(`/api/lessons/${lesson.id}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action: 'restore' }),
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to restore lesson.');
+      }
+
+      await onLessonUpdated?.(data.lesson);
+    } catch (error) {
+      console.error('Failed to restore lesson:', error);
+      setRevisionError(error.message || 'Failed to restore lesson.');
     } finally {
       setIsPublishing(false);
     }
@@ -1077,13 +1147,13 @@ export default function LessonDetailsDialog({
                     sx={{ backgroundColor: 'rgba(255,255,255,0.16)', color: '#fff', fontWeight: 800 }}
                   />
                   <Chip
-                    label={lesson.isPublished ? 'Published' : 'Private draft'}
+                    label={publicationLabel}
                     size="small"
                     sx={{
-                      backgroundColor: lesson.isPublished
+                      backgroundColor: lesson.isPublished || isLessonArchived
                         ? 'rgba(255,255,255,0.16)'
                         : AI_DIGITAL_COLORS.lime,
-                      color: lesson.isPublished ? '#fff' : AI_DIGITAL_COLORS.midnightCharcoal,
+                      color: lesson.isPublished || isLessonArchived ? '#fff' : AI_DIGITAL_COLORS.midnightCharcoal,
                       fontWeight: 900,
                     }}
                   />
@@ -1218,24 +1288,6 @@ export default function LessonDetailsDialog({
               }}
             >
               <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
-                <IconButton
-                  aria-label="Delete lesson"
-                  onClick={() => {
-                    setDeleteError('');
-                    setIsConfirmDeleteOpen(true);
-                  }}
-                  disabled={!canManageCurrentLesson || isSaving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
-                  sx={{
-                    width: 34,
-                    height: 34,
-                    color: '#fff',
-                    backgroundColor: 'rgba(255,255,255,0.12)',
-                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.22)' },
-                    '&.Mui-disabled': { color: 'rgba(255,255,255,0.42)' },
-                  }}
-                >
-                  <DeleteOutlineOutlinedIcon />
-                </IconButton>
                 <IconButton
                   aria-label="Close lesson details"
                   onClick={onClose}
@@ -1749,7 +1801,7 @@ export default function LessonDetailsDialog({
                       },
                     }}
                     helperText={`Allowed: ${activitySettings.min}-${activitySettings.max}`}
-                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity}
                   />
 
                   {activities.length > 0 && (
@@ -1778,7 +1830,7 @@ export default function LessonDetailsDialog({
                     variant="contained"
                     startIcon={<QuizOutlinedIcon />}
                     onClick={handleGenerateActivity}
-                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity}
                   >
                     {isGeneratingActivity ? 'Generating activity...' : 'Generate activity'}
                   </Button>
@@ -1799,42 +1851,71 @@ export default function LessonDetailsDialog({
           backgroundColor: '#fff',
         }}
       >
-        <Button
-          onClick={() => {
-            setDeleteError('');
-            setIsConfirmDeleteOpen(true);
-          }}
-          color="error"
-          startIcon={<DeleteOutlineOutlinedIcon />}
-          disabled={!canManageCurrentLesson || isSaving || isPublishing || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
-          sx={{
-            mr: 'auto',
-            textTransform: 'none',
-            fontWeight: 850,
-          }}
-        >
-          Delete lesson
-        </Button>
+        {isEditing && (
+          <Stack direction="row" spacing={1} sx={{ mr: 'auto' }}>
+            <Button
+              onClick={() => {
+                if (isLessonArchived) {
+                  handleRestore();
+                  return;
+                }
+
+                setArchiveError('');
+                setIsConfirmArchiveOpen(true);
+              }}
+              color="inherit"
+              startIcon={isLessonArchived ? <UnarchiveOutlinedIcon /> : <ArchiveOutlinedIcon />}
+              disabled={!canManageCurrentLesson || (isLessonArchived && lesson.status !== 'ready') || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 850,
+              }}
+            >
+              {isLessonArchived
+                ? isPublishing
+                  ? 'Restoring...'
+                  : 'Restore lesson'
+                : isArchiving
+                  ? 'Archiving...'
+                  : 'Archive lesson'}
+            </Button>
+            <Button
+              onClick={() => {
+                setDeleteError('');
+                setIsConfirmDeleteOpen(true);
+              }}
+              color="error"
+              startIcon={<DeleteOutlineOutlinedIcon />}
+              disabled={!canManageCurrentLesson || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+              sx={{
+                textTransform: 'none',
+                fontWeight: 850,
+              }}
+            >
+              Delete lesson
+            </Button>
+          </Stack>
+        )}
 
         {activeView !== 'lesson' ? (
           <Button
             onClick={handleSaveActivity}
             variant="contained"
             startIcon={<SaveOutlinedIcon />}
-            disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isRevising || isGeneratingActivity || isSavingActivity}
+            disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity}
           >
             {isSavingActivity ? 'Saving activity...' : 'Save activity'}
           </Button>
         ) : isEditing ? (
           <>
-            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isPublishing || isDeleting || isGeneratingActivity || isSavingActivity}>
+            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isPublishing || isArchiving || isDeleting || isGeneratingActivity || isSavingActivity}>
               Cancel
             </Button>
             <Button
               onClick={handleSave}
               variant="contained"
               startIcon={<SaveOutlinedIcon />}
-              disabled={!canManageCurrentLesson || isSaving || isPublishing || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+              disabled={!canManageCurrentLesson || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
             >
               {isSaving ? 'Saving...' : 'Save changes'}
             </Button>
@@ -1848,7 +1929,7 @@ export default function LessonDetailsDialog({
                   variant="contained"
                   color="success"
                   startIcon={<RocketLaunchOutlinedIcon />}
-                  disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isRevising || isGeneratingActivity || isSavingActivity}
+                  disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity}
                 >
                   {isPublishing ? 'Publishing...' : 'Publish lesson'}
                 </Button>
@@ -1857,7 +1938,7 @@ export default function LessonDetailsDialog({
                 onClick={() => setIsEditing(true)}
                 variant="contained"
                 startIcon={<EditOutlinedIcon />}
-                disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isRevising || isGeneratingActivity || isSavingActivity}
+                disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity}
               >
                 Edit lesson
               </Button>
@@ -1868,11 +1949,56 @@ export default function LessonDetailsDialog({
           onClick={onClose}
           color="inherit"
           startIcon={<LibraryBooksOutlinedIcon />}
-          disabled={isSaving || isPublishing || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+          disabled={isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
         >
           Close
         </Button>
       </DialogActions>
+
+      <Dialog
+        open={isConfirmArchiveOpen}
+        onClose={() => {
+          if (!isArchiving) {
+            setIsConfirmArchiveOpen(false);
+          }
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Archive lesson?</DialogTitle>
+        <DialogContent>
+          <Stack spacing={1.5} sx={{ mt: 1 }}>
+            <Typography variant="body1">
+              This will archive <strong>{lesson.title}</strong>.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Archived lessons are hidden from published library views and cannot be added to My Lessons until restored.
+            </Typography>
+            {archiveError && (
+              <Alert severity="error">
+                {archiveError}
+              </Alert>
+            )}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            onClick={() => setIsConfirmArchiveOpen(false)}
+            color="inherit"
+            disabled={isArchiving}
+          >
+            Cancel
+          </Button>
+          <Button
+            color="warning"
+            variant="contained"
+            onClick={handleArchive}
+            disabled={!canManageCurrentLesson || isArchiving}
+          >
+            {isArchiving ? 'Archiving...' : 'Archive lesson'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Dialog
         open={isConfirmDeleteOpen}

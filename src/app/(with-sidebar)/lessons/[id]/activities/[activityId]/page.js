@@ -30,7 +30,7 @@ export default async function LessonActivityPage({ params }) {
 
   const lesson = await getLessonById(id);
 
-  if (!lesson || lesson.status !== 'ready') {
+  if (!lesson || lesson.status !== 'ready' || !lesson.isPublished) {
     notFound();
   }
 

@@ -8,10 +8,11 @@ import { LESSON_MVP_LIMITS } from './lessonConstants.js';
 export {
   LESSON_CONTENT_FORMAT,
   LESSON_MVP_LIMITS,
+  LESSON_PUBLICATION_STATUSES,
   LESSON_STATUSES,
 } from './lessonConstants.js';
 
-const LESSONS_SCHEMA_VERSION = 6;
+const LESSONS_SCHEMA_VERSION = 7;
 
 export async function ensureLessonsSchema(client = db) {
   const globalForLessons = globalThis;
@@ -254,6 +255,7 @@ function mapLesson(row, materialIds = [], extra = {}) {
     tags: Array.isArray(row.tags) ? row.tags : [],
     publicationStatus: row.publication_status || 'published',
     isPublished: (row.publication_status || 'published') === 'published',
+    isArchived: (row.publication_status || 'published') === 'archived',
     publishedAt: row.published_at,
     createdByUserId: row.created_by_user_id,
     viewerCanAccessPrivate: Boolean(row.viewer_can_access_private),
@@ -613,6 +615,28 @@ export async function publishLesson(lessonId) {
         updated_at = NOW()
       WHERE id = $1
         AND status = 'ready'
+      RETURNING *
+    `,
+    [lessonId]
+  );
+
+  if (result.rowCount === 0) {
+    return null;
+  }
+
+  return getLessonById(lessonId);
+}
+
+export async function archiveLesson(lessonId) {
+  await ensureLessonsSchema();
+
+  const result = await db.query(
+    `
+      UPDATE lessons
+      SET
+        publication_status = 'archived',
+        updated_at = NOW()
+      WHERE id = $1
       RETURNING *
     `,
     [lessonId]

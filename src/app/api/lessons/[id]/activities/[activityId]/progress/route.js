@@ -2,6 +2,7 @@ import { requireApiUser } from '../../../../../../../lib/apiAuth';
 import {
   completeFlashcardsActivityForUser,
   completeQuizActivityForUser,
+  getLessonById,
   getLessonEnrollmentForUser,
   resetLessonActivityProgressForUser,
 } from '../../../../../../../lib/lessons';
@@ -39,6 +40,15 @@ export async function POST(request, { params }) {
     if (!enrollment) {
       return Response.json(
         { error: 'Lesson is not in My Lessons.' },
+        { status: 404 }
+      );
+    }
+
+    const lesson = await getLessonById(id);
+
+    if (!lesson || lesson.status !== 'ready' || !lesson.isPublished) {
+      return Response.json(
+        { error: 'Lesson not found.' },
         { status: 404 }
       );
     }
@@ -102,6 +112,15 @@ export async function DELETE(_request, { params }) {
     if (!enrollment) {
       return Response.json(
         { error: 'Lesson is not in My Lessons.' },
+        { status: 404 }
+      );
+    }
+
+    const lesson = await getLessonById(id);
+
+    if (!lesson || lesson.status !== 'ready' || !lesson.isPublished) {
+      return Response.json(
+        { error: 'Lesson not found.' },
         { status: 404 }
       );
     }

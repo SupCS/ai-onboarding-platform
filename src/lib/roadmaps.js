@@ -105,13 +105,14 @@ export async function createRoadmap(input) {
         FROM lessons
         WHERE id = ANY($1::text[])
           AND status = 'ready'
+          AND publication_status = 'published'
       `,
       [lessonIds]
     );
     const readyLessonIds = new Set(readyLessonsResult.rows.map((row) => row.id));
 
     if (readyLessonIds.size !== lessonIds.length) {
-      throw new Error('Roadmaps can include only existing ready lessons.');
+      throw new Error('Roadmaps can include only existing published ready lessons.');
     }
 
     const roadmapId = crypto.randomUUID();
@@ -183,13 +184,14 @@ export async function updateRoadmap(roadmapId, input) {
         FROM lessons
         WHERE id = ANY($1::text[])
           AND status = 'ready'
+          AND publication_status = 'published'
       `,
       [lessonIds]
     );
     const readyLessonIds = new Set(readyLessonsResult.rows.map((row) => row.id));
 
     if (readyLessonIds.size !== lessonIds.length) {
-      throw new Error('Roadmaps can include only existing ready lessons.');
+      throw new Error('Roadmaps can include only existing published ready lessons.');
     }
 
     await client.query(

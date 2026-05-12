@@ -1,6 +1,7 @@
 import { requireApiUser } from '../../../../../lib/apiAuth';
 import {
   enrollUserInLesson,
+  getLessonById,
   setLessonCompletionForUser,
   unenrollUserFromLesson,
 } from '../../../../../lib/lessons';
@@ -96,6 +97,15 @@ export async function PATCH(request, { params }) {
     }
 
     const body = await request.json().catch(() => ({}));
+    const lesson = await getLessonById(id);
+
+    if (!lesson || lesson.status !== 'ready' || !lesson.isPublished) {
+      return Response.json(
+        { error: 'Lesson not found.' },
+        { status: 404 }
+      );
+    }
+
     const enrollment = await setLessonCompletionForUser(
       user.id,
       id,

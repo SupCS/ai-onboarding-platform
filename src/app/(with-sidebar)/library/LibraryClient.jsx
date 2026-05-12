@@ -28,6 +28,7 @@ export default function LibraryClient() {
   const [lessons, setLessons] = useState([]);
   const [roadmaps, setRoadmaps] = useState([]);
   const [lessonSearchQuery, setLessonSearchQuery] = useState('');
+  const [lessonStatusFilter, setLessonStatusFilter] = useState('ready');
   const [lessonSelectedTags, setLessonSelectedTags] = useState([]);
   const [lessonActivityFilter, setLessonActivityFilter] = useState('all');
   const [lessonEnrollmentFilter, setLessonEnrollmentFilter] = useState('all');
@@ -78,6 +79,7 @@ export default function LibraryClient() {
     return sortedLessons.filter((lesson) => {
       const tags = Array.isArray(lesson.tags) ? lesson.tags : [];
       const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
+      const isArchived = lesson.publicationStatus === 'archived' || lesson.isArchived;
 
       if (normalizedQuery) {
         const searchableText = [
@@ -94,6 +96,18 @@ export default function LibraryClient() {
         if (!searchableText.includes(normalizedQuery)) {
           return false;
         }
+      }
+
+      if (lessonStatusFilter === 'ready' && (lesson.status !== 'ready' || isArchived)) {
+        return false;
+      }
+
+      if (lessonStatusFilter === 'archived' && !isArchived) {
+        return false;
+      }
+
+      if (lessonStatusFilter === 'pending' && (lesson.status === 'ready' || isArchived)) {
+        return false;
       }
 
       if (
@@ -133,17 +147,20 @@ export default function LibraryClient() {
     lessonEnrollmentFilter,
     lessonSearchQuery,
     lessonSelectedTags,
+    lessonStatusFilter,
     sortedLessons,
   ]);
 
   const hasActiveLessonFilters =
     lessonSearchQuery.trim().length > 0 ||
+    lessonStatusFilter !== 'ready' ||
     lessonSelectedTags.length > 0 ||
     lessonActivityFilter !== 'all' ||
     lessonEnrollmentFilter !== 'all';
 
   const resetLessonFilters = () => {
     setLessonSearchQuery('');
+    setLessonStatusFilter('ready');
     setLessonSelectedTags([]);
     setLessonActivityFilter('all');
     setLessonEnrollmentFilter('all');
@@ -903,6 +920,8 @@ export default function LibraryClient() {
                 <LessonLibraryFilters
                   query={lessonSearchQuery}
                   onQueryChange={setLessonSearchQuery}
+                  status={lessonStatusFilter}
+                  onStatusChange={setLessonStatusFilter}
                   selectedTags={lessonSelectedTags}
                   onSelectedTagsChange={setLessonSelectedTags}
                   availableTags={lessonAvailableTags}

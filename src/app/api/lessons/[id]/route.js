@@ -1,5 +1,6 @@
 import { requireApiUser } from '../../../../lib/apiAuth';
 import {
+  archiveLesson,
   deleteLessonById,
   getLessonById,
   normalizeLessonTags,
@@ -67,9 +68,21 @@ function canManageExistingLesson(user, lesson) {
   return user?.role === 'admin' || lesson?.createdByUserId === user?.id;
 }
 
+function withViewerCapabilities(lesson, user) {
+  if (!lesson) {
+    return lesson;
+  }
+
+  return {
+    ...lesson,
+    viewerCanAccessPrivate: true,
+    viewerCanManage: canManageExistingLesson(user, lesson),
+  };
+}
+
 export async function PUT(request, { params }) {
   try {
-    const { response } = await requireApiUser();
+    const { user, response } = await requireApiUser();
 
     if (response) {
       return response;
@@ -117,7 +130,7 @@ export async function PUT(request, { params }) {
       tags,
     });
 
-    return Response.json({ lesson });
+    return Response.json({ lesson: withViewerCapabilities(lesson, user) });
   } catch (error) {
     console.error('PUT /api/lessons/[id] failed:', error);
 
@@ -130,7 +143,7 @@ export async function PUT(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
-    const { response } = await requireApiUser();
+    const { user, response } = await requireApiUser();
 
     if (response) {
       return response;
@@ -264,7 +277,7 @@ export async function POST(request, { params }) {
     });
 
     return Response.json({
-      lesson: updatedLesson,
+      lesson: withViewerCapabilities(updatedLesson, user),
       revisionBrief: plannerResult.brief,
     });
   } catch (error) {
@@ -295,7 +308,7 @@ export async function PATCH(request, { params }) {
       );
     }
 
-    if (body.action !== 'publish') {
+    if (!['publish', 'archive', 'restore'].includes(body.action)) {
       return Response.json(
         { error: 'Unsupported lesson action.' },
         { status: 400 }
@@ -313,21 +326,27 @@ export async function PATCH(request, { params }) {
 
     if (!canManageExistingLesson(user, existingLesson)) {
       return Response.json(
-        { error: 'You cannot publish this lesson.' },
+        { error: 'You cannot update this lesson.' },
         { status: 403 }
       );
     }
 
-    const lesson = await publishLesson(id);
+    const lesson = body.action === 'archive'
+      ? await archiveLesson(id)
+      : await publishLesson(id);
 
     if (!lesson) {
       return Response.json(
-        { error: 'Only ready lessons can be published.' },
+        {
+          error: body.action === 'archive'
+            ? 'Lesson not found.'
+            : 'Only ready lessons can be published.',
+        },
         { status: 400 }
       );
     }
 
-    return Response.json({ lesson });
+    return Response.json({ lesson: withViewerCapabilities(lesson, user) });
   } catch (error) {
     console.error('PATCH /api/lessons/[id] failed:', error);
 

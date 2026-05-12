@@ -5,6 +5,12 @@ export const LESSON_STATUSES = {
   FAILED: 'failed',
 };
 
+export const LESSON_PUBLICATION_STATUSES = {
+  PRIVATE: 'private',
+  PUBLISHED: 'published',
+  ARCHIVED: 'archived',
+};
+
 export const LESSON_CONTENT_FORMAT = {
   MARKDOWN: 'markdown',
 };
