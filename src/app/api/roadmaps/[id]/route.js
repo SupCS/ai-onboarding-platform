@@ -1,6 +1,9 @@
 import { requireApiUser } from '../../../../lib/apiAuth';
+import { normalizeLessonTagInput } from '../../../../lib/lessonTags';
 import {
+  canManageRoadmap,
   deleteRoadmapById,
+  getRoadmapById,
   updateRoadmap,
 } from '../../../../lib/roadmaps';
 
@@ -11,6 +14,7 @@ function normalizeRoadmapPayload(body = {}) {
     title: String(body.title || '').trim(),
     description: String(body.description || '').trim(),
     lessonIds: Array.isArray(body.lessonIds) ? body.lessonIds : [],
+    tags: normalizeLessonTagInput(body.tags || []),
   };
 }
 
@@ -46,6 +50,22 @@ export async function PUT(request, { params }) {
       );
     }
 
+    const existingRoadmap = await getRoadmapById(id, user.id);
+
+    if (!existingRoadmap) {
+      return Response.json(
+        { error: 'Roadmap not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (!(await canManageRoadmap(user, existingRoadmap))) {
+      return Response.json(
+        { error: 'You cannot edit this roadmap.' },
+        { status: 403 }
+      );
+    }
+
     const roadmap = await updateRoadmap(id, {
       ...payload,
       userId: user.id,
@@ -58,7 +78,12 @@ export async function PUT(request, { params }) {
       );
     }
 
-    return Response.json({ roadmap });
+    return Response.json({
+      roadmap: {
+        ...roadmap,
+        viewerCanManage: true,
+      },
+    });
   } catch (error) {
     console.error('PUT /api/roadmaps/[id] failed:', error);
 
@@ -71,7 +96,7 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(_request, { params }) {
   try {
-    const { response } = await requireApiUser();
+    const { user, response } = await requireApiUser();
 
     if (response) {
       return response;
@@ -83,6 +108,22 @@ export async function DELETE(_request, { params }) {
       return Response.json(
         { error: 'Roadmap id is required.' },
         { status: 400 }
+      );
+    }
+
+    const existingRoadmap = await getRoadmapById(id, user.id);
+
+    if (!existingRoadmap) {
+      return Response.json(
+        { error: 'Roadmap not found.' },
+        { status: 404 }
+      );
+    }
+
+    if (!(await canManageRoadmap(user, existingRoadmap))) {
+      return Response.json(
+        { error: 'You cannot delete this roadmap.' },
+        { status: 403 }
       );
     }
 

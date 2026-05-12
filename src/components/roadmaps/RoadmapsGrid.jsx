@@ -118,12 +118,14 @@ export default function RoadmapsGrid({
     >
       {roadmaps.map((roadmap) => {
         const progress = getRoadmapProgress(roadmap);
+        const canOpenRoadmap = Boolean(onOpenRoadmap && roadmap.viewerCanManage);
+        const tags = Array.isArray(roadmap.tags) ? roadmap.tags : [];
 
         return (
           <Paper
             key={roadmap.id}
             elevation={0}
-            onClick={() => onOpenRoadmap?.(roadmap)}
+            onClick={canOpenRoadmap ? () => onOpenRoadmap(roadmap) : undefined}
             sx={{
               p: { xs: 2.25, md: 3 },
               borderRadius: 4,
@@ -131,9 +133,9 @@ export default function RoadmapsGrid({
               background:
                 'linear-gradient(135deg, #ffffff 0%, #f8fffc 58%, #eefbf7 100%)',
               boxShadow: '0 18px 44px rgba(15, 23, 42, 0.06)',
-              cursor: onOpenRoadmap ? 'pointer' : 'default',
+              cursor: canOpenRoadmap ? 'pointer' : 'default',
               transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
-              '&:hover': onOpenRoadmap
+              '&:hover': canOpenRoadmap
                 ? {
                     transform: 'translateY(-2px)',
                     borderColor: '#99f6e4',
@@ -185,6 +187,14 @@ export default function RoadmapsGrid({
                         size="small"
                         sx={{ fontWeight: 700 }}
                       />
+                      {roadmap.viewerCanManage && (
+                        <Chip
+                          label="Editable"
+                          variant="outlined"
+                          size="small"
+                          sx={{ fontWeight: 700 }}
+                        />
+                      )}
                     </Stack>
 
                     <Typography
@@ -212,6 +222,27 @@ export default function RoadmapsGrid({
                     >
                       {roadmap.description || 'A curated learning path built from existing lessons.'}
                     </Typography>
+
+                    {tags.length > 0 && (
+                      <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', mt: 1.5 }}>
+                        {tags.slice(0, 5).map((tag) => (
+                          <Chip
+                            key={tag}
+                            label={tag}
+                            size="small"
+                            variant="outlined"
+                            sx={{ fontWeight: 700, backgroundColor: '#fff' }}
+                          />
+                        ))}
+                        {tags.length > 5 && (
+                          <Chip
+                            label={`+${tags.length - 5}`}
+                            size="small"
+                            sx={{ fontWeight: 800 }}
+                          />
+                        )}
+                      </Stack>
+                    )}
                   </Box>
                 </Stack>
 

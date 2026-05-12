@@ -1,19 +1,29 @@
 import crypto from 'crypto';
 import { db } from './db.js';
 import { ensureLessonsSchema } from './lessons.js';
+import { USER_ROLES } from './auth.js';
+import { normalizeLessonTagInput } from './lessonTags.js';
+
+const ROADMAPS_SCHEMA_VERSION = 3;
 
 export async function ensureRoadmapsSchema(client = db) {
   const globalForRoadmaps = globalThis;
 
-  if (client === db && globalForRoadmaps.roadmapsSchemaPromise) {
+  if (
+    client === db &&
+    globalForRoadmaps.roadmapsSchemaPromise &&
+    globalForRoadmaps.roadmapsSchemaVersion === ROADMAPS_SCHEMA_VERSION
+  ) {
     return globalForRoadmaps.roadmapsSchemaPromise;
   }
 
   const schemaPromise = ensureRoadmapsSchemaUncached(client);
 
   if (client === db) {
+    globalForRoadmaps.roadmapsSchemaVersion = ROADMAPS_SCHEMA_VERSION;
     globalForRoadmaps.roadmapsSchemaPromise = schemaPromise.catch((error) => {
       globalForRoadmaps.roadmapsSchemaPromise = null;
+      globalForRoadmaps.roadmapsSchemaVersion = null;
       throw error;
     });
 
@@ -31,10 +41,31 @@ async function ensureRoadmapsSchemaUncached(client = db) {
       id TEXT PRIMARY KEY,
       title TEXT NOT NULL,
       description TEXT NOT NULL DEFAULT '',
+      tags JSONB NOT NULL DEFAULT '[]'::jsonb,
+      created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
       created_by TEXT NOT NULL DEFAULT '',
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
+  `);
+
+  await client.query(`
+    ALTER TABLE roadmaps
+    ADD COLUMN IF NOT EXISTS tags JSONB NOT NULL DEFAULT '[]'::jsonb
+  `);
+
+  await client.query(`
+    ALTER TABLE roadmaps
+    ADD COLUMN IF NOT EXISTS created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL
+  `);
+
+  await client.query(`
+    UPDATE roadmaps
+    SET created_by_user_id = users.id
+    FROM users
+    WHERE roadmaps.created_by_user_id IS NULL
+      AND roadmaps.created_by <> ''
+      AND LOWER(roadmaps.created_by) = LOWER(users.name)
   `);
 
   await client.query(`
@@ -73,13 +104,38 @@ function normalizeTitle(value) {
   return title || 'Untitled roadmap';
 }
 
+function normalizeRoadmapTags(tags = []) {
+  return normalizeLessonTagInput(tags);
+}
+
+async function getLessonTagsByIds(lessonIds = [], client = db) {
+  if (lessonIds.length === 0) {
+    return [];
+  }
+
+  const result = await client.query(
+    `
+      SELECT tags
+      FROM lessons
+      WHERE id = ANY($1::text[])
+    `,
+    [lessonIds]
+  );
+
+  return normalizeRoadmapTags(
+    result.rows.flatMap((row) => (Array.isArray(row.tags) ? row.tags : []))
+  );
+}
+
 function mapRoadmap(row, lessons = [], extra = {}) {
   return {
     id: row.id,
     title: row.title,
     description: row.description,
+    tags: Array.isArray(row.tags) ? row.tags : [],
     lessons,
     lessonIds: lessons.map((lesson) => lesson.id),
+    createdByUserId: row.created_by_user_id,
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -115,17 +171,22 @@ export async function createRoadmap(input) {
       throw new Error('Roadmaps can include only existing published ready lessons.');
     }
 
+    const lessonTags = await getLessonTagsByIds(lessonIds, client);
+    const roadmapTags = normalizeRoadmapTags([...(input.tags || []), ...lessonTags]);
+
     const roadmapId = crypto.randomUUID();
     const roadmapResult = await client.query(
       `
-        INSERT INTO roadmaps (id, title, description, created_by)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO roadmaps (id, title, description, tags, created_by_user_id, created_by)
+        VALUES ($1, $2, $3, $4, $5, $6)
         RETURNING *
       `,
       [
         roadmapId,
         normalizeTitle(input.title),
         input.description || '',
+        JSON.stringify(roadmapTags),
+        input.createdByUserId || null,
         input.createdBy || '',
       ]
     );
@@ -194,12 +255,16 @@ export async function updateRoadmap(roadmapId, input) {
       throw new Error('Roadmaps can include only existing published ready lessons.');
     }
 
+    const lessonTags = await getLessonTagsByIds(lessonIds, client);
+    const roadmapTags = normalizeRoadmapTags([...(input.tags || []), ...lessonTags]);
+
     await client.query(
       `
         UPDATE roadmaps
         SET
           title = $2,
           description = $3,
+          tags = $4,
           updated_at = NOW()
         WHERE id = $1
       `,
@@ -207,6 +272,7 @@ export async function updateRoadmap(roadmapId, input) {
         roadmapId,
         normalizeTitle(input.title),
         input.description || '',
+        JSON.stringify(roadmapTags),
       ]
     );
 
@@ -240,6 +306,7 @@ export async function updateRoadmap(roadmapId, input) {
         JOIN lessons ON lessons.id = roadmap_lessons.lesson_id
         WHERE user_roadmaps.roadmap_id = $1
           AND lessons.status = 'ready'
+          AND lessons.publication_status = 'published'
         ON CONFLICT (user_id, lesson_id) DO NOTHING
       `,
       [roadmapId]
@@ -275,6 +342,66 @@ export async function deleteRoadmapById(roadmapId) {
   return {
     id: result.rows[0].id,
   };
+}
+
+export async function canManageRoadmap(user, roadmap) {
+  if (!user || !roadmap) {
+    return false;
+  }
+
+  if (user.role === USER_ROLES.ADMIN) {
+    return true;
+  }
+
+  if (roadmap.createdByUserId && roadmap.createdByUserId === user.id) {
+    return true;
+  }
+
+  if (!roadmap.createdByUserId || user.role !== USER_ROLES.TEAMLEAD) {
+    return false;
+  }
+
+  await ensureRoadmapsSchema();
+
+  const result = await db.query(
+    `
+      SELECT 1
+      FROM team_members
+      WHERE lead_user_id = $1
+        AND member_user_id = $2
+      LIMIT 1
+    `,
+    [user.id, roadmap.createdByUserId]
+  );
+
+  return result.rowCount > 0;
+}
+
+async function getManageableRoadmapIdsForViewer(viewer) {
+  if (!viewer) {
+    return new Set();
+  }
+
+  if (viewer.role === USER_ROLES.ADMIN) {
+    return null;
+  }
+
+  const result = await db.query(
+    `
+      SELECT id
+      FROM roadmaps
+      WHERE created_by_user_id = $1
+      UNION
+      SELECT roadmaps.id
+      FROM roadmaps
+      JOIN team_members
+        ON team_members.member_user_id = roadmaps.created_by_user_id
+       AND team_members.lead_user_id = $1
+    `,
+    [viewer.id]
+  );
+
+  return new Set(result.rows.map((row) => row.id));
 }
 
 async function getRoadmapLessons(roadmapIds = [], userId = null) {
@@ -321,8 +448,12 @@ async function getRoadmapLessons(roadmapIds = [], userId = null) {
   }, new Map());
 }
 
-export async function getAllRoadmaps(userId = null) {
+export async function getAllRoadmaps(viewer = null) {
   await ensureRoadmapsSchema();
+  const userId = typeof viewer === 'string' ? viewer : viewer?.id || null;
+  const manageableRoadmapIds = typeof viewer === 'string'
+    ? new Set()
+    : await getManageableRoadmapIdsForViewer(viewer);
 
   const roadmapsResult = await db.query(`
     SELECT *
@@ -351,6 +482,7 @@ export async function getAllRoadmaps(userId = null) {
     return mapRoadmap(roadmap, lessonsByRoadmapId.get(roadmap.id) || [], {
       isEnrolled: Boolean(enrollment),
       enrolledAt: enrollment?.enrolled_at || null,
+      viewerCanManage: manageableRoadmapIds === null || manageableRoadmapIds.has(roadmap.id),
     });
   });
 }
@@ -491,6 +623,7 @@ export async function enrollUserInRoadmap(userId, roadmapId) {
         JOIN lessons ON lessons.id = roadmap_lessons.lesson_id
         WHERE roadmap_lessons.roadmap_id = $2
           AND lessons.status = 'ready'
+          AND lessons.publication_status = 'published'
         ORDER BY roadmap_lessons.sort_order ASC
         ON CONFLICT (user_id, lesson_id) DO UPDATE
           SET enrolled_at = EXCLUDED.enrolled_at

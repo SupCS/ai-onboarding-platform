@@ -9,9 +9,11 @@ import LibraryTabPanel from '../../../components/library/LibraryTabPanel';
 import LessonDetailsDialog from '../../../components/lessons/LessonDetailsDialog';
 import LessonLibraryFilters from '../../../components/lessons/LessonLibraryFilters';
 import LessonPromptForm from '../../../components/lessons/LessonPromptForm';
+import MaterialLibrarySearch from '../../../components/materials/MaterialLibrarySearch';
 import UploadMaterialDialog from '../../../components/materials/UploadMaterialDialog';
 import MaterialDetailsDialog from '../../../components/materials/MaterialDetailsDialog';
 import RoadmapFormDialog from '../../../components/roadmaps/RoadmapFormDialog';
+import RoadmapLibraryFilters from '../../../components/roadmaps/RoadmapLibraryFilters';
 import { useTaskTray } from '../../../components/providers/TaskTrayProvider';
 
 export default function LibraryClient() {
@@ -27,12 +29,17 @@ export default function LibraryClient() {
   const [materials, setMaterials] = useState([]);
   const [lessons, setLessons] = useState([]);
   const [roadmaps, setRoadmaps] = useState([]);
+  const [materialSearchQuery, setMaterialSearchQuery] = useState('');
   const [lessonSearchQuery, setLessonSearchQuery] = useState('');
   const [lessonStatusFilter, setLessonStatusFilter] = useState('ready');
   const [lessonSelectedTags, setLessonSelectedTags] = useState([]);
   const [lessonActivityFilter, setLessonActivityFilter] = useState('all');
   const [lessonEnrollmentFilter, setLessonEnrollmentFilter] = useState('all');
   const [areLessonFiltersOpen, setAreLessonFiltersOpen] = useState(false);
+  const [roadmapSearchQuery, setRoadmapSearchQuery] = useState('');
+  const [roadmapSelectedTags, setRoadmapSelectedTags] = useState([]);
+  const [roadmapEnrollmentFilter, setRoadmapEnrollmentFilter] = useState('all');
+  const [areRoadmapFiltersOpen, setAreRoadmapFiltersOpen] = useState(false);
   const [isLoadingMaterials, setIsLoadingMaterials] = useState(true);
   const [isLoadingLessons, setIsLoadingLessons] = useState(true);
   const [isLoadingRoadmaps, setIsLoadingRoadmaps] = useState(true);
@@ -52,6 +59,33 @@ export default function LibraryClient() {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
   }, [materials]);
+
+  const filteredMaterials = useMemo(() => {
+    const normalizedQuery = materialSearchQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return sortedMaterials;
+    }
+
+    return sortedMaterials.filter((material) => {
+      const attachmentNames = Array.isArray(material.attachments)
+        ? material.attachments.map((attachment) => attachment.name)
+        : [];
+      const searchableText = [
+        material.title,
+        material.description,
+        material.text,
+        ...attachmentNames,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return searchableText.includes(normalizedQuery);
+    });
+  }, [materialSearchQuery, sortedMaterials]);
+
+  const hasActiveMaterialSearch = materialSearchQuery.trim().length > 0;
 
   const sortedLessons = useMemo(() => {
     return [...lessons].sort((a, b) => {
@@ -171,6 +205,81 @@ export default function LibraryClient() {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
   }, [roadmaps]);
+
+  const roadmapAvailableTags = useMemo(() => {
+    const tagSet = new Set();
+
+    roadmaps.forEach((roadmap) => {
+      (Array.isArray(roadmap.tags) ? roadmap.tags : []).forEach((tag) => {
+        if (tag) {
+          tagSet.add(tag);
+        }
+      });
+    });
+
+    return [...tagSet].sort((a, b) => a.localeCompare(b));
+  }, [roadmaps]);
+
+  const filteredRoadmaps = useMemo(() => {
+    const normalizedQuery = roadmapSearchQuery.trim().toLowerCase();
+
+    return sortedRoadmaps.filter((roadmap) => {
+      const tags = Array.isArray(roadmap.tags) ? roadmap.tags : [];
+      const lessonTitles = Array.isArray(roadmap.lessons)
+        ? roadmap.lessons.map((lesson) => lesson.title)
+        : [];
+
+      if (normalizedQuery) {
+        const searchableText = [
+          roadmap.title,
+          roadmap.description,
+          roadmap.createdBy,
+          ...tags,
+          ...lessonTitles,
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        if (!searchableText.includes(normalizedQuery)) {
+          return false;
+        }
+      }
+
+      if (
+        roadmapSelectedTags.length > 0 &&
+        !roadmapSelectedTags.every((tag) => tags.includes(tag))
+      ) {
+        return false;
+      }
+
+      if (roadmapEnrollmentFilter === 'enrolled' && !roadmap.isEnrolled) {
+        return false;
+      }
+
+      if (roadmapEnrollmentFilter === 'not-enrolled' && roadmap.isEnrolled) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [
+    roadmapEnrollmentFilter,
+    roadmapSearchQuery,
+    roadmapSelectedTags,
+    sortedRoadmaps,
+  ]);
+
+  const hasActiveRoadmapFilters =
+    roadmapSearchQuery.trim().length > 0 ||
+    roadmapSelectedTags.length > 0 ||
+    roadmapEnrollmentFilter !== 'all';
+
+  const resetRoadmapFilters = () => {
+    setRoadmapSearchQuery('');
+    setRoadmapSelectedTags([]);
+    setRoadmapEnrollmentFilter('all');
+  };
 
   const loadMaterials = async () => {
     try {
@@ -528,6 +637,10 @@ export default function LibraryClient() {
   };
 
   const handleOpenRoadmap = (roadmap) => {
+    if (!roadmap?.viewerCanManage) {
+      return;
+    }
+
     setEditingRoadmap(roadmap);
     setIsRoadmapDialogOpen(true);
   };
@@ -916,7 +1029,14 @@ export default function LibraryClient() {
             activeTab={activeTab}
             onTabChange={handleTabChange}
             actionSlot={
-              activeTab === 'lessons' && sortedLessons.length > 0 ? (
+              activeTab === 'materials' && sortedMaterials.length > 0 ? (
+                <MaterialLibrarySearch
+                  query={materialSearchQuery}
+                  onQueryChange={setMaterialSearchQuery}
+                  totalCount={sortedMaterials.length}
+                  resultCount={filteredMaterials.length}
+                />
+              ) : activeTab === 'lessons' && sortedLessons.length > 0 ? (
                 <LessonLibraryFilters
                   query={lessonSearchQuery}
                   onQueryChange={setLessonSearchQuery}
@@ -936,6 +1056,22 @@ export default function LibraryClient() {
                   onToggleFilters={() => setAreLessonFiltersOpen((prev) => !prev)}
                   onReset={resetLessonFilters}
                 />
+              ) : activeTab === 'roadmaps' && sortedRoadmaps.length > 0 ? (
+                <RoadmapLibraryFilters
+                  query={roadmapSearchQuery}
+                  onQueryChange={setRoadmapSearchQuery}
+                  selectedTags={roadmapSelectedTags}
+                  onSelectedTagsChange={setRoadmapSelectedTags}
+                  availableTags={roadmapAvailableTags}
+                  enrollment={roadmapEnrollmentFilter}
+                  onEnrollmentChange={setRoadmapEnrollmentFilter}
+                  totalCount={sortedRoadmaps.length}
+                  resultCount={filteredRoadmaps.length}
+                  hasActiveFilters={hasActiveRoadmapFilters}
+                  filtersOpen={areRoadmapFiltersOpen}
+                  onToggleFilters={() => setAreRoadmapFiltersOpen((prev) => !prev)}
+                  onReset={resetRoadmapFilters}
+                />
               ) : null
             }
           />
@@ -943,12 +1079,18 @@ export default function LibraryClient() {
           <Stack spacing={3}>
             <LibraryTabPanel
               activeTab={activeTab}
-              materials={sortedMaterials}
+              materials={filteredMaterials}
+              totalMaterials={sortedMaterials.length}
+              hasActiveMaterialSearch={hasActiveMaterialSearch}
+              onResetMaterialSearch={() => setMaterialSearchQuery('')}
               lessons={filteredLessons}
               totalLessons={sortedLessons.length}
               hasActiveLessonFilters={hasActiveLessonFilters}
               onResetLessonFilters={resetLessonFilters}
-              roadmaps={sortedRoadmaps}
+              roadmaps={filteredRoadmaps}
+              totalRoadmaps={sortedRoadmaps.length}
+              hasActiveRoadmapFilters={hasActiveRoadmapFilters}
+              onResetRoadmapFilters={resetRoadmapFilters}
               isHydrated={
                 activeTab === 'lessons'
                   ? !isLoadingLessons

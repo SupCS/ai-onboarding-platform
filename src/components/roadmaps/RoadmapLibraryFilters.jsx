@@ -14,38 +14,20 @@ import {
 import RestartAltOutlinedIcon from '@mui/icons-material/RestartAltOutlined';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
-import { AI_DIGITAL_COLORS, hexToRgba } from '../../lib/brandColors';
-
-const activityOptions = [
-  { value: 'all', label: 'Any activity' },
-  { value: 'quiz', label: 'Has quiz' },
-  { value: 'flashcards', label: 'Has flashcards' },
-  { value: 'no-activities', label: 'No activities' },
-];
+import { AI_DIGITAL_COLORS } from '../../lib/brandColors';
 
 const enrollmentOptions = [
-  { value: 'all', label: 'Any enrollment' },
-  { value: 'enrolled', label: 'In My Lessons' },
-  { value: 'not-enrolled', label: 'Not in My Lessons' },
+  { value: 'all', label: 'Any roadmap' },
+  { value: 'enrolled', label: 'In My Roadmaps' },
+  { value: 'not-enrolled', label: 'Not in My Roadmaps' },
 ];
 
-const lessonStatusOptions = [
-  { value: 'ready', label: 'Ready' },
-  { value: 'archived', label: 'Archived' },
-  { value: 'pending', label: 'Pending' },
-  { value: 'all', label: 'All' },
-];
-
-export default function LessonLibraryFilters({
+export default function RoadmapLibraryFilters({
   query,
   onQueryChange,
-  status,
-  onStatusChange,
   selectedTags = [],
   onSelectedTagsChange,
   availableTags = [],
-  activity,
-  onActivityChange,
   enrollment,
   onEnrollmentChange,
   totalCount = 0,
@@ -85,10 +67,10 @@ export default function LessonLibraryFilters({
           sx={{ alignItems: { xs: 'stretch', md: 'center' }, justifyContent: 'flex-end' }}
         >
           <TextField
-            label="Search lessons"
+            label="Search roadmaps"
             value={query}
             onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Title, tag, creator..."
+            placeholder="Title, tag, creator, lesson..."
             size="small"
             sx={{
               maxWidth: { md: 420 },
@@ -213,37 +195,7 @@ export default function LessonLibraryFilters({
 
               <TextField
                 select
-                label="Status"
-                value={status}
-                onChange={(event) => onStatusChange(event.target.value)}
-                size="small"
-                fullWidth
-              >
-                {lessonStatusOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
-                select
-                label="Activity"
-                value={activity}
-                onChange={(event) => onActivityChange(event.target.value)}
-                size="small"
-                fullWidth
-              >
-                {activityOptions.map((option) => (
-                  <MenuItem key={option.value} value={option.value}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </TextField>
-
-              <TextField
-                select
-                label="My Lessons"
+                label="My Roadmaps"
                 value={enrollment}
                 onChange={(event) => onEnrollmentChange(event.target.value)}
                 size="small"

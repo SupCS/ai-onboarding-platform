@@ -1,5 +1,6 @@
 import { requireApiUser } from '../../../lib/apiAuth';
 import { createRoadmap, getAllRoadmaps } from '../../../lib/roadmaps';
+import { normalizeLessonTagInput } from '../../../lib/lessonTags';
 
 export const runtime = 'nodejs';
 
@@ -11,7 +12,7 @@ export async function GET() {
       return response;
     }
 
-    const roadmaps = await getAllRoadmaps(user.id);
+    const roadmaps = await getAllRoadmaps(user);
 
     return Response.json({ roadmaps });
   } catch (error) {
@@ -36,6 +37,7 @@ export async function POST(request) {
     const title = (body.title || '').trim();
     const description = (body.description || '').trim();
     const lessonIds = Array.isArray(body.lessonIds) ? body.lessonIds : [];
+    const tags = normalizeLessonTagInput(body.tags || []);
 
     if (!title) {
       return Response.json(
@@ -55,11 +57,18 @@ export async function POST(request) {
       title,
       description,
       lessonIds,
+      tags,
       createdBy: user.name,
+      createdByUserId: user.id,
       userId: user.id,
     });
 
-    return Response.json({ roadmap }, { status: 201 });
+    return Response.json({
+      roadmap: {
+        ...roadmap,
+        viewerCanManage: true,
+      },
+    }, { status: 201 });
   } catch (error) {
     console.error('POST /api/roadmaps failed:', error);
 
