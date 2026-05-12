@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { requireApiUser } from '../../../../lib/apiAuth';
 import { putStorageObject } from '../../../../lib/storage';
+import { PERMISSIONS, requirePermission } from '../../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -10,10 +11,16 @@ function sanitizeFileName(fileName) {
 
 export async function POST(request) {
   try {
-    const { response } = await requireApiUser();
+    const { user, response } = await requireApiUser();
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.LESSONS_MANAGE_ASSETS);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const formData = await request.formData();

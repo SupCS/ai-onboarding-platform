@@ -6,6 +6,7 @@ import {
   unenrollUserFromLesson,
 } from '../../../../../lib/lessons';
 import { getCompletedRoadmapsForUserLesson } from '../../../../../lib/roadmaps';
+import { PERMISSIONS, requirePermission } from '../../../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -15,6 +16,12 @@ export async function POST(_request, { params }) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.LEARNING_ENROLL);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id } = await params;
@@ -57,6 +64,12 @@ export async function DELETE(_request, { params }) {
       return response;
     }
 
+    const forbidden = await requirePermission(user, PERMISSIONS.LEARNING_ENROLL);
+
+    if (forbidden) {
+      return forbidden;
+    }
+
     const { id } = await params;
 
     if (!id) {
@@ -85,6 +98,12 @@ export async function PATCH(request, { params }) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.LEARNING_COMPLETE);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id } = await params;

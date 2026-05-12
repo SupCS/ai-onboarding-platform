@@ -31,6 +31,8 @@ Main goals:
 - Do not use Tailwind CSS
 - Keep things simple and practical
 - Avoid unnecessary libraries
+- Before changing roles, permission keys, defaults, or permission checks, read
+  `ACCESS_CONTROL_MATRIX.md` and update it in the same change.
 
 ## UI rules
 

@@ -49,7 +49,7 @@ const sidebarItems = [
   },
 ];
 
-export default function Sidebar({ currentUser }) {
+export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -59,7 +59,7 @@ export default function Sidebar({ currentUser }) {
     role: 'member',
   };
   const visibleSidebarItems =
-    user.role === 'admin'
+    currentUserPermissions['admin.manage_roles']
       ? [
           ...sidebarItems,
           {

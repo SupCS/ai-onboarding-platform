@@ -2,14 +2,23 @@ import { requireApiUser } from '../../../../lib/apiAuth';
 import {
   getAllUsers,
   getTeams,
-  isAdmin,
   removeTeamLeadByEmail,
   setTeamLeadByEmail,
 } from '../../../../lib/teams';
+import {
+  PERMISSION_DEFINITIONS,
+  PERMISSIONS,
+  getPermissionSnapshotForUsers,
+  userHasPermission,
+} from '../../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
-function forbiddenResponse() {
+async function requireRoleAdminPermission(user) {
+  if (await userHasPermission(user, PERMISSIONS.ADMIN_MANAGE_ROLES)) {
+    return null;
+  }
+
   return Response.json(
     { error: 'Admin access required.' },
     { status: 403 }
@@ -24,13 +33,21 @@ export async function GET() {
       return response;
     }
 
-    if (!isAdmin(user)) {
-      return forbiddenResponse();
+    const forbidden = await requireRoleAdminPermission(user);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const [users, teams] = await Promise.all([getAllUsers(), getTeams()]);
+    const permissionsByUserId = await getPermissionSnapshotForUsers(users);
 
-    return Response.json({ users, teams });
+    return Response.json({
+      users,
+      teams,
+      permissionDefinitions: PERMISSION_DEFINITIONS,
+      permissionsByUserId,
+    });
   } catch (error) {
     console.error('GET /api/admin/team-leads failed:', error);
 
@@ -49,8 +66,10 @@ export async function POST(request) {
       return response;
     }
 
-    if (!isAdmin(user)) {
-      return forbiddenResponse();
+    const forbidden = await requireRoleAdminPermission(user);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const body = await request.json();
@@ -91,8 +110,10 @@ export async function DELETE(request) {
       return response;
     }
 
-    if (!isAdmin(user)) {
-      return forbiddenResponse();
+    const forbidden = await requireRoleAdminPermission(user);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const body = await request.json();

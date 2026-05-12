@@ -141,6 +141,8 @@ export default function MaterialDetailsDialog({
   open,
   isDeleting = false,
   allowDelete = true,
+  canEdit = true,
+  canDelete = true,
   onClose,
   onDelete,
   onEdit,
@@ -203,15 +205,17 @@ export default function MaterialDetailsDialog({
           spacing={0.5}
           sx={{ position: 'absolute', right: 16, top: 16 }}
         >
-          <IconButton
-            aria-label="Edit material"
-            onClick={onEdit}
-            disabled={isDeleting}
-            color="default"
-          >
-            <EditOutlinedIcon />
-          </IconButton>
-          {allowDelete && (
+          {canEdit && (
+            <IconButton
+              aria-label="Edit material"
+              onClick={onEdit}
+              disabled={isDeleting}
+              color="default"
+            >
+              <EditOutlinedIcon />
+            </IconButton>
+          )}
+          {allowDelete && canDelete && (
             <IconButton
               aria-label="Delete material"
               onClick={() => setIsConfirmDialogOpen(true)}
@@ -553,7 +557,7 @@ export default function MaterialDetailsDialog({
       </DialogActions>
 
       <Dialog
-        open={allowDelete && isConfirmDialogOpen}
+        open={allowDelete && canDelete && isConfirmDialogOpen}
         onClose={() => {
           if (!isDeleting) {
             setIsConfirmDialogOpen(false);

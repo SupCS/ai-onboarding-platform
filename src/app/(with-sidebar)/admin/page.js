@@ -2,7 +2,13 @@ import { redirect } from 'next/navigation';
 import { Container, Paper, Stack, Typography } from '@mui/material';
 import AdminClient from '../../../components/admin/AdminClient';
 import { getCurrentUser } from '../../../lib/currentUser';
-import { getAllUsers, isAdmin } from '../../../lib/teams';
+import { getAllUsers } from '../../../lib/teams';
+import {
+  PERMISSION_DEFINITIONS,
+  PERMISSIONS,
+  getPermissionSnapshotForUsers,
+  userHasPermission,
+} from '../../../lib/permissions';
 
 export const metadata = {
   title: 'Admin',
@@ -11,11 +17,12 @@ export const metadata = {
 export default async function AdminPage() {
   const currentUser = await getCurrentUser();
 
-  if (!isAdmin(currentUser)) {
+  if (!(await userHasPermission(currentUser, PERMISSIONS.ADMIN_MANAGE_ROLES))) {
     redirect('/teams');
   }
 
   const users = await getAllUsers();
+  const permissionsByUserId = await getPermissionSnapshotForUsers(users);
 
   return (
     <Container maxWidth={false} disableGutters>
@@ -41,7 +48,11 @@ export default async function AdminPage() {
             </Typography>
           </Stack>
 
-          <AdminClient initialUsers={users} />
+          <AdminClient
+            initialUsers={users}
+            permissionDefinitions={PERMISSION_DEFINITIONS}
+            initialPermissionsByUserId={permissionsByUserId}
+          />
         </Stack>
       </Paper>
     </Container>

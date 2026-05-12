@@ -1,6 +1,7 @@
 import { requireApiUser } from '../../../lib/apiAuth';
 import { createRoadmap, getAllRoadmaps } from '../../../lib/roadmaps';
 import { normalizeLessonTagInput } from '../../../lib/lessonTags';
+import { PERMISSIONS, requirePermission, userHasPermission } from '../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -12,7 +13,11 @@ export async function GET() {
       return response;
     }
 
-    const roadmaps = await getAllRoadmaps(user);
+    const canManageRoadmaps = await userHasPermission(user, PERMISSIONS.ROADMAPS_MANAGE);
+    const roadmaps = (await getAllRoadmaps(user)).map((roadmap) => ({
+      ...roadmap,
+      viewerCanManage: Boolean(roadmap.viewerCanManage && canManageRoadmaps),
+    }));
 
     return Response.json({ roadmaps });
   } catch (error) {
@@ -31,6 +36,12 @@ export async function POST(request) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.ROADMAPS_CREATE);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const body = await request.json();

@@ -1,7 +1,13 @@
 import { Container, Paper, Stack, Typography } from '@mui/material';
 import TeamsClient from '../../../components/teams/TeamsClient';
 import { getCurrentUser } from '../../../lib/currentUser';
-import { getAllUsers, getTeams, isTeamManager } from '../../../lib/teams';
+import { getAllUsers, getTeams } from '../../../lib/teams';
+import {
+  PERMISSION_DEFINITIONS,
+  PERMISSIONS,
+  getPermissionSnapshotForUsers,
+  getUserPermissionMap,
+} from '../../../lib/permissions';
 
 export const metadata = {
   title: 'Teams',
@@ -11,6 +17,8 @@ export default async function TeamsPage() {
   const currentUser = await getCurrentUser();
   const teams = await getTeams();
   const users = await getAllUsers();
+  const currentUserPermissions = await getUserPermissionMap(currentUser);
+  const permissionsByUserId = await getPermissionSnapshotForUsers(users);
 
   return (
     <Container maxWidth={false} disableGutters>
@@ -39,9 +47,16 @@ export default async function TeamsPage() {
           <TeamsClient
             initialTeams={teams}
             users={users}
+            permissionDefinitions={PERMISSION_DEFINITIONS}
+            initialPermissionsByUserId={permissionsByUserId}
             permissions={{
-              canManageAnyTeam: currentUser?.role === 'admin',
-              canManageTeams: isTeamManager(currentUser),
+              canManageAnyTeam:
+                currentUser?.role === 'admin' &&
+                currentUserPermissions[PERMISSIONS.TEAMS_MANAGE_MEMBERS],
+              canManageTeams: Boolean(currentUserPermissions[PERMISSIONS.TEAMS_MANAGE_MEMBERS]),
+              canManageTeamMemberPermissions: Boolean(
+                currentUserPermissions[PERMISSIONS.PERMISSIONS_MANAGE_TEAM_MEMBERS]
+              ),
               currentUserId: currentUser?.id || '',
               role: currentUser?.role || 'member',
             }}

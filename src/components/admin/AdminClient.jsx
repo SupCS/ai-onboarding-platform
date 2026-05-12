@@ -17,15 +17,26 @@ import {
 } from '@mui/material';
 import AddModeratorOutlinedIcon from '@mui/icons-material/AddModeratorOutlined';
 import PersonRemoveOutlinedIcon from '@mui/icons-material/PersonRemoveOutlined';
+import PermissionMatrixDialog from '../permissions/PermissionMatrixDialog';
 import EmptyState from '../ui/EmptyState';
+
+const adminOnlyPermissionKeys = [
+  'admin.manage_roles',
+  'permissions.manage_teamleads',
+];
 
 function initials(name = '', email = '') {
   const source = name || email;
   return source.charAt(0).toUpperCase();
 }
 
-export default function AdminClient({ initialUsers = [] }) {
+export default function AdminClient({
+  initialUsers = [],
+  permissionDefinitions = [],
+  initialPermissionsByUserId = {},
+}) {
   const [users, setUsers] = useState(initialUsers);
+  const [permissionsByUserId, setPermissionsByUserId] = useState(initialPermissionsByUserId);
   const [email, setEmail] = useState('');
   const [pendingAction, setPendingAction] = useState(null);
   const [toast, setToast] = useState({
@@ -63,6 +74,15 @@ export default function AdminClient({ initialUsers = [] }) {
     }
 
     setUsers(data.users || []);
+    setPermissionsByUserId(data.permissionsByUserId || {});
+  };
+
+  const handlePermissionSaved = (userId, permissions) => {
+    setPermissionsByUserId((prev) => ({
+      ...prev,
+      [userId]: permissions,
+    }));
+    showToast('Permissions updated.');
   };
 
   const assignTeamLead = async () => {
@@ -224,51 +244,68 @@ export default function AdminClient({ initialUsers = [] }) {
                   return (
                     <Stack
                       key={user.id}
-                      direction="row"
+                      direction={{ xs: 'column', md: 'row' }}
                       spacing={1.5}
                       sx={{
-                        alignItems: 'center',
+                        alignItems: { xs: 'stretch', md: 'center' },
                         p: 1.25,
                         border: '1px solid #eef2f7',
                         borderRadius: 2,
                       }}
                     >
-                      <Avatar
-                        sx={{ bgcolor: 'primary.main', color: '#fff', fontWeight: 700 }}
+                      <Stack
+                        direction="row"
+                        spacing={1.5}
+                        sx={{ alignItems: 'center', minWidth: 0, flexGrow: 1 }}
                       >
-                        {initials(user.name, user.email)}
-                      </Avatar>
-                      <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                        <Typography sx={{ fontWeight: 800 }} noWrap>
-                          {user.name}
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary" noWrap>
-                          {user.email}
-                        </Typography>
-                      </Box>
-                      <Chip
-                        size="small"
-                        label={isAdmin ? 'admin' : 'teamlead'}
-                        color={isAdmin ? 'primary' : 'default'}
-                        variant="outlined"
-                      />
-                      {!isAdmin && (
-                        <Button
-                          color="error"
-                          variant="outlined"
-                          startIcon={
-                            isRemovingTeamLead ? (
-                              <CircularProgress size={16} color="inherit" />
-                            ) : (
-                              <PersonRemoveOutlinedIcon />
-                            )
-                          }
-                          disabled={Boolean(pendingAction)}
-                          onClick={() => removeTeamLead(user.email)}
-                          sx={{ minWidth: 120 }}
+                        <Avatar
+                          sx={{ bgcolor: 'primary.main', color: '#fff', fontWeight: 700 }}
                         >
-                          {isRemovingTeamLead ? 'Removing...' : 'Remove'}
-                        </Button>
+                          {initials(user.name, user.email)}
+                        </Avatar>
+                        <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                          <Typography sx={{ fontWeight: 800 }} noWrap>
+                            {user.name}
+                          </Typography>
+                          <Typography variant="body2" color="text.secondary" noWrap>
+                            {user.email}
+                          </Typography>
+                        </Box>
+                        <Chip
+                          size="small"
+                          label={isAdmin ? 'admin' : 'teamlead'}
+                          color={isAdmin ? 'primary' : 'default'}
+                          variant="outlined"
+                        />
+                        {!isAdmin && (
+                          <Button
+                            color="error"
+                            variant="outlined"
+                            startIcon={
+                              isRemovingTeamLead ? (
+                                <CircularProgress size={16} color="inherit" />
+                              ) : (
+                                <PersonRemoveOutlinedIcon />
+                              )
+                            }
+                            disabled={Boolean(pendingAction)}
+                            onClick={() => removeTeamLead(user.email)}
+                            sx={{ minWidth: 120 }}
+                          >
+                            {isRemovingTeamLead ? 'Removing...' : 'Remove'}
+                          </Button>
+                        )}
+                      </Stack>
+                      {!isAdmin && (
+                        <PermissionMatrixDialog
+                          buttonLabel="Permissions"
+                          title="Team lead permissions"
+                          user={user}
+                          permissionDefinitions={permissionDefinitions}
+                          permissionState={permissionsByUserId[user.id]}
+                          disabledKeys={adminOnlyPermissionKeys}
+                          onSaved={handlePermissionSaved}
+                        />
                       )}
                     </Stack>
                   );

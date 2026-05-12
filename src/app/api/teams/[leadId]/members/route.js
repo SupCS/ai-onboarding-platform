@@ -2,13 +2,23 @@ import { requireApiUser } from '../../../../../lib/apiAuth';
 import {
   addTeamMemberByEmailOrName,
   addTeamMemberByUserId,
-  canManageTeam,
   getUserByEmailOrName,
   getUserById,
   removeTeamMember,
 } from '../../../../../lib/teams';
+import { PERMISSIONS, userHasPermission } from '../../../../../lib/permissions';
 
 export const runtime = 'nodejs';
+
+async function canManageTeamMembers(user, leadId) {
+  const hasPermission = await userHasPermission(user, PERMISSIONS.TEAMS_MANAGE_MEMBERS);
+
+  if (!hasPermission) {
+    return false;
+  }
+
+  return user.role === 'admin' || user.id === leadId;
+}
 
 export async function POST(request, { params }) {
   try {
@@ -20,7 +30,7 @@ export async function POST(request, { params }) {
 
     const { leadId } = await params;
 
-    if (!canManageTeam(user, leadId)) {
+    if (!(await canManageTeamMembers(user, leadId))) {
       return Response.json(
         { error: 'You cannot manage this team.' },
         { status: 403 }
@@ -90,7 +100,7 @@ export async function DELETE(request, { params }) {
 
     const { leadId } = await params;
 
-    if (!canManageTeam(user, leadId)) {
+    if (!(await canManageTeamMembers(user, leadId))) {
       return Response.json(
         { error: 'You cannot manage this team.' },
         { status: 403 }

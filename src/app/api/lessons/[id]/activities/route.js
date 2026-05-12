@@ -9,6 +9,7 @@ import {
   createLessonActivity,
   getLessonById,
 } from '../../../../../lib/lessons';
+import { PERMISSIONS, requirePermission } from '../../../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -26,6 +27,12 @@ export async function POST(request, { params }) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.LESSONS_MANAGE_ACTIVITIES);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id } = await params;

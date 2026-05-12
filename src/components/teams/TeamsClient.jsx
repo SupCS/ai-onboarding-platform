@@ -23,7 +23,15 @@ import AddOutlinedIcon from '@mui/icons-material/AddOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import ExpandMoreOutlinedIcon from '@mui/icons-material/ExpandMoreOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import PermissionMatrixDialog from '../permissions/PermissionMatrixDialog';
 import EmptyState from '../ui/EmptyState';
+
+const teamLeadPermissionDenylist = [
+  'admin.manage_roles',
+  'permissions.manage_teamleads',
+  'permissions.manage_team_members',
+  'teams.manage_members',
+];
 
 function getInitials(name = '', email = '') {
   const source = name || email;
@@ -34,8 +42,12 @@ export default function TeamsClient({
   initialTeams = [],
   users = [],
   permissions = {},
+  permissionDefinitions = [],
+  initialPermissionsByUserId = {},
 }) {
   const [teams, setTeams] = useState(initialTeams);
+  const [availableUsers, setAvailableUsers] = useState(users);
+  const [permissionsByUserId, setPermissionsByUserId] = useState(initialPermissionsByUserId);
   const [memberInputByLeadId, setMemberInputByLeadId] = useState({});
   const [selectedMemberByLeadId, setSelectedMemberByLeadId] = useState({});
   const [pendingAction, setPendingAction] = useState(null);
@@ -52,7 +64,8 @@ export default function TeamsClient({
   }, [teams]);
 
   const canManageLead = (leadId) =>
-    permissions.canManageAnyTeam || permissions.currentUserId === leadId;
+    permissions.canManageTeams &&
+    (permissions.canManageAnyTeam || permissions.currentUserId === leadId);
 
   const refreshTeams = async () => {
     const response = await fetch('/api/teams', {
@@ -66,6 +79,16 @@ export default function TeamsClient({
     }
 
     setTeams(data.teams || []);
+    setAvailableUsers(data.users || []);
+    setPermissionsByUserId(data.permissionsByUserId || {});
+  };
+
+  const handlePermissionSaved = (userId, permissionState) => {
+    setPermissionsByUserId((prev) => ({
+      ...prev,
+      [userId]: permissionState,
+    }));
+    showToast('Permissions updated.');
   };
 
   const showToast = (message, severity = 'success') => {
@@ -165,7 +188,7 @@ export default function TeamsClient({
             const isAddingMember =
               pendingAction?.type === 'add-member' && pendingAction.leadId === lead.id;
             const memberIds = new Set(team.members.map((member) => member.id));
-            const availableUsers = users.filter((user) => user.id !== lead.id);
+            const memberOptions = availableUsers.filter((user) => user.id !== lead.id);
 
             return (
               <Accordion
@@ -218,7 +241,7 @@ export default function TeamsClient({
                           freeSolo
                           autoHighlight
                           size="small"
-                          options={availableUsers}
+                          options={memberOptions}
                           value={selectedMemberByLeadId[lead.id] || null}
                           inputValue={memberInputByLeadId[lead.id] || ''}
                           disabled={Boolean(pendingAction)}
@@ -312,54 +335,71 @@ export default function TeamsClient({
                             pendingAction.memberId === member.id;
 
                           return (
-                          <Stack
-                            key={member.id}
-                            direction="row"
-                            spacing={1.5}
-                            sx={{
-                              alignItems: 'center',
-                              p: 1.25,
-                              border: '1px solid #eef2f7',
-                              borderRadius: 2,
-                              backgroundColor: '#fff',
-                            }}
-                          >
-                            <Avatar
+                            <Stack
+                              key={member.id}
+                              spacing={1}
                               sx={{
-                                width: 34,
-                                height: 34,
-                                bgcolor: 'primary.main',
-                                color: '#fff',
-                                fontWeight: 700,
+                                p: 1.25,
+                                border: '1px solid #eef2f7',
+                                borderRadius: 2,
+                                backgroundColor: '#fff',
                               }}
                             >
-                              {getInitials(member.name, member.email)}
-                            </Avatar>
-                            <Box sx={{ minWidth: 0, flexGrow: 1 }}>
-                              <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>
-                                {member.name}
-                              </Typography>
-                              <Typography variant="caption" color="text.secondary" noWrap>
-                                {member.email}
-                              </Typography>
-                            </Box>
-                            <Chip size="small" label={member.role} variant="outlined" />
-                            {canManage && (
-                              <Tooltip title="Remove from team">
-                                <IconButton
-                                  aria-label={`Remove ${member.name} from team`}
-                                  disabled={Boolean(pendingAction)}
-                                  onClick={() => removeMember(lead.id, member.id)}
+                              <Stack
+                                direction="row"
+                                spacing={1.5}
+                                sx={{ alignItems: 'center' }}
+                              >
+                                <Avatar
+                                  sx={{
+                                    width: 34,
+                                    height: 34,
+                                    bgcolor: 'primary.main',
+                                    color: '#fff',
+                                    fontWeight: 700,
+                                  }}
                                 >
-                                  {isRemovingMember ? (
-                                    <CircularProgress size={18} color="inherit" />
-                                  ) : (
-                                    <DeleteOutlineOutlinedIcon fontSize="small" />
-                                  )}
-                                </IconButton>
-                              </Tooltip>
-                            )}
-                          </Stack>
+                                  {getInitials(member.name, member.email)}
+                                </Avatar>
+                                <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                                  <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>
+                                    {member.name}
+                                  </Typography>
+                                  <Typography variant="caption" color="text.secondary" noWrap>
+                                    {member.email}
+                                  </Typography>
+                                </Box>
+                                <Chip size="small" label={member.role} variant="outlined" />
+                                {canManage && (
+                                  <Tooltip title="Remove from team">
+                                    <IconButton
+                                      aria-label={`Remove ${member.name} from team`}
+                                      disabled={Boolean(pendingAction)}
+                                      onClick={() => removeMember(lead.id, member.id)}
+                                    >
+                                      {isRemovingMember ? (
+                                        <CircularProgress size={18} color="inherit" />
+                                      ) : (
+                                        <DeleteOutlineOutlinedIcon fontSize="small" />
+                                      )}
+                                    </IconButton>
+                                  </Tooltip>
+                                )}
+                              </Stack>
+                              {canManage &&
+                                permissions.canManageTeamMemberPermissions &&
+                                member.role === 'member' && (
+                                  <PermissionMatrixDialog
+                                    buttonLabel="Permissions"
+                                    title="Member permissions"
+                                    user={member}
+                                    permissionDefinitions={permissionDefinitions}
+                                    permissionState={permissionsByUserId[member.id]}
+                                    disabledKeys={teamLeadPermissionDenylist}
+                                    onSaved={handlePermissionSaved}
+                                  />
+                                )}
+                            </Stack>
                           );
                         })}
                       </Stack>

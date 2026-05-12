@@ -1,15 +1,22 @@
 import { deleteMaterialById, updateMaterialById } from '../../../../lib/materials';
 import { deleteStorageObjects } from '../../../../lib/storage';
 import { requireApiUser } from '../../../../lib/apiAuth';
+import { PERMISSIONS, requirePermission } from '../../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
 export async function PUT(request, { params }) {
   try {
-    const { response } = await requireApiUser();
+    const { user, response } = await requireApiUser();
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.MATERIALS_EDIT);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id } = await params;
@@ -84,10 +91,16 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(_request, { params }) {
   try {
-    const { response } = await requireApiUser();
+    const { user, response } = await requireApiUser();
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.MATERIALS_DELETE);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id } = await params;

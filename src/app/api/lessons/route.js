@@ -17,6 +17,7 @@ import {
   uploadMaterialFileToOpenAI,
 } from '../../../lib/openaiFiles';
 import { requireApiUser } from '../../../lib/apiAuth';
+import { PERMISSIONS, requirePermission, userHasPermission } from '../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -140,7 +141,11 @@ export async function GET() {
       return response;
     }
 
-    const lessons = await getAllLessons(user);
+    const canManageLessons = await userHasPermission(user, PERMISSIONS.LESSONS_MANAGE);
+    const lessons = (await getAllLessons(user)).map((lesson) => ({
+      ...lesson,
+      viewerCanManage: Boolean(lesson.viewerCanManage && canManageLessons),
+    }));
 
     return Response.json({ lessons });
   } catch (error) {
@@ -159,6 +164,12 @@ export async function POST(request) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.LESSONS_CREATE);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const body = await request.json();

@@ -7,6 +7,7 @@ import {
   resetLessonActivityProgressForUser,
 } from '../../../../../../../lib/lessons';
 import { getCompletedRoadmapsForUserLesson } from '../../../../../../../lib/roadmaps';
+import { PERMISSIONS, requirePermission } from '../../../../../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +17,12 @@ export async function POST(request, { params }) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.LEARNING_COMPLETE);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id, activityId } = await params;
@@ -96,6 +103,12 @@ export async function DELETE(_request, { params }) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.LEARNING_COMPLETE);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id, activityId } = await params;

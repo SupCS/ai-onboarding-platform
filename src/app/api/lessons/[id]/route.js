@@ -14,6 +14,7 @@ import {
   buildLessonRevisionWriterPrompt,
 } from '../../../../lib/lessonRevision';
 import { loadAndPrepareMaterialsForLesson, prepareMaterialsForLesson } from '../../../../lib/materialPreparation';
+import { PERMISSIONS, requirePermission } from '../../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -88,6 +89,12 @@ export async function PUT(request, { params }) {
       return response;
     }
 
+    const forbidden = await requirePermission(user, PERMISSIONS.LESSONS_MANAGE);
+
+    if (forbidden) {
+      return forbidden;
+    }
+
     const { id } = await params;
     const body = await request.json();
     const contentHtml = (body.contentHtml || '').trim();
@@ -147,6 +154,12 @@ export async function POST(request, { params }) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.LESSONS_MANAGE);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id } = await params;
@@ -298,6 +311,12 @@ export async function PATCH(request, { params }) {
       return response;
     }
 
+    const forbidden = await requirePermission(user, PERMISSIONS.LESSONS_PUBLISH_ARCHIVE);
+
+    if (forbidden) {
+      return forbidden;
+    }
+
     const { id } = await params;
     const body = await request.json().catch(() => ({}));
 
@@ -363,6 +382,12 @@ export async function DELETE(_request, { params }) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.LESSONS_MANAGE);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id } = await params;

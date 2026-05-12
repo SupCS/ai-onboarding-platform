@@ -6,7 +6,13 @@ const actionMap = {
   roadmaps: 'Create Roadmap',
 };
 
-export default function LibraryToolbar({ activeTab, onPrimaryAction }) {
+export default function LibraryToolbar({
+  activeTab,
+  onPrimaryAction,
+  canCreateByTab = {},
+}) {
+  const canCreate = canCreateByTab[activeTab] !== false;
+
   return (
     <Box
       sx={{
@@ -28,9 +34,11 @@ export default function LibraryToolbar({ activeTab, onPrimaryAction }) {
         </Typography>
       </Box>
 
-      <Button variant="contained" size="large" onClick={onPrimaryAction}>
-        {actionMap[activeTab]}
-      </Button>
+      {canCreate && (
+        <Button variant="contained" size="large" onClick={onPrimaryAction}>
+          {actionMap[activeTab]}
+        </Button>
+      )}
     </Box>
   );
 }

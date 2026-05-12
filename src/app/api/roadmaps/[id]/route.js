@@ -6,6 +6,7 @@ import {
   getRoadmapById,
   updateRoadmap,
 } from '../../../../lib/roadmaps';
+import { PERMISSIONS, requirePermission } from '../../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -24,6 +25,12 @@ export async function PUT(request, { params }) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.ROADMAPS_MANAGE);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id } = await params;
@@ -100,6 +107,12 @@ export async function DELETE(_request, { params }) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.ROADMAPS_MANAGE);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id } = await params;

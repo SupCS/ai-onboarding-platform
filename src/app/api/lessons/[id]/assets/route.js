@@ -1,5 +1,6 @@
 import { requireApiUser } from '../../../../../lib/apiAuth';
 import { createLessonAsset, getLessonById } from '../../../../../lib/lessons';
+import { PERMISSIONS, requirePermission } from '../../../../../lib/permissions';
 import { isSupportedYoutubeUrl } from '../../../../../lib/youtubeMetadata';
 
 export const runtime = 'nodejs';
@@ -19,6 +20,12 @@ export async function POST(request, { params }) {
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.LESSONS_MANAGE_ASSETS);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const { id } = await params;

@@ -1,6 +1,7 @@
 import { createMaterial, getAllMaterials } from '../../../lib/materials';
 import { getObjectUrl } from '../../../lib/storage';
 import { requireApiUser } from '../../../lib/apiAuth';
+import { PERMISSIONS, requirePermission } from '../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -58,10 +59,16 @@ export async function GET() {
 
 export async function POST(request) {
   try {
-    const { response } = await requireApiUser();
+    const { user, response } = await requireApiUser();
 
     if (response) {
       return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.MATERIALS_CREATE);
+
+    if (forbidden) {
+      return forbidden;
     }
 
     const body = await request.json();

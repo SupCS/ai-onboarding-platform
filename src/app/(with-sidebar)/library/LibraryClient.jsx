@@ -16,7 +16,7 @@ import RoadmapFormDialog from '../../../components/roadmaps/RoadmapFormDialog';
 import RoadmapLibraryFilters from '../../../components/roadmaps/RoadmapLibraryFilters';
 import { useTaskTray } from '../../../components/providers/TaskTrayProvider';
 
-export default function LibraryClient() {
+export default function LibraryClient({ currentUserPermissions = {} }) {
   const { addTask, updateTask } = useTaskTray();
   const [activeTab, setActiveTab] = useState('materials');
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
@@ -53,6 +53,11 @@ export default function LibraryClient() {
     message: '',
     severity: 'success',
   });
+  const canCreateMaterials = Boolean(currentUserPermissions['materials.create']);
+  const canEditMaterials = Boolean(currentUserPermissions['materials.edit']);
+  const canDeleteMaterials = Boolean(currentUserPermissions['materials.delete']);
+  const canCreateLessons = Boolean(currentUserPermissions['lessons.create']);
+  const canCreateRoadmaps = Boolean(currentUserPermissions['roadmaps.create']);
 
   const sortedMaterials = useMemo(() => {
     return [...materials].sort((a, b) => {
@@ -385,17 +390,29 @@ export default function LibraryClient() {
 
   const handlePrimaryAction = () => {
     if (activeTab === 'materials') {
+      if (!canCreateMaterials) {
+        return;
+      }
+
       setEditingMaterial(null);
       setIsUploadDialogOpen(true);
       return;
     }
 
     if (activeTab === 'lessons') {
+      if (!canCreateLessons) {
+        return;
+      }
+
       setIsLessonDialogOpen(true);
       return;
     }
 
     if (activeTab === 'roadmaps') {
+      if (!canCreateRoadmaps) {
+        return;
+      }
+
       setEditingRoadmap(null);
       setIsRoadmapDialogOpen(true);
     }
@@ -1023,6 +1040,11 @@ export default function LibraryClient() {
           <LibraryToolbar
             activeTab={activeTab}
             onPrimaryAction={handlePrimaryAction}
+            canCreateByTab={{
+              materials: canCreateMaterials,
+              lessons: canCreateLessons,
+              roadmaps: canCreateRoadmaps,
+            }}
           />
 
           <LibraryTabs
@@ -1165,6 +1187,8 @@ export default function LibraryClient() {
         material={selectedMaterial}
         isDeleting={isDeletingMaterial}
         allowDelete={!selectedLesson}
+        canEdit={canEditMaterials}
+        canDelete={canDeleteMaterials && !selectedLesson}
         onClose={handleCloseMaterial}
         onDelete={handleDeleteMaterial}
         onEdit={() => handleEditMaterial(selectedMaterial)}

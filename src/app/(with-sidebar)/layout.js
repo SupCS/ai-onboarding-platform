@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { Box } from '@mui/material';
 import Sidebar from '../../components/layout/Sidebar';
 import { getCurrentUser } from '../../lib/currentUser';
+import { getUserPermissionMap } from '../../lib/permissions';
 
 export default async function WithSidebarLayout({ children }) {
   const currentUser = await getCurrentUser();
@@ -10,9 +11,14 @@ export default async function WithSidebarLayout({ children }) {
     redirect('/login');
   }
 
+  const currentUserPermissions = await getUserPermissionMap(currentUser);
+
   return (
     <>
-      <Sidebar currentUser={currentUser} />
+      <Sidebar
+        currentUser={currentUser}
+        currentUserPermissions={currentUserPermissions}
+      />
 
       <Box
         sx={{

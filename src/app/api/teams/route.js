@@ -1,5 +1,11 @@
 import { requireApiUser } from '../../../lib/apiAuth';
-import { getTeams, isTeamManager } from '../../../lib/teams';
+import { getAllUsers, getTeams } from '../../../lib/teams';
+import {
+  PERMISSION_DEFINITIONS,
+  PERMISSIONS,
+  getPermissionSnapshotForUsers,
+  getUserPermissionMap,
+} from '../../../lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -12,12 +18,23 @@ export async function GET() {
     }
 
     const teams = await getTeams();
+    const users = await getAllUsers();
+    const currentUserPermissions = await getUserPermissionMap(user);
+    const permissionsByUserId = await getPermissionSnapshotForUsers(users);
 
     return Response.json({
       teams,
+      users,
+      permissionDefinitions: PERMISSION_DEFINITIONS,
+      permissionsByUserId,
       permissions: {
-        canManageAnyTeam: user.role === 'admin',
-        canManageTeams: isTeamManager(user),
+        canManageAnyTeam:
+          user.role === 'admin' &&
+          currentUserPermissions[PERMISSIONS.TEAMS_MANAGE_MEMBERS],
+        canManageTeams: Boolean(currentUserPermissions[PERMISSIONS.TEAMS_MANAGE_MEMBERS]),
+        canManageTeamMemberPermissions: Boolean(
+          currentUserPermissions[PERMISSIONS.PERMISSIONS_MANAGE_TEAM_MEMBERS]
+        ),
         currentUserId: user.id,
         role: user.role,
       },
