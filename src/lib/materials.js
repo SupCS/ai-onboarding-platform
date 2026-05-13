@@ -172,6 +172,15 @@ export async function getAllMaterials() {
     ORDER BY created_at ASC
   `);
 
+  const usageResult = await db.query(`
+    SELECT material_id, COUNT(*)::int AS usage_count
+    FROM lesson_materials
+    GROUP BY material_id
+  `);
+  const usageCountByMaterialId = new Map(
+    usageResult.rows.map((item) => [item.material_id, Number(item.usage_count || 0)])
+  );
+
   return materialsResult.rows.map((material) => ({
     id: material.id,
     title: material.title,
@@ -179,6 +188,7 @@ export async function getAllMaterials() {
     text: material.text_content || '',
     createdAt: material.created_at,
     updatedAt: material.updated_at,
+    usageCount: usageCountByMaterialId.get(material.id) || 0,
     youtubeUrls: youtubeResult.rows
       .filter((item) => item.material_id === material.id)
       .map((item) => item.url),

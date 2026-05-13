@@ -31,6 +31,7 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
   const [lessons, setLessons] = useState([]);
   const [roadmaps, setRoadmaps] = useState([]);
   const [materialSearchQuery, setMaterialSearchQuery] = useState('');
+  const [materialSort, setMaterialSort] = useState('recent');
   const [lessonSearchQuery, setLessonSearchQuery] = useState('');
   const [lessonStatusFilter, setLessonStatusFilter] = useState('ready');
   const [lessonSelectedTags, setLessonSelectedTags] = useState([]);
@@ -73,9 +74,25 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
 
   const sortedMaterials = useMemo(() => {
     return [...materials].sort((a, b) => {
+      if (materialSort === 'oldest') {
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+
+      if (materialSort === 'az') {
+        return (a.title || '').localeCompare(b.title || '');
+      }
+
+      if (materialSort === 'za') {
+        return (b.title || '').localeCompare(a.title || '');
+      }
+
+      if (materialSort === 'popular') {
+        return Number(b.usageCount || 0) - Number(a.usageCount || 0);
+      }
+
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
-  }, [materials]);
+  }, [materialSort, materials]);
 
   const filteredMaterials = useMemo(() => {
     const normalizedQuery = materialSearchQuery.trim().toLowerCase();
@@ -1194,10 +1211,11 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
         <Paper
           elevation={0}
           sx={{
-            p: 3,
-            borderRadius: 4,
-            border: '1px solid #e5e7eb',
-            backgroundColor: '#f8fafc',
+            p: { xs: 2.5, md: 5 },
+            borderRadius: 0,
+            border: 0,
+            backgroundColor: '#F9F9F9',
+            minHeight: 'calc(100vh - 64px)',
           }}
         >
           <LibraryToolbar
@@ -1213,11 +1231,18 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
           <LibraryTabs
             activeTab={activeTab}
             onTabChange={handleTabChange}
+            counts={{
+              materials: sortedMaterials.length,
+              lessons: sortedLessons.length,
+              roadmaps: sortedRoadmaps.length,
+            }}
             actionSlot={
               activeTab === 'materials' && sortedMaterials.length > 0 ? (
                 <MaterialLibrarySearch
                   query={materialSearchQuery}
                   onQueryChange={setMaterialSearchQuery}
+                  sort={materialSort}
+                  onSortChange={setMaterialSort}
                   totalCount={sortedMaterials.length}
                   resultCount={filteredMaterials.length}
                 />

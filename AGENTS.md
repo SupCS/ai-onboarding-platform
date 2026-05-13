@@ -39,6 +39,7 @@ Main goals:
 - Use MUI as primary UI system
 - Prefer `sx` for styling
 - Keep UI clean and minimal
+- For visual direction and component styling, follow `DESIGN_SYSTEM.md`.
 
 ## Brand colors
 

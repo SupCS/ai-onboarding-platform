@@ -6,11 +6,13 @@ import {
   Box,
   Button,
   Chip,
+  IconButton,
   MenuItem,
   Popover,
   Stack,
   TextField,
 } from '@mui/material';
+import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import RestartAltOutlinedIcon from '@mui/icons-material/RestartAltOutlined';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
@@ -82,37 +84,97 @@ export default function LessonLibraryFilters({
         <Stack
           direction={{ xs: 'column', md: 'row' }}
           spacing={1}
-          sx={{ alignItems: { xs: 'stretch', md: 'center' }, justifyContent: 'flex-end' }}
+          sx={{ alignItems: { xs: 'stretch', md: 'flex-end' }, justifyContent: 'flex-end' }}
         >
-          <TextField
-            label="Search lessons"
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder="Title, tag, creator..."
-            size="small"
+          <Box
             sx={{
-              maxWidth: { md: 420 },
-              flex: '0 1 420px',
+              maxWidth: { md: 360 },
+              flex: '0 1 360px',
               ml: { md: 'auto' },
-              '& .MuiInputBase-root': {
-                borderRadius: 2.5,
-                backgroundColor: '#fff',
-              },
             }}
-            fullWidth
-            slotProps={{
-              input: {
-                startAdornment: <SearchOutlinedIcon color="action" sx={{ mr: 1, fontSize: 20 }} />,
-              },
-            }}
-          />
-
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: { xs: 'space-between', md: 'flex-end' } }}>
-            <Chip
-              label={`${resultCount}/${totalCount}`}
+          >
+            <Box
+              sx={{
+                mb: 0.5,
+                color: '#80808E',
+                fontSize: 10,
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                lineHeight: 1.2,
+                textTransform: 'uppercase',
+              }}
+            >
+              Search lessons
+            </Box>
+            <TextField
+              value={query}
+              onChange={(event) => onQueryChange(event.target.value)}
+              placeholder="Title, tag, creator..."
               size="small"
-              variant="outlined"
-              sx={{ fontWeight: 800, backgroundColor: '#fff' }}
+              sx={{
+                '& .MuiInputBase-root': {
+                  minHeight: 38,
+                  borderRadius: 999,
+                  backgroundColor: '#fff',
+                  color: '#33344A',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  pr: query ? 0.5 : 1.75,
+                },
+                '& .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(0, 9, 220, 0.2)',
+                },
+                '&:hover .MuiOutlinedInput-notchedOutline': {
+                  borderColor: 'rgba(0, 9, 220, 0.35)',
+                },
+                '& .Mui-focused .MuiOutlinedInput-notchedOutline': {
+                  borderColor: AI_DIGITAL_COLORS.yvesKleinBlue,
+                },
+              }}
+              fullWidth
+              slotProps={{
+                input: {
+                  startAdornment: <SearchOutlinedIcon sx={{ mr: 1, color: '#80808E', fontSize: 18 }} />,
+                  endAdornment: query ? (
+                    <IconButton
+                      aria-label="Clear lesson search"
+                      size="small"
+                      onClick={() => onQueryChange('')}
+                      sx={{
+                        width: 20,
+                        height: 20,
+                        backgroundColor: '#F2F1F3',
+                        color: '#80808E',
+                        '&:hover': { backgroundColor: '#E7E6EA' },
+                      }}
+                    >
+                      <CloseOutlinedIcon sx={{ fontSize: 14 }} />
+                    </IconButton>
+                  ) : null,
+                },
+              }}
+            />
+          </Box>
+
+          <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-end', justifyContent: { xs: 'space-between', md: 'flex-end' } }}>
+            <Chip
+              label={
+                <Box component="span">
+                  {resultCount}
+                  <Box component="span" sx={{ ml: 0.25, color: '#80808E', fontWeight: 600 }}>
+                    /{totalCount}
+                  </Box>
+                </Box>
+              }
+              size="small"
+              sx={{
+                height: 32,
+                borderRadius: 999,
+                backgroundColor: '#F2F1F3',
+                color: '#33344A',
+                fontSize: 12,
+                fontWeight: 800,
+              }}
             />
             <Button
               variant={filtersOpen ? 'contained' : 'outlined'}
@@ -120,17 +182,32 @@ export default function LessonLibraryFilters({
               startIcon={<TuneOutlinedIcon />}
               onClick={handleToggleFilters}
               sx={{
+                minHeight: 38,
                 minWidth: 102,
-                textTransform: 'none',
-                fontWeight: 850,
-                borderRadius: 2.5,
+                borderRadius: 999,
+                borderColor: 'rgba(0, 9, 220, 0.2)',
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
                 ...(filtersOpen
                   ? {
                       color: '#fff',
                       backgroundColor: AI_DIGITAL_COLORS.yvesKleinBlue,
-                      '&:hover': { backgroundColor: AI_DIGITAL_COLORS.violetPulse },
+                      boxShadow: 'none',
+                      '&:hover': {
+                        backgroundColor: '#0007B8',
+                        boxShadow: 'none',
+                      },
                     }
-                  : {}),
+                  : {
+                      backgroundColor: '#fff',
+                      color: '#33344A',
+                      '&:hover': {
+                        borderColor: 'rgba(0, 9, 220, 0.35)',
+                        backgroundColor: '#fff',
+                      },
+                    }),
               }}
             >
               Filters
