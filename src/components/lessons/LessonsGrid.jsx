@@ -1,15 +1,19 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Box,
   Button,
   Chip,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   Typography,
 } from '@mui/material';
 import Link from 'next/link';
 import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
+import ArrowDropDownOutlinedIcon from '@mui/icons-material/ArrowDropDownOutlined';
 import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
@@ -164,27 +168,43 @@ export default function LessonsGrid({
   onOpenLesson,
   onEnrollLesson,
   onUnenrollLesson,
+  onAssignLesson,
   showEnrollmentAction = false,
   showUnenrollAction = false,
   isOpenEnabled = true,
   getLessonHref,
   showProgressStatus = false,
+  canAssignLearning = false,
 }) {
+  const [enrollmentMenu, setEnrollmentMenu] = useState({
+    anchorEl: null,
+    lesson: null,
+  });
+  const isEnrollmentMenuOpen = Boolean(enrollmentMenu.anchorEl);
+
+  const closeEnrollmentMenu = () => {
+    setEnrollmentMenu({
+      anchorEl: null,
+      lesson: null,
+    });
+  };
+
   return (
-    <Box
-      sx={{
-        display: 'grid',
-        gridTemplateColumns: {
-          xs: '1fr',
-          sm: 'repeat(2, minmax(0, 1fr))',
-          md: 'repeat(3, minmax(0, 1fr))',
-          lg: 'repeat(4, minmax(0, 1fr))',
-          xl: 'repeat(5, minmax(0, 1fr))',
-        },
-        gap: 2,
-      }}
-    >
-      {lessons.map((lesson) => {
+    <>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: {
+            xs: '1fr',
+            sm: 'repeat(2, minmax(0, 1fr))',
+            md: 'repeat(3, minmax(0, 1fr))',
+            lg: 'repeat(4, minmax(0, 1fr))',
+            xl: 'repeat(5, minmax(0, 1fr))',
+          },
+          gap: 2,
+        }}
+      >
+        {lessons.map((lesson) => {
         const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
         const activitySummary = getActivitySummary(activities);
         const tags = Array.isArray(lesson.tags) ? lesson.tags : [];
@@ -413,7 +433,47 @@ export default function LessonsGrid({
                 </Typography>
               </Stack>
 
-              {showEnrollmentAction && (
+              {showEnrollmentAction && canAssignLearning && (
+                <Button
+                  variant={lesson.isEnrolled ? 'outlined' : 'contained'}
+                  size="small"
+                  startIcon={
+                    lesson.isEnrolled ? (
+                      <CheckCircleOutlineOutlinedIcon />
+                    ) : (
+                      <PlaylistAddOutlinedIcon />
+                    )
+                  }
+                  endIcon={<ArrowDropDownOutlinedIcon />}
+                  color={lesson.isEnrolled ? 'inherit' : 'primary'}
+                  disabled={lesson.status !== 'ready' || !lesson.isPublished || lesson.isArchived}
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setEnrollmentMenu({
+                      anchorEl: event.currentTarget,
+                      lesson,
+                    });
+                  }}
+                  sx={{
+                    mt: 1,
+                    alignSelf: 'flex-start',
+                    borderRadius: 999,
+                    textTransform: 'none',
+                    fontWeight: 700,
+                  }}
+                >
+                  {lesson.isEnrolled
+                    ? 'Added to...'
+                    : lesson.isArchived
+                      ? 'Archived'
+                      : lesson.isPublished
+                        ? 'Add to...'
+                        : 'Publish before adding'}
+                </Button>
+              )}
+
+              {showEnrollmentAction && !canAssignLearning && (
                 <Button
                   variant={lesson.isEnrolled ? 'outlined' : 'contained'}
                   size="small"
@@ -478,9 +538,46 @@ export default function LessonsGrid({
               )}
             </Stack>
           </Box>
-        </Paper>
+          </Paper>
         );
-      })}
-    </Box>
+        })}
+      </Box>
+
+      <Menu
+        anchorEl={enrollmentMenu.anchorEl}
+        open={isEnrollmentMenuOpen}
+        onClose={closeEnrollmentMenu}
+        disableScrollLock
+      >
+        <MenuItem
+          onClick={() => {
+            const lesson = enrollmentMenu.lesson;
+            closeEnrollmentMenu();
+
+            if (!lesson) {
+              return;
+            }
+
+            if (lesson.isEnrolled) {
+              onUnenrollLesson?.(lesson);
+              return;
+            }
+
+            onEnrollLesson?.(lesson);
+          }}
+        >
+          {enrollmentMenu.lesson?.isEnrolled ? 'Remove from My Lessons' : 'My Lessons'}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            const lesson = enrollmentMenu.lesson;
+            closeEnrollmentMenu();
+            onAssignLesson?.(lesson);
+          }}
+        >
+          Team members...
+        </MenuItem>
+      </Menu>
+    </>
   );
 }

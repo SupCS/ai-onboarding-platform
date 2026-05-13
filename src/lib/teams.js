@@ -136,6 +136,26 @@ export async function getTeams() {
   return mapTeamRows(result.rows);
 }
 
+export async function getAssignableLearningUsers(user) {
+  if (!user) {
+    return [];
+  }
+
+  if (user.role === USER_ROLES.ADMIN) {
+    const users = await getAllUsers();
+    return users.filter((candidate) => candidate.id !== user.id);
+  }
+
+  if (user.role !== USER_ROLES.TEAMLEAD) {
+    return [];
+  }
+
+  const teams = await getTeams();
+  const team = teams.find((item) => item.lead?.id === user.id);
+
+  return team?.members || [];
+}
+
 export async function getUserByEmail(email) {
   await ensureTeamsSchema();
 

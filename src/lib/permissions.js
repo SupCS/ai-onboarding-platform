@@ -20,6 +20,7 @@ export const PERMISSIONS = {
   ROADMAPS_CREATE: 'roadmaps.create',
   ROADMAPS_MANAGE: 'roadmaps.manage',
   LEARNING_ENROLL: 'learning.enroll',
+  LEARNING_ASSIGN: 'learning.assign',
   LEARNING_COMPLETE: 'learning.complete',
   LEARNING_ASK: 'learning.ask',
 };
@@ -84,6 +85,7 @@ export const PERMISSION_GROUPS = [
     title: 'Learning',
     permissions: [
       { key: PERMISSIONS.LEARNING_ENROLL, label: 'Enroll in lessons/roadmaps' },
+      { key: PERMISSIONS.LEARNING_ASSIGN, label: 'Assign lessons/roadmaps' },
       { key: PERMISSIONS.LEARNING_COMPLETE, label: 'Complete lessons/activities' },
       { key: PERMISSIONS.LEARNING_ASK, label: 'Ask lesson assistant' },
     ],
@@ -117,6 +119,7 @@ const DEFAULT_ROLE_PERMISSIONS = {
     [PERMISSIONS.ROADMAPS_CREATE]: true,
     [PERMISSIONS.ROADMAPS_MANAGE]: true,
     [PERMISSIONS.LEARNING_ENROLL]: true,
+    [PERMISSIONS.LEARNING_ASSIGN]: true,
     [PERMISSIONS.LEARNING_COMPLETE]: true,
     [PERMISSIONS.LEARNING_ASK]: true,
   },
@@ -136,6 +139,7 @@ const DEFAULT_ROLE_PERMISSIONS = {
     [PERMISSIONS.ROADMAPS_CREATE]: false,
     [PERMISSIONS.ROADMAPS_MANAGE]: false,
     [PERMISSIONS.LEARNING_ENROLL]: true,
+    [PERMISSIONS.LEARNING_ASSIGN]: false,
     [PERMISSIONS.LEARNING_COMPLETE]: true,
     [PERMISSIONS.LEARNING_ASK]: true,
   },

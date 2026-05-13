@@ -31,6 +31,7 @@ const teamLeadPermissionDenylist = [
   'permissions.manage_teamleads',
   'permissions.manage_team_members',
   'teams.manage_members',
+  'learning.assign',
 ];
 
 function getInitials(name = '', email = '') {

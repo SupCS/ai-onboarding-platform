@@ -22,11 +22,14 @@ export default function LibraryTabPanel({
   onOpenLesson,
   onEnrollLesson,
   onUnenrollLesson,
+  onAssignLesson,
   onResetLessonFilters,
   onResetRoadmapFilters,
   onEnrollRoadmap,
   onUnenrollRoadmap,
+  onAssignRoadmap,
   onOpenRoadmap,
+  canAssignLearning = false,
 }) {
   if (activeTab === 'materials') {
     if (!isHydrated) {
@@ -92,7 +95,9 @@ export default function LibraryTabPanel({
         onOpenLesson={onOpenLesson}
         onEnrollLesson={onEnrollLesson}
         onUnenrollLesson={onUnenrollLesson}
+        onAssignLesson={onAssignLesson}
         showEnrollmentAction
+        canAssignLearning={canAssignLearning}
       />
     );
   }
@@ -127,7 +132,9 @@ export default function LibraryTabPanel({
         roadmaps={roadmaps}
         onEnrollRoadmap={onEnrollRoadmap}
         onUnenrollRoadmap={onUnenrollRoadmap}
+        onAssignRoadmap={onAssignRoadmap}
         onOpenRoadmap={onOpenRoadmap}
+        canAssignLearning={canAssignLearning}
       />
     );
   }

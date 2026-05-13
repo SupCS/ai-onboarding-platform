@@ -1,10 +1,13 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import {
   Box,
   Button,
   Chip,
+  Menu,
+  MenuItem,
   Paper,
   Stack,
   Step,
@@ -16,6 +19,7 @@ import {
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
+import ArrowDropDownOutlinedIcon from '@mui/icons-material/ArrowDropDownOutlined';
 import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
@@ -106,17 +110,33 @@ export default function RoadmapsGrid({
   roadmaps = [],
   onEnrollRoadmap,
   onUnenrollRoadmap,
+  onAssignRoadmap,
   onOpenRoadmap,
+  canAssignLearning = false,
 }) {
+  const [enrollmentMenu, setEnrollmentMenu] = useState({
+    anchorEl: null,
+    roadmap: null,
+  });
+  const isEnrollmentMenuOpen = Boolean(enrollmentMenu.anchorEl);
+
+  const closeEnrollmentMenu = () => {
+    setEnrollmentMenu({
+      anchorEl: null,
+      roadmap: null,
+    });
+  };
+
   return (
-    <Box
-      sx={{
-        display: 'grid',
-        gridTemplateColumns: '1fr',
-        gap: 2,
-      }}
-    >
-      {roadmaps.map((roadmap) => {
+    <>
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: 2,
+        }}
+      >
+        {roadmaps.map((roadmap) => {
         const progress = getRoadmapProgress(roadmap);
         const canOpenRoadmap = Boolean(onOpenRoadmap && roadmap.viewerCanManage);
         const tags = Array.isArray(roadmap.tags) ? roadmap.tags : [];
@@ -350,9 +370,18 @@ export default function RoadmapsGrid({
                       <PlaylistAddOutlinedIcon />
                     )
                   }
+                  endIcon={canAssignLearning ? <ArrowDropDownOutlinedIcon /> : undefined}
                   onClick={(event) => {
                     event.preventDefault();
                     event.stopPropagation();
+                    if (canAssignLearning) {
+                      setEnrollmentMenu({
+                        anchorEl: event.currentTarget,
+                        roadmap,
+                      });
+                      return;
+                    }
+
                     if (roadmap.isEnrolled) {
                       onUnenrollRoadmap?.(roadmap);
                       return;
@@ -375,13 +404,56 @@ export default function RoadmapsGrid({
                         }),
                   }}
                 >
-                  {roadmap.isEnrolled ? 'Unsubscribe' : 'Subscribe'}
+                  {canAssignLearning
+                    ? roadmap.isEnrolled
+                      ? 'Added to...'
+                      : 'Add to...'
+                    : roadmap.isEnrolled
+                      ? 'Unsubscribe'
+                      : 'Subscribe'}
                 </Button>
               </Stack>
             </Stack>
           </Paper>
         );
-      })}
-    </Box>
+        })}
+      </Box>
+
+      <Menu
+        anchorEl={enrollmentMenu.anchorEl}
+        open={isEnrollmentMenuOpen}
+        onClose={closeEnrollmentMenu}
+        disableScrollLock
+      >
+        <MenuItem
+          onClick={() => {
+            const roadmap = enrollmentMenu.roadmap;
+            closeEnrollmentMenu();
+
+            if (!roadmap) {
+              return;
+            }
+
+            if (roadmap.isEnrolled) {
+              onUnenrollRoadmap?.(roadmap);
+              return;
+            }
+
+            onEnrollRoadmap?.(roadmap);
+          }}
+        >
+          {enrollmentMenu.roadmap?.isEnrolled ? 'Remove from My Roadmaps' : 'My Roadmaps'}
+        </MenuItem>
+        <MenuItem
+          onClick={() => {
+            const roadmap = enrollmentMenu.roadmap;
+            closeEnrollmentMenu();
+            onAssignRoadmap?.(roadmap);
+          }}
+        >
+          Team members...
+        </MenuItem>
+      </Menu>
+    </>
   );
 }

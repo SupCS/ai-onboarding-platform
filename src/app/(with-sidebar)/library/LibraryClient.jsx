@@ -6,6 +6,7 @@ import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import LibraryToolbar from '../../../components/library/LibraryToolbar';
 import LibraryTabs from '../../../components/library/LibraryTabs';
 import LibraryTabPanel from '../../../components/library/LibraryTabPanel';
+import LearningAssignmentDialog from '../../../components/learning/LearningAssignmentDialog';
 import LessonDetailsDialog from '../../../components/lessons/LessonDetailsDialog';
 import LessonLibraryFilters from '../../../components/lessons/LessonLibraryFilters';
 import LessonPromptForm from '../../../components/lessons/LessonPromptForm';
@@ -45,8 +46,18 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
   const [isLoadingRoadmaps, setIsLoadingRoadmaps] = useState(true);
   const [isSavingMaterial, setIsSavingMaterial] = useState(false);
   const [isSavingRoadmap, setIsSavingRoadmap] = useState(false);
+  const [isSavingAssignment, setIsSavingAssignment] = useState(false);
   const [isDeletingMaterial, setIsDeletingMaterial] = useState(false);
   const [isDeletingRoadmap, setIsDeletingRoadmap] = useState(false);
+  const [assignableUsers, setAssignableUsers] = useState([]);
+  const [hasLoadedAssignableUsers, setHasLoadedAssignableUsers] = useState(false);
+  const [isLoadingAssignableUsers, setIsLoadingAssignableUsers] = useState(false);
+  const [assignmentDialog, setAssignmentDialog] = useState({
+    open: false,
+    itemType: 'lesson',
+    item: null,
+    selectedUserIds: [],
+  });
   const [materialFormResetKey, setMaterialFormResetKey] = useState(0);
   const [toast, setToast] = useState({
     open: false,
@@ -58,6 +69,7 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
   const canDeleteMaterials = Boolean(currentUserPermissions['materials.delete']);
   const canCreateLessons = Boolean(currentUserPermissions['lessons.create']);
   const canCreateRoadmaps = Boolean(currentUserPermissions['roadmaps.create']);
+  const canAssignLearning = Boolean(currentUserPermissions['learning.assign']);
 
   const sortedMaterials = useMemo(() => {
     return [...materials].sort((a, b) => {
@@ -378,6 +390,44 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
     }
   };
 
+  const loadAssignableUsers = async () => {
+    if (!canAssignLearning) {
+      return [];
+    }
+
+    try {
+      setIsLoadingAssignableUsers(true);
+
+      const response = await fetch('/api/learning/assignees', {
+        method: 'GET',
+        cache: 'no-store',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to load team members.');
+      }
+
+      const users = data.users || [];
+      setAssignableUsers(users);
+      setHasLoadedAssignableUsers(true);
+      return users;
+    } catch (error) {
+      console.error('Failed to load assignable users:', error);
+
+      setToast({
+        open: true,
+        message: error.message || 'Failed to load team members.',
+        severity: 'error',
+      });
+
+      return [];
+    } finally {
+      setIsLoadingAssignableUsers(false);
+    }
+  };
+
   useEffect(() => {
     loadMaterials();
     loadLessons();
@@ -585,6 +635,119 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
         message: error.message || 'Failed to remove lesson from My Lessons.',
         severity: 'error',
       });
+    }
+  };
+
+  const handleOpenAssignmentDialog = async (itemType, item) => {
+    if (!canAssignLearning) {
+      return;
+    }
+
+    setAssignmentDialog({
+      open: true,
+      itemType,
+      item,
+      selectedUserIds: [],
+    });
+
+    if (!hasLoadedAssignableUsers) {
+      await loadAssignableUsers();
+    }
+  };
+
+  const handleCloseAssignmentDialog = () => {
+    if (isSavingAssignment) {
+      return;
+    }
+
+    setAssignmentDialog((prev) => ({
+      ...prev,
+      open: false,
+      item: null,
+      selectedUserIds: [],
+    }));
+  };
+
+  const handleToggleAssignmentUser = (userId) => {
+    setAssignmentDialog((prev) => {
+      const selectedUserIds = prev.selectedUserIds.includes(userId)
+        ? prev.selectedUserIds.filter((id) => id !== userId)
+        : [...prev.selectedUserIds, userId];
+
+      return {
+        ...prev,
+        selectedUserIds,
+      };
+    });
+  };
+
+  const handleToggleAllAssignmentUsers = () => {
+    setAssignmentDialog((prev) => {
+      const allSelected =
+        assignableUsers.length > 0 &&
+        prev.selectedUserIds.length === assignableUsers.length;
+
+      return {
+        ...prev,
+        selectedUserIds: allSelected ? [] : assignableUsers.map((user) => user.id),
+      };
+    });
+  };
+
+  const handleSubmitAssignment = async () => {
+    const { itemType, item, selectedUserIds } = assignmentDialog;
+
+    if (!item || selectedUserIds.length === 0) {
+      return;
+    }
+
+    const endpoint =
+      itemType === 'roadmap'
+        ? `/api/roadmaps/${item.id}/assignments`
+        : `/api/lessons/${item.id}/assignments`;
+    const noun = itemType === 'roadmap' ? 'Roadmap' : 'Lesson';
+
+    try {
+      setIsSavingAssignment(true);
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userIds: selectedUserIds,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to assign ${itemType}.`);
+      }
+
+      setAssignmentDialog({
+        open: false,
+        itemType: 'lesson',
+        item: null,
+        selectedUserIds: [],
+      });
+
+      setToast({
+        open: true,
+        message: `${noun} assigned to ${selectedUserIds.length} team member${selectedUserIds.length === 1 ? '' : 's'}.`,
+        severity: 'success',
+      });
+    } catch (error) {
+      console.error(`Failed to assign ${itemType}:`, error);
+
+      setToast({
+        open: true,
+        message: error.message || `Failed to assign ${itemType}.`,
+        severity: 'error',
+      });
+    } finally {
+      setIsSavingAssignment(false);
     }
   };
 
@@ -1124,9 +1287,12 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
               onOpenLesson={handleOpenLesson}
               onEnrollLesson={handleEnrollLesson}
               onUnenrollLesson={handleUnenrollLesson}
+              onAssignLesson={(lesson) => handleOpenAssignmentDialog('lesson', lesson)}
               onEnrollRoadmap={handleEnrollRoadmap}
               onUnenrollRoadmap={handleUnenrollRoadmap}
+              onAssignRoadmap={(roadmap) => handleOpenAssignmentDialog('roadmap', roadmap)}
               onOpenRoadmap={handleOpenRoadmap}
+              canAssignLearning={canAssignLearning}
             />
           </Stack>
         </Paper>
@@ -1202,6 +1368,20 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
         onOpenSourceMaterial={handleOpenSourceMaterial}
         onLessonDeleted={handleLessonDeleted}
         onLessonUpdated={handleLessonUpdated}
+      />
+
+      <LearningAssignmentDialog
+        open={assignmentDialog.open}
+        item={assignmentDialog.item}
+        itemType={assignmentDialog.itemType}
+        users={assignableUsers}
+        selectedUserIds={assignmentDialog.selectedUserIds}
+        isLoading={isLoadingAssignableUsers}
+        isSaving={isSavingAssignment}
+        onClose={handleCloseAssignmentDialog}
+        onToggleUser={handleToggleAssignmentUser}
+        onToggleAll={handleToggleAllAssignmentUsers}
+        onAssign={handleSubmitAssignment}
       />
 
       <Snackbar

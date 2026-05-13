@@ -28,6 +28,7 @@ Runtime source of truth:
 | `roadmaps.create` | Create roadmaps. |
 | `roadmaps.manage` | Edit/delete manageable roadmaps. |
 | `learning.enroll` | Enroll/unenroll in lessons and roadmaps. |
+| `learning.assign` | Assign lessons and roadmaps to manageable users. |
 | `learning.complete` | Complete lessons and activities. |
 | `learning.ask` | Ask the lesson assistant. |
 
@@ -50,6 +51,7 @@ Runtime source of truth:
 | `roadmaps.create` | Yes | Yes | No |
 | `roadmaps.manage` | Yes | Yes | No |
 | `learning.enroll` | Yes | Yes | Yes |
+| `learning.assign` | Yes | Yes | No |
 | `learning.complete` | Yes | Yes | Yes |
 | `learning.ask` | Yes | Yes | Yes |
 
@@ -58,10 +60,11 @@ Runtime source of truth:
 | Actor | Can configure | Cannot configure |
 | --- | --- | --- |
 | Admin | Non-admin users, normally teamleads | `admin.manage_roles`, `permissions.manage_teamleads`, admin users |
-| Teamlead | Direct team members with role `member` | Admin permissions, teamlead-permission management, team membership management |
+| Teamlead | Direct team members with role `member` | Admin permissions, teamlead-permission management, team membership management, learning assignment |
 
 Object-level rules still apply after permission checks:
 - Teamleads can manage only their own team members.
+- Teamleads can assign lessons and roadmaps only to direct team members.
 - Lessons can be managed by the creator or admin.
 - Roadmaps can be managed by the author, author's teamlead, or admin.
 
