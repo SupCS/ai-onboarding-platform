@@ -79,6 +79,7 @@ export async function POST(request) {
     const youtubeUrls = Array.isArray(body.youtubeUrls) ? body.youtubeUrls : [];
     const links = Array.isArray(body.links) ? body.links : [];
     const attachments = Array.isArray(body.attachments) ? body.attachments : [];
+    const tags = Array.isArray(body.tags) ? body.tags : [];
 
     const hasAnyContent =
       youtubeUrls.length > 0 ||
@@ -107,6 +108,9 @@ export async function POST(request) {
       youtubeUrls,
       links,
       attachments,
+      tags,
+      createdByUserId: user.id,
+      createdBy: user.name || user.email || '',
     });
 
     return Response.json({ ok: true }, { status: 201 });

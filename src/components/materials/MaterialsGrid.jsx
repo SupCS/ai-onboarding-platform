@@ -163,6 +163,7 @@ export default function MaterialsGrid({
     >
       {materials.map((material) => {
         const badges = getMaterialBadges(material);
+        const tags = Array.isArray(material.tags) ? material.tags : [];
         const metaItems = getMaterialMetaItems(material);
         const firstYoutubeUrl = material.youtubeUrls?.[0] || '';
         const youtubeThumbnail = firstYoutubeUrl
@@ -393,6 +394,34 @@ export default function MaterialsGrid({
                 </Typography>
               )}
 
+              {tags.length > 0 && (
+                <Stack
+                  direction="row"
+                  spacing={0.75}
+                  useFlexGap
+                  sx={{
+                    flexWrap: 'wrap',
+                    mb: 1.5,
+                  }}
+                >
+                  {tags.map((tag) => (
+                    <Chip
+                      key={tag}
+                      label={tag}
+                      size="small"
+                      sx={{
+                        height: 24,
+                        borderRadius: 999,
+                        backgroundColor: '#F2F1F3',
+                        color: '#33344A',
+                        fontSize: 11,
+                        fontWeight: 700,
+                      }}
+                    />
+                  ))}
+                </Stack>
+              )}
+
               {badges.length > 0 && (
                 <Stack
                   direction="row"
@@ -448,7 +477,26 @@ export default function MaterialsGrid({
                   gap: 1,
                 }}
               >
-                <Typography variant="caption" sx={{ color: '#80808E' }}>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    minWidth: 0,
+                    color: '#33344A',
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}
+                  noWrap
+                >
+                  By {material.createdBy || 'Unknown author'}
+                </Typography>
+                <Typography
+                  variant="caption"
+                  sx={{
+                    flexShrink: 0,
+                    color: '#80808E',
+                    fontSize: 12,
+                  }}
+                >
                   Added {formatDate(material.createdAt)}
                 </Typography>
               </Box>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -13,6 +14,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import { normalizeLessonTagInput, suggestedLessonTags } from '../../lib/lessonTags';
 
 const acceptedFileTypes = [
   '.doc',
@@ -60,6 +62,7 @@ function buildInitialForm(material) {
     youtubeUrls: material?.youtubeUrls || [],
     links: (material?.links || []).join('\n'),
     text: material?.text || '',
+    tags: normalizeLessonTagInput(material?.tags || []),
     existingAttachments: material?.attachments || [],
     newAttachments: [],
   };
@@ -111,6 +114,13 @@ export default function UploadMaterialDialog({
       ...prev,
       [field]: '',
       content: '',
+    }));
+  };
+
+  const handleTagsChange = (_event, nextTags) => {
+    setForm((prev) => ({
+      ...prev,
+      tags: normalizeLessonTagInput(nextTags),
     }));
   };
 
@@ -334,6 +344,35 @@ export default function UploadMaterialDialog({
               minRows={2}
               value={form.description}
               onChange={handleChange('description')}
+            />
+
+            <Autocomplete
+              multiple
+              freeSolo
+              options={suggestedLessonTags}
+              value={form.tags}
+              onChange={handleTagsChange}
+              renderValue={(value, getItemProps) =>
+                value.map((tag, index) => {
+                  const { key, ...itemProps } = getItemProps({ index });
+
+                  return (
+                    <Chip
+                      key={key}
+                      label={tag}
+                      {...itemProps}
+                    />
+                  );
+                })
+              }
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  label="Tags"
+                  placeholder="Add a tag"
+                  helperText="Optional categories for filtering and scanning materials."
+                />
+              )}
             />
           </Stack>
 

@@ -22,6 +22,7 @@ import RouteOutlinedIcon from '@mui/icons-material/RouteOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
+import { AI_DIGITAL_COLORS } from '../../lib/brandColors';
 
 const EXPANDED_WIDTH = 280;
 const COLLAPSED_WIDTH = 84;
@@ -90,7 +91,7 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
         width: COLLAPSED_WIDTH,
         height: '100vh',
         borderRadius: 0,
-        borderRight: '1px solid #e5e7eb',
+        borderRight: '1px solid rgba(0, 9, 220, 0.18)',
         backgroundColor: '#fff',
         p: 1.5,
         display: 'flex',
@@ -100,7 +101,7 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
         transition: 'width 0.25s ease',
         '&:hover': {
           width: EXPANDED_WIDTH,
-          boxShadow: '0 8px 30px rgba(15, 23, 42, 0.08)',
+          boxShadow: '0 8px 30px rgba(11, 11, 11, 0.08)',
         },
         '&:hover .sidebar-text': {
           opacity: 1,
@@ -173,10 +174,19 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
           }}
         >
           <Typography variant="body1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
-            AI Onboarding
+            AI Digital
           </Typography>
-          <Typography variant="caption" color="text.secondary">
-            Training Platform
+          <Typography
+            variant="caption"
+            sx={{
+              color: '#80808E',
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+            }}
+          >
+            Learning Hub
           </Typography>
         </Box>
       </Box>
@@ -197,17 +207,35 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
                   mb: 0.5,
                   minHeight: 48,
                   px: 1.25,
-                  borderRadius: 3,
+                  borderRadius: 1.25,
                   justifyContent: 'flex-start',
+                  position: 'relative',
                   backgroundColor: isActive
-                    ? 'rgba(25, 118, 210, 0.08)'
+                    ? '#F5F5FE'
                     : 'transparent',
-                  color: isActive ? 'primary.main' : 'text.primary',
+                  color: isActive ? AI_DIGITAL_COLORS.yvesKleinBlue : '#33344A',
+                  transition: 'background-color 140ms ease, color 140ms ease',
+                  '&:hover': {
+                    backgroundColor: isActive
+                      ? '#F5F5FE'
+                      : 'rgba(0, 9, 220, 0.04)',
+                  },
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    left: 0,
+                    top: 8,
+                    bottom: 8,
+                    width: 3,
+                    borderRadius: 2,
+                    backgroundColor: isActive ? AI_DIGITAL_COLORS.yvesKleinBlue : 'transparent',
+                    opacity: isActive ? 1 : 0,
+                  },
                 }}
               >
                 <ListItemIcon
                   sx={{
-                    color: isActive ? 'primary.main' : 'text.secondary',
+                    color: isActive ? AI_DIGITAL_COLORS.yvesKleinBlue : '#33344A',
                     minWidth: 0,
                     width: 40,
                     display: 'flex',
@@ -230,7 +258,10 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
                     whiteSpace: 'nowrap',
                     pointerEvents: 'none',
                     '& .MuiTypography-root': {
-                      fontWeight: 500,
+                      color: 'inherit',
+                      fontSize: 14,
+                      fontWeight: isActive ? 700 : 500,
+                      letterSpacing: 0,
                     },
                   }}
                 />
@@ -264,7 +295,13 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
             flexShrink: 0,
           }}
         >
-          <Avatar sx={{ bgcolor: 'primary.main', color: '#fff', fontWeight: 700 }}>
+          <Avatar
+            sx={{
+              bgcolor: AI_DIGITAL_COLORS.yvesKleinBlue,
+              color: '#fff',
+              fontWeight: 800,
+            }}
+          >
             {user.name.charAt(0)}
           </Avatar>
         </Box>
@@ -283,7 +320,7 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
             whiteSpace: 'nowrap',
           }}
         >
-          <Typography variant="body2" sx={{ fontWeight: 700 }}>
+          <Typography variant="body2" sx={{ color: '#0B0B0B', fontWeight: 700 }}>
             {user.name}
           </Typography>
 
@@ -295,7 +332,10 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
             {user.email}
           </Typography>
 
-          <Typography variant="caption" color="primary.main">
+          <Typography
+            variant="caption"
+            sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue, textTransform: 'capitalize' }}
+          >
             {user.role}
           </Typography>
         </Box>
@@ -308,10 +348,19 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
           onClick={handleLogout}
           sx={{
             mt: 1,
-            borderRadius: 3,
+            borderRadius: 1.25,
+            borderColor: 'rgba(0, 9, 220, 0.18)',
             minHeight: 44,
             px: 1.25,
+            color: '#33344A',
             justifyContent: 'flex-start',
+            textTransform: 'none',
+            fontSize: 13,
+            fontWeight: 600,
+            '&:hover': {
+              borderColor: 'rgba(0, 9, 220, 0.32)',
+              backgroundColor: 'rgba(0, 9, 220, 0.04)',
+            },
           }}
         >
           <Box
@@ -320,7 +369,7 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              color: 'text.secondary',
+              color: 'inherit',
             }}
           >
             <LogoutOutlinedIcon fontSize="small" />
@@ -337,7 +386,7 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
               whiteSpace: 'nowrap',
             }}
           >
-            Log out
+            Sign out
           </Box>
         </Button>
       </Tooltip>

@@ -178,19 +178,25 @@ export default function MaterialDetailsDialog({
 
           <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
             <MaterialBadge label={`Added ${formatDate(material.createdAt)}`} index={0} />
+            {material.createdBy && (
+              <MaterialBadge label={`By ${material.createdBy}`} index={1} />
+            )}
+            {(Array.isArray(material.tags) ? material.tags : []).map((tag, index) => (
+              <MaterialBadge key={tag} label={tag} index={index + 2} />
+            ))}
             {material.youtubeUrls?.length > 0 && (
-              <MaterialBadge label={`${material.youtubeUrls.length} video(s)`} index={1} />
+              <MaterialBadge label={`${material.youtubeUrls.length} video(s)`} index={3} />
             )}
             {material.links?.length > 0 && (
-              <MaterialBadge label={`${material.links.length} link(s)`} index={2} />
+              <MaterialBadge label={`${material.links.length} link(s)`} index={4} />
             )}
             {imageAttachments.length > 0 && (
-              <MaterialBadge label={`${imageAttachments.length} image(s)`} index={3} />
+              <MaterialBadge label={`${imageAttachments.length} image(s)`} index={5} />
             )}
             {fileAttachments.length > 0 && (
-              <MaterialBadge label={`${fileAttachments.length} file(s)`} index={4} />
+              <MaterialBadge label={`${fileAttachments.length} file(s)`} index={6} />
             )}
-            {material.text && <MaterialBadge label="Text included" index={5} />}
+            {material.text && <MaterialBadge label="Text included" index={7} />}
           </Stack>
 
           {material.description && (

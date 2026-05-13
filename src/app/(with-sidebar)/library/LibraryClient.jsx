@@ -32,13 +32,17 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
   const [roadmaps, setRoadmaps] = useState([]);
   const [materialSearchQuery, setMaterialSearchQuery] = useState('');
   const [materialSort, setMaterialSort] = useState('recent');
+  const [materialSelectedTags, setMaterialSelectedTags] = useState([]);
+  const [areMaterialFiltersOpen, setAreMaterialFiltersOpen] = useState(false);
   const [lessonSearchQuery, setLessonSearchQuery] = useState('');
+  const [lessonSort, setLessonSort] = useState('recent');
   const [lessonStatusFilter, setLessonStatusFilter] = useState('ready');
   const [lessonSelectedTags, setLessonSelectedTags] = useState([]);
   const [lessonActivityFilter, setLessonActivityFilter] = useState('all');
   const [lessonEnrollmentFilter, setLessonEnrollmentFilter] = useState('all');
   const [areLessonFiltersOpen, setAreLessonFiltersOpen] = useState(false);
   const [roadmapSearchQuery, setRoadmapSearchQuery] = useState('');
+  const [roadmapSort, setRoadmapSort] = useState('recent');
   const [roadmapSelectedTags, setRoadmapSelectedTags] = useState([]);
   const [roadmapEnrollmentFilter, setRoadmapEnrollmentFilter] = useState('all');
   const [areRoadmapFiltersOpen, setAreRoadmapFiltersOpen] = useState(false);
@@ -97,35 +101,77 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
   const filteredMaterials = useMemo(() => {
     const normalizedQuery = materialSearchQuery.trim().toLowerCase();
 
-    if (!normalizedQuery) {
-      return sortedMaterials;
-    }
-
     return sortedMaterials.filter((material) => {
       const attachmentNames = Array.isArray(material.attachments)
         ? material.attachments.map((attachment) => attachment.name)
         : [];
+      const tags = Array.isArray(material.tags) ? material.tags : [];
       const searchableText = [
         material.title,
         material.description,
+        material.createdBy,
         material.text,
+        ...tags,
         ...attachmentNames,
       ]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();
 
-      return searchableText.includes(normalizedQuery);
-    });
-  }, [materialSearchQuery, sortedMaterials]);
+      if (normalizedQuery && !searchableText.includes(normalizedQuery)) {
+        return false;
+      }
 
-  const hasActiveMaterialSearch = materialSearchQuery.trim().length > 0;
+      if (
+        materialSelectedTags.length > 0 &&
+        !materialSelectedTags.every((tag) => tags.includes(tag))
+      ) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [materialSearchQuery, materialSelectedTags, sortedMaterials]);
+
+  const materialAvailableTags = useMemo(() => {
+    const tagSet = new Set();
+
+    materials.forEach((material) => {
+      (Array.isArray(material.tags) ? material.tags : []).forEach((tag) => {
+        if (tag) {
+          tagSet.add(tag);
+        }
+      });
+    });
+
+    return [...tagSet].sort((a, b) => a.localeCompare(b));
+  }, [materials]);
+
+  const hasActiveMaterialSearch =
+    materialSearchQuery.trim().length > 0 || materialSelectedTags.length > 0;
+
+  const resetMaterialFilters = () => {
+    setMaterialSearchQuery('');
+    setMaterialSelectedTags([]);
+  };
 
   const sortedLessons = useMemo(() => {
     return [...lessons].sort((a, b) => {
+      if (lessonSort === 'oldest') {
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+
+      if (lessonSort === 'az') {
+        return (a.title || '').localeCompare(b.title || '');
+      }
+
+      if (lessonSort === 'za') {
+        return (b.title || '').localeCompare(a.title || '');
+      }
+
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
-  }, [lessons]);
+  }, [lessonSort, lessons]);
 
   const lessonAvailableTags = useMemo(() => {
     const tagSet = new Set();
@@ -236,9 +282,21 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
 
   const sortedRoadmaps = useMemo(() => {
     return [...roadmaps].sort((a, b) => {
+      if (roadmapSort === 'oldest') {
+        return new Date(a.createdAt) - new Date(b.createdAt);
+      }
+
+      if (roadmapSort === 'az') {
+        return (a.title || '').localeCompare(b.title || '');
+      }
+
+      if (roadmapSort === 'za') {
+        return (b.title || '').localeCompare(a.title || '');
+      }
+
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
-  }, [roadmaps]);
+  }, [roadmapSort, roadmaps]);
 
   const roadmapAvailableTags = useMemo(() => {
     const tagSet = new Set();
@@ -1099,6 +1157,7 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
           .map((item) => item.trim())
           .filter(Boolean),
         text: formData.text.trim(),
+        tags: formData.tags || [],
         attachments: [...retainedAttachments, ...uploadedAttachments],
       };
 
@@ -1243,8 +1302,15 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
                   onQueryChange={setMaterialSearchQuery}
                   sort={materialSort}
                   onSortChange={setMaterialSort}
+                  selectedTags={materialSelectedTags}
+                  onSelectedTagsChange={setMaterialSelectedTags}
+                  availableTags={materialAvailableTags}
                   totalCount={sortedMaterials.length}
                   resultCount={filteredMaterials.length}
+                  hasActiveFilters={hasActiveMaterialSearch}
+                  filtersOpen={areMaterialFiltersOpen}
+                  onToggleFilters={() => setAreMaterialFiltersOpen((prev) => !prev)}
+                  onReset={resetMaterialFilters}
                 />
               ) : activeTab === 'lessons' && sortedLessons.length > 0 ? (
                 <LessonLibraryFilters
@@ -1259,6 +1325,8 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
                   onActivityChange={setLessonActivityFilter}
                   enrollment={lessonEnrollmentFilter}
                   onEnrollmentChange={setLessonEnrollmentFilter}
+                  sort={lessonSort}
+                  onSortChange={setLessonSort}
                   totalCount={sortedLessons.length}
                   resultCount={filteredLessons.length}
                   hasActiveFilters={hasActiveLessonFilters}
@@ -1275,6 +1343,8 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
                   availableTags={roadmapAvailableTags}
                   enrollment={roadmapEnrollmentFilter}
                   onEnrollmentChange={setRoadmapEnrollmentFilter}
+                  sort={roadmapSort}
+                  onSortChange={setRoadmapSort}
                   totalCount={sortedRoadmaps.length}
                   resultCount={filteredRoadmaps.length}
                   hasActiveFilters={hasActiveRoadmapFilters}
@@ -1292,7 +1362,7 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
               materials={filteredMaterials}
               totalMaterials={sortedMaterials.length}
               hasActiveMaterialSearch={hasActiveMaterialSearch}
-              onResetMaterialSearch={() => setMaterialSearchQuery('')}
+              onResetMaterialSearch={resetMaterialFilters}
               lessons={filteredLessons}
               totalLessons={sortedLessons.length}
               hasActiveLessonFilters={hasActiveLessonFilters}

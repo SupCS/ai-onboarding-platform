@@ -28,6 +28,7 @@ export async function PUT(request, { params }) {
     const youtubeUrls = Array.isArray(body.youtubeUrls) ? body.youtubeUrls : [];
     const links = Array.isArray(body.links) ? body.links : [];
     const attachments = Array.isArray(body.attachments) ? body.attachments : [];
+    const tags = Array.isArray(body.tags) ? body.tags : [];
 
     const hasAnyContent =
       youtubeUrls.length > 0 ||
@@ -63,6 +64,7 @@ export async function PUT(request, { params }) {
       youtubeUrls,
       links,
       attachments,
+      tags,
     });
 
     if (!updatedMaterial) {

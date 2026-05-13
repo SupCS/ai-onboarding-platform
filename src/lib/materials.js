@@ -1,7 +1,24 @@
 import crypto from 'crypto';
 import { db } from './db.js';
+import { ensureAuthSchema } from './auth.js';
 import { fetchLinkMetadata } from './linkMetadata.js';
 import { fetchYoutubeOEmbedMetadata } from './youtubeMetadata.js';
+import { normalizeLessonTagInput } from './lessonTags.js';
+
+async function ensureMaterialAuthorColumns(client = db) {
+  await ensureAuthSchema(client);
+
+  await client.query(`
+    ALTER TABLE materials
+    ADD COLUMN IF NOT EXISTS created_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS created_by TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS tags JSONB NOT NULL DEFAULT '[]'::jsonb
+  `);
+}
+
+function normalizeMaterialTags(tags = []) {
+  return normalizeLessonTagInput(tags);
+}
 
 async function ensureMaterialFileOpenAIColumns(client = db) {
   await client.query(`
@@ -111,13 +128,23 @@ async function backfillMissingYoutubeMetadata(client = db) {
 }
 
 export async function getAllMaterials() {
+  await ensureMaterialAuthorColumns();
   await ensureMaterialFileOpenAIColumns();
   await ensureMaterialYoutubeMetadataColumns();
   await ensureMaterialLinkMetadataColumns();
   await backfillMissingYoutubeMetadata();
 
   const materialsResult = await db.query(`
-    SELECT id, title, description, text_content, created_at, updated_at
+    SELECT
+      id,
+      title,
+      description,
+      text_content,
+      created_by_user_id,
+      created_by,
+      tags,
+      created_at,
+      updated_at
     FROM materials
     ORDER BY created_at DESC
   `);
@@ -186,6 +213,9 @@ export async function getAllMaterials() {
     title: material.title,
     description: material.description || '',
     text: material.text_content || '',
+    createdByUserId: material.created_by_user_id,
+    createdBy: material.created_by || '',
+    tags: Array.isArray(material.tags) ? material.tags : [],
     createdAt: material.created_at,
     updatedAt: material.updated_at,
     usageCount: usageCountByMaterialId.get(material.id) || 0,
@@ -255,10 +285,12 @@ export async function getMaterialsByIds(materialIds = []) {
 export async function createMaterial(input) {
   const youtubeRecords = await prepareYoutubeUrlRecords(input.youtubeUrls || []);
   const linkRecords = await prepareLinkRecords(input.links || []);
+  const tags = normalizeMaterialTags(input.tags || []);
   const client = await db.connect();
 
   try {
     await client.query('BEGIN');
+    await ensureMaterialAuthorColumns(client);
     await ensureMaterialFileOpenAIColumns(client);
     await ensureMaterialYoutubeMetadataColumns(client);
     await ensureMaterialLinkMetadataColumns(client);
@@ -267,10 +299,26 @@ export async function createMaterial(input) {
 
     await client.query(
       `
-        INSERT INTO materials (id, title, description, text_content)
-        VALUES ($1, $2, $3, $4)
+        INSERT INTO materials (
+          id,
+          title,
+          description,
+          text_content,
+          created_by_user_id,
+          created_by,
+          tags
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
       `,
-      [materialId, input.title, input.description || '', input.text || '']
+      [
+        materialId,
+        input.title,
+        input.description || '',
+        input.text || '',
+        input.createdByUserId || null,
+        input.createdBy || '',
+        JSON.stringify(tags),
+      ]
     );
 
     for (let index = 0; index < youtubeRecords.length; index += 1) {
@@ -445,6 +493,7 @@ export async function deleteMaterialById(materialId) {
     }
 
     await ensureMaterialFileOpenAIColumns(client);
+    await ensureMaterialAuthorColumns(client);
     await ensureMaterialYoutubeMetadataColumns(client);
     await ensureMaterialLinkMetadataColumns(client);
 
@@ -506,6 +555,7 @@ export async function deleteMaterialById(materialId) {
 export async function updateMaterialById(materialId, input) {
   const youtubeRecords = await prepareYoutubeUrlRecords(input.youtubeUrls || []);
   const linkRecords = await prepareLinkRecords(input.links || []);
+  const tags = normalizeMaterialTags(input.tags || []);
   const client = await db.connect();
 
   try {
@@ -525,6 +575,7 @@ export async function updateMaterialById(materialId, input) {
       return null;
     }
     await ensureMaterialFileOpenAIColumns(client);
+    await ensureMaterialAuthorColumns(client);
     await ensureMaterialYoutubeMetadataColumns(client);
     await ensureMaterialLinkMetadataColumns(client);
 
@@ -544,10 +595,11 @@ export async function updateMaterialById(materialId, input) {
           title = $2,
           description = $3,
           text_content = $4,
+          tags = $5,
           updated_at = NOW()
         WHERE id = $1
       `,
-      [materialId, input.title, input.description || '', input.text || '']
+      [materialId, input.title, input.description || '', input.text || '', JSON.stringify(tags)]
     );
 
     await client.query(
