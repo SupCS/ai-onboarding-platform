@@ -545,6 +545,54 @@ export async function getCompletedRoadmapsForUserLesson(userId, lessonId) {
   }));
 }
 
+export async function getRoadmapContextForLesson(userId, lessonId) {
+  await ensureRoadmapsSchema();
+
+  const result = await db.query(
+    `
+      SELECT
+        roadmaps.id,
+        roadmaps.title,
+        roadmap_lessons.sort_order,
+        COUNT(all_lessons.lesson_id)::int AS lesson_count,
+        user_roadmaps.enrolled_at
+      FROM roadmaps
+      JOIN roadmap_lessons
+        ON roadmap_lessons.roadmap_id = roadmaps.id
+        AND roadmap_lessons.lesson_id = $2
+      LEFT JOIN roadmap_lessons all_lessons
+        ON all_lessons.roadmap_id = roadmaps.id
+      LEFT JOIN user_roadmaps
+        ON user_roadmaps.roadmap_id = roadmaps.id
+        AND user_roadmaps.user_id = $1
+      GROUP BY
+        roadmaps.id,
+        roadmaps.title,
+        roadmap_lessons.sort_order,
+        user_roadmaps.enrolled_at
+      ORDER BY
+        user_roadmaps.enrolled_at DESC NULLS LAST,
+        roadmaps.title ASC
+      LIMIT 1
+    `,
+    [userId, lessonId]
+  );
+
+  const row = result.rows[0];
+
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    title: row.title,
+    lessonNumber: Number(row.sort_order || 0) + 1,
+    lessonCount: Number(row.lesson_count || 0),
+    isEnrolled: Boolean(row.enrolled_at),
+  };
+}
+
 export async function getRoadmapById(roadmapId, userId = null) {
   await ensureRoadmapsSchema();
 

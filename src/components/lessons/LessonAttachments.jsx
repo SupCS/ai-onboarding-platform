@@ -432,7 +432,7 @@ export default function LessonAttachments({
     <Box>
       {showTitle && (
         <Typography variant="h6" sx={{ fontWeight: 900, mb: 1.25 }}>
-          Assets
+          Attachments
         </Typography>
       )}
 

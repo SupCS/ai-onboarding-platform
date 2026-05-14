@@ -1,10 +1,9 @@
-import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { Box, Button, Chip, Container, Paper, Stack, Typography } from '@mui/material';
-import ArrowBackOutlinedIcon from '@mui/icons-material/ArrowBackOutlined';
+import { Box, Container } from '@mui/material';
 import LessonActivityGate from '../../../../components/lessons/LessonActivityGate';
 import LessonAttachments from '../../../../components/lessons/LessonAttachments';
 import LessonAskAssistant from '../../../../components/lessons/LessonAskAssistant';
+import LessonReadingChrome from '../../../../components/lessons/LessonReadingChrome';
 import LessonReader from '../../../../components/lessons/LessonReader';
 import { getCurrentUser } from '../../../../lib/currentUser';
 import { markdownToHtml } from '../../../../lib/lessonContent';
@@ -14,7 +13,9 @@ import {
   getLessonActivitiesForUser,
   getLessonById,
   getLessonEnrollmentForUser,
+  getLessonsForUser,
 } from '../../../../lib/lessons';
+import { getRoadmapContextForLesson } from '../../../../lib/roadmaps';
 
 export const metadata = {
   title: 'Lesson',
@@ -77,6 +78,13 @@ export default async function LessonReadPage({ params }) {
 
   const html = lesson.contentHtml || markdownToHtml(lesson.contentMarkdown || '');
   const activities = await getLessonActivitiesForUser(lesson.id, currentUser.id);
+  const roadmapContext = await getRoadmapContextForLesson(currentUser.id, lesson.id);
+  const myLessons = await getLessonsForUser(currentUser.id);
+  const currentLessonIndex = myLessons.findIndex((myLesson) => myLesson.id === lesson.id);
+  const previousLesson = currentLessonIndex > 0 ? myLessons[currentLessonIndex - 1] : null;
+  const nextLesson = currentLessonIndex >= 0 && currentLessonIndex < myLessons.length - 1
+    ? myLessons[currentLessonIndex + 1]
+    : null;
   const sourceReferences = await hydrateSourceReferencesWithMaterials(
     lesson.generationMetadata?.preparedMaterials?.sourceReferences || [],
     lesson.materialIds || []
@@ -85,107 +93,42 @@ export default async function LessonReadPage({ params }) {
   return (
     <Box
       sx={{
-        minHeight: 'calc(100vh - 48px)',
-        mx: -3,
-        my: -3,
-        px: { xs: 2, md: 5 },
-        py: { xs: 2, md: 4 },
+        minHeight: '100vh',
         background:
           'radial-gradient(circle at 12% 0%, rgba(20, 184, 166, 0.18), transparent 32%), radial-gradient(circle at 90% 12%, rgba(245, 158, 11, 0.14), transparent 28%), linear-gradient(180deg, #f8fafc 0%, #eef6f4 100%)',
       }}
     >
-      <Container maxWidth="lg" disableGutters>
-        <Stack spacing={3}>
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            sx={{ alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between' }}
-          >
-            <Link href="/lessons">
-              <Button
-                startIcon={<ArrowBackOutlinedIcon />}
-                variant="outlined"
-                color="inherit"
-                sx={{
-                  alignSelf: { xs: 'flex-start', sm: 'center' },
-                  borderRadius: 999,
-                  backgroundColor: 'rgba(255,255,255,0.72)',
-                  backdropFilter: 'blur(10px)',
-                }}
-              >
-                Back to My Lessons
-              </Button>
-            </Link>
-
-            <Chip
-              label="Reading mode"
-              sx={{
-                alignSelf: { xs: 'flex-start', sm: 'center' },
-                fontWeight: 800,
-                backgroundColor: 'rgba(0, 9, 220, 0.1)',
-                color: '#0009DC',
-              }}
-            />
-          </Stack>
-
-          <Paper
-            elevation={0}
-            sx={{
-              px: { xs: 2.5, md: 7, lg: 10 },
-              py: { xs: 4, md: 7 },
-              borderRadius: { xs: 4, md: 6 },
-              border: '1px solid rgba(15, 23, 42, 0.08)',
-              backgroundColor: 'rgba(255, 255, 255, 0.92)',
-              boxShadow: '0 28px 80px rgba(15, 23, 42, 0.12)',
-            }}
-          >
-            <Stack spacing={1.5} sx={{ mb: 5 }}>
-              <Typography variant="overline" color="primary" sx={{ fontWeight: 900 }}>
-                Lesson
-              </Typography>
-              <Typography
-                variant="h2"
-                component="h1"
-                sx={{
-                  fontWeight: 950,
-                  lineHeight: 0.98,
-                  letterSpacing: '-0.06em',
-                  color: '#0f172a',
-                }}
-              >
-                {lesson.title}
-              </Typography>
-              {lesson.description && (
-                <Typography variant="body1" color="text.secondary" sx={{ maxWidth: 780 }}>
-                  {lesson.description}
-                </Typography>
-              )}
-              {lesson.tags?.length > 0 && (
-                <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                  {lesson.tags.map((tag) => (
-                    <Chip
-                      key={tag}
-                      label={tag}
-                      size="small"
-                      variant="outlined"
-                      sx={{ fontWeight: 800, backgroundColor: '#fff' }}
-                    />
-                  ))}
-                </Stack>
-              )}
-            </Stack>
-
-            <LessonReader html={html} />
-            <Box sx={{ mt: 5 }}>
-              <LessonAttachments sourceReferences={sourceReferences} />
-            </Box>
-            <LessonActivityGate
-              lessonId={lesson.id}
-              activities={activities}
-              initialIsCompleted={enrollment.isCompleted}
-            />
-          </Paper>
-        </Stack>
+      <Container maxWidth={false} disableGutters>
+        <LessonReadingChrome
+          lesson={{
+            id: lesson.id,
+            title: lesson.title,
+            description: lesson.description,
+            createdBy: lesson.createdBy,
+            createdAt: lesson.createdAt ? new Date(lesson.createdAt).toISOString() : '',
+            updatedAt: lesson.updatedAt ? new Date(lesson.updatedAt).toISOString() : '',
+            publishedAt: lesson.publishedAt ? new Date(lesson.publishedAt).toISOString() : '',
+          }}
+          roadmapContext={roadmapContext}
+          lessonNavigation={{
+            previous: previousLesson
+              ? { id: previousLesson.id, title: previousLesson.title }
+              : null,
+            next: nextLesson
+              ? { id: nextLesson.id, title: nextLesson.title }
+              : null,
+          }}
+        >
+          <LessonReader html={html} />
+          <Box sx={{ mt: 5 }}>
+            <LessonAttachments sourceReferences={sourceReferences} />
+          </Box>
+          <LessonActivityGate
+            lessonId={lesson.id}
+            activities={activities}
+            initialIsCompleted={enrollment.isCompleted}
+          />
+        </LessonReadingChrome>
       </Container>
       <LessonAskAssistant lessonId={lesson.id} />
     </Box>
