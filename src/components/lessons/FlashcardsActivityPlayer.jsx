@@ -330,37 +330,80 @@ export default function FlashcardsActivityPlayer({
         <Paper
           elevation={0}
           sx={{
-            p: { xs: 2, md: 3 },
-            borderRadius: 4,
-            border: '1px solid rgba(15, 23, 42, 0.08)',
-            background:
-              'linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(239,246,255,0.96) 100%)',
+            p: { xs: 2.5, md: 4 },
+            borderRadius: 2.5,
+            border: '1px solid rgba(0, 9, 220, 0.12)',
+            backgroundColor: '#fff',
           }}
         >
-          <Stack spacing={2}>
+          <Stack spacing={3}>
             <Stack
               direction={{ xs: 'column', md: 'row' }}
-              spacing={1.5}
-              sx={{ alignItems: { xs: 'stretch', md: 'center' }, justifyContent: 'space-between' }}
+              spacing={3}
+              sx={{ alignItems: { xs: 'stretch', md: 'flex-start' }, justifyContent: 'space-between' }}
             >
-              <Stack spacing={0.75}>
-                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                  <Chip icon={<StyleOutlinedIcon />} label="Flashcards" color="primary" sx={{ fontWeight: 800 }} />
+              <Stack spacing={1} sx={{ minWidth: 0 }}>
+                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 0.75 }}>
                   <Chip
-                    label={`${reviewedCount}/${cards.length} revealed`}
-                    variant="outlined"
-                    sx={{ backgroundColor: '#fff', fontWeight: 700 }}
+                    icon={<StyleOutlinedIcon />}
+                    label="Flashcards"
+                    sx={{
+                      height: 28,
+                      borderRadius: 999,
+                      backgroundColor: '#0009DC',
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      '& .MuiChip-icon': { color: 'inherit', fontSize: 15 },
+                    }}
+                  />
+                  <Chip
+                    label={`${reviewedCount} of ${cards.length} revealed`}
+                    sx={{
+                      height: 28,
+                      borderRadius: 999,
+                      backgroundColor: '#F2F1F3',
+                      color: '#33344A',
+                      fontSize: 12,
+                      fontWeight: 700,
+                    }}
                   />
                   {isCompleted && (
-                    <Chip icon={<CheckCircleOutlineOutlinedIcon />} label="Completed" color="success" sx={{ fontWeight: 800 }} />
+                    <Chip
+                      icon={<CheckCircleOutlineOutlinedIcon />}
+                      label="Completed"
+                      sx={{
+                        height: 28,
+                        borderRadius: 999,
+                        backgroundColor: '#229E5A',
+                        color: '#fff',
+                        fontSize: 12,
+                        fontWeight: 800,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        '& .MuiChip-icon': { color: 'inherit', fontSize: 15 },
+                      }}
+                    />
                   )}
                 </Stack>
 
-                <Typography variant="h3" component="h1" sx={{ fontWeight: 950, lineHeight: 1 }}>
+                <Typography
+                  component="h1"
+                  sx={{
+                    color: '#0B0B0B',
+                    fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                    fontSize: { xs: 38, md: 48 },
+                    fontWeight: 900,
+                    letterSpacing: 0,
+                    lineHeight: 0.95,
+                  }}
+                >
                   {activity.title || 'Flashcards'}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  From lesson: {lesson.title}
+                <Typography sx={{ color: '#80808E', fontSize: 14 }}>
+                  From lesson - {lesson.title}
                 </Typography>
               </Stack>
 
@@ -370,7 +413,21 @@ export default function FlashcardsActivityPlayer({
                 startIcon={<ArrowBackOutlinedIcon />}
                 variant="outlined"
                 color="inherit"
-                sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 800 }}
+                sx={{
+                  borderRadius: 999,
+                  borderColor: 'rgba(0, 9, 220, 0.2)',
+                  color: '#0009DC',
+                  px: 2.5,
+                  py: 1.25,
+                  fontSize: 12,
+                  fontWeight: 800,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  '&:hover': {
+                    borderColor: 'rgba(0, 9, 220, 0.34)',
+                    backgroundColor: '#F5F5FE',
+                  },
+                }}
               >
                 Back to lesson
               </Button>
@@ -381,16 +438,16 @@ export default function FlashcardsActivityPlayer({
                 variant="determinate"
                 value={progressValue}
                 sx={{
-                  height: 10,
+                  height: 7,
                   borderRadius: 999,
-                  backgroundColor: '#e5e7eb',
+                  backgroundColor: 'rgba(0, 9, 220, 0.06)',
                   '& .MuiLinearProgress-bar': {
                     borderRadius: 999,
-                    background: 'linear-gradient(90deg, #0009DC 0%, #8EE7F1 100%)',
+                    background: 'linear-gradient(90deg, #0009DC 0%, #42B1CF 100%)',
                   },
                 }}
               />
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+              <Typography sx={{ display: 'block', mt: 0.75, color: '#80808E', fontSize: 12 }}>
                 {progressValue}% revealed
               </Typography>
             </Box>
@@ -399,8 +456,9 @@ export default function FlashcardsActivityPlayer({
 
         <Box
           sx={{
+            position: 'relative',
             width: '100%',
-            minHeight: { xs: 360, md: 420 },
+            height: { xs: 352, md: 'clamp(390px, 44vh, 520px)' },
             backgroundColor: 'transparent',
             perspective: '1400px',
             textAlign: 'left',
@@ -409,7 +467,8 @@ export default function FlashcardsActivityPlayer({
           <Box
             sx={{
               position: 'relative',
-              minHeight: { xs: 360, md: 420 },
+              zIndex: 1,
+              height: '100%',
               transformStyle: 'preserve-3d',
               transition: 'transform 0.42s ease',
               transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
@@ -429,7 +488,7 @@ export default function FlashcardsActivityPlayer({
                 side: 'back',
                 label: 'Answer',
                 content: currentCard.back,
-                helper: 'Click to return to the prompt',
+                helper: 'Click to hide answer',
                 explanation: '',
                 transform: 'rotateY(180deg)',
                 contentVariant: 'answer',
@@ -451,15 +510,12 @@ export default function FlashcardsActivityPlayer({
                 sx={{
                   position: 'absolute',
                   inset: 0,
-                  p: { xs: 3, md: 5 },
-                  borderRadius: 5,
-                  border: side.side === 'front'
-                    ? '1px solid rgba(0, 9, 220, 0.18)'
-                    : '1px solid rgba(15, 23, 42, 0.12)',
-                  background: side.side === 'front'
-                    ? 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)'
-                    : 'linear-gradient(180deg, #ffffff 0%, #f7fbff 100%)',
-                  boxShadow: '0 28px 80px rgba(15, 23, 42, 0.13)',
+                  p: { xs: 3.5, md: 7 },
+                  borderRadius: 2.5,
+                  border: '1px solid rgba(0, 9, 220, 0.12)',
+                  backgroundColor: '#fff',
+                  boxShadow:
+                    '0 3px 0 rgba(0, 9, 220, 0.08), 0 18px 42px rgba(0, 9, 220, 0.10), 0 1px 2px rgba(15, 23, 42, 0.05)',
                   backfaceVisibility: 'hidden',
                   transform: side.transform,
                   display: 'flex',
@@ -481,19 +537,29 @@ export default function FlashcardsActivityPlayer({
                 >
                   <Chip
                     label={side.label}
-                    color={side.side === 'front' ? 'primary' : 'success'}
-                    sx={{ alignSelf: 'flex-start', fontWeight: 900 }}
+                    sx={{
+                      alignSelf: 'flex-start',
+                      height: 28,
+                      borderRadius: 999,
+                      backgroundColor: side.side === 'front' ? '#0009DC' : '#AEF33E',
+                      color: side.side === 'front' ? '#fff' : '#33344A',
+                      fontSize: 12,
+                      fontWeight: 800,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                    }}
                   />
                   <ScrollableCardText>
                     <Typography
-                      variant={side.contentVariant === 'prompt' ? 'h3' : 'body1'}
                       sx={{
-                        fontWeight: side.contentVariant === 'prompt' ? 950 : 750,
-                        lineHeight: side.contentVariant === 'prompt' ? 1.08 : 1.5,
-                        color: '#0f172a',
-                        fontSize: side.contentVariant === 'prompt'
-                          ? { xs: 28, md: 42 }
-                          : { xs: 20, md: 24 },
+                        mt: { xs: 2.5, md: 3 },
+                        color: '#0B0B0B',
+                        fontSize: side.side === 'back'
+                          ? { xs: 26, md: 36 }
+                          : { xs: 29, md: 41 },
+                        fontWeight: side.side === 'back' ? 600 : 900,
+                        letterSpacing: 0,
+                        lineHeight: 1.1,
                         overflowWrap: 'anywhere',
                         wordBreak: 'break-word',
                       }}
@@ -513,8 +579,8 @@ export default function FlashcardsActivityPlayer({
                     pt: 2,
                   }}
                 >
-                  <VisibilityOutlinedIcon fontSize="small" />
-                  <Typography variant="body2" sx={{ fontWeight: 700 }}>
+                  <VisibilityOutlinedIcon sx={{ fontSize: 18, color: '#80808E' }} />
+                  <Typography sx={{ color: '#80808E', fontSize: 14, fontWeight: 600 }}>
                     {side.helper}
                   </Typography>
                 </Stack>
@@ -533,20 +599,47 @@ export default function FlashcardsActivityPlayer({
               aria-label="Previous card"
               onClick={() => goToCard(currentIndex - 1)}
               disabled={currentIndex === 0}
-              sx={{ border: '1px solid #e5e7eb' }}
+              sx={{
+                width: 48,
+                height: 48,
+                border: '1px solid rgba(0, 9, 220, 0.2)',
+                backgroundColor: '#fff',
+                color: '#33344A',
+                '&:hover': { backgroundColor: '#F5F5FE' },
+              }}
             >
               <ArrowBackOutlinedIcon />
             </IconButton>
 
-            <Typography variant="body2" sx={{ minWidth: 96, textAlign: 'center', fontWeight: 800 }}>
-              {currentIndex + 1} / {cards.length}
+            <Typography
+              sx={{
+                minWidth: 64,
+                textAlign: 'center',
+                color: '#0B0B0B',
+                fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                fontSize: 24,
+                fontWeight: 900,
+                letterSpacing: 0,
+              }}
+            >
+              {currentIndex + 1} <Box component="span" sx={{ color: '#80808E', fontWeight: 600 }}>/ {cards.length}</Box>
             </Typography>
 
             <IconButton
               aria-label="Next card"
               onClick={() => goToCard(currentIndex + 1)}
               disabled={currentIndex === cards.length - 1}
-              sx={{ border: '1px solid #e5e7eb' }}
+              sx={{
+                width: 48,
+                height: 48,
+                backgroundColor: '#0009DC',
+                color: '#fff',
+                '&:hover': { backgroundColor: '#0007B8' },
+                '&.Mui-disabled': {
+                  backgroundColor: '#F2F1F3',
+                  color: '#80808E',
+                },
+              }}
             >
               <ArrowForwardOutlinedIcon />
             </IconButton>
@@ -558,7 +651,21 @@ export default function FlashcardsActivityPlayer({
               onClick={handleRestart}
               variant="outlined"
               color="inherit"
-              sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 800 }}
+              sx={{
+                borderRadius: 999,
+                borderColor: 'rgba(0, 9, 220, 0.2)',
+                color: '#0009DC',
+                px: 2.75,
+                py: 1.5,
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                '&:hover': {
+                  borderColor: 'rgba(0, 9, 220, 0.34)',
+                  backgroundColor: '#F5F5FE',
+                },
+              }}
             >
               Restart
             </Button>
@@ -571,8 +678,20 @@ export default function FlashcardsActivityPlayer({
               sx={{
                 minWidth: { xs: '100%', sm: 230 },
                 borderRadius: 999,
-                textTransform: 'none',
-                fontWeight: 900,
+                boxShadow: 'none',
+                backgroundColor: isCompleted ? '#fff' : '#229E5A',
+                borderColor: isCompleted ? '#229E5A' : 'transparent',
+                color: isCompleted ? '#229E5A' : '#fff',
+                px: 2.75,
+                py: 1.5,
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                '&:hover': {
+                  boxShadow: 'none',
+                  backgroundColor: isCompleted ? 'rgba(34, 158, 90, 0.08)' : '#1D874C',
+                },
               }}
             >
               {isSaving
@@ -580,7 +699,7 @@ export default function FlashcardsActivityPlayer({
                 : isCompleted
                   ? 'Mark as incomplete'
                   : allCardsSeen
-                    ? 'Complete activity'
+                    ? 'Mark complete'
                     : 'Reveal all cards first'}
             </Button>
           </Stack>

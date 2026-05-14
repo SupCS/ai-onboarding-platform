@@ -164,6 +164,7 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
           className="sidebar-text"
           sx={{
             ml: 1.5,
+            height: 40,
             opacity: 0,
             width: 0,
             overflow: 'hidden',
@@ -171,9 +172,12 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
             transition: 'all 0.2s ease',
             whiteSpace: 'nowrap',
             pointerEvents: 'none',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center',
           }}
         >
-          <Typography variant="body1" sx={{ fontWeight: 700, lineHeight: 1.2 }}>
+          <Typography variant="body1" sx={{ fontWeight: 700, lineHeight: 1.1 }}>
             AI Digital
           </Typography>
           <Typography
@@ -183,6 +187,8 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
               fontSize: 10,
               fontWeight: 700,
               letterSpacing: '0.04em',
+              lineHeight: 1.2,
+              mt: 0.5,
               textTransform: 'uppercase',
             }}
           >

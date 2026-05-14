@@ -10,75 +10,21 @@ import {
   MenuItem,
   Paper,
   Stack,
-  Step,
-  StepConnector,
-  StepLabel,
-  Stepper,
   Typography,
-  stepConnectorClasses,
 } from '@mui/material';
-import { styled } from '@mui/material/styles';
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
 import ArrowDropDownOutlinedIcon from '@mui/icons-material/ArrowDropDownOutlined';
-import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
-import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
-import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
-import PlaylistAddCheckOutlinedIcon from '@mui/icons-material/PlaylistAddCheckOutlined';
+import ArrowForwardOutlinedIcon from '@mui/icons-material/ArrowForwardOutlined';
+import CheckOutlinedIcon from '@mui/icons-material/CheckOutlined';
 import PlaylistAddOutlinedIcon from '@mui/icons-material/PlaylistAddOutlined';
-import RadioButtonUncheckedOutlinedIcon from '@mui/icons-material/RadioButtonUncheckedOutlined';
+import { AI_DIGITAL_COLORS } from '../../lib/brandColors';
 
-const ACCENT_GREEN = '#10b981';
-const ACCENT_GREEN_DARK = '#047857';
-const ACCENT_GREEN_LIGHT = '#d1fae5';
-
-const RoadmapConnector = styled(StepConnector)(() => ({
-  [`&.${stepConnectorClasses.alternativeLabel}`]: {
-    top: 22,
-    left: 'calc(-50% + 22px)',
-    right: 'calc(50% + 22px)',
-  },
-  [`& .${stepConnectorClasses.line}`]: {
-    height: 4,
-    border: 0,
-    borderRadius: 999,
-    backgroundColor: '#dbe4ea',
-  },
-  [`&.${stepConnectorClasses.active} .${stepConnectorClasses.line}`]: {
-    background: `linear-gradient(90deg, ${ACCENT_GREEN} 0%, #8ee7f1 100%)`,
-  },
-  [`&.${stepConnectorClasses.completed} .${stepConnectorClasses.line}`]: {
-    background: `linear-gradient(90deg, ${ACCENT_GREEN_DARK} 0%, ${ACCENT_GREEN} 100%)`,
-  },
-}));
-
-function RoadmapStepIcon({ active, completed, className }) {
-  const Icon = completed ? CheckCircleOutlineOutlinedIcon : active ? FlagOutlinedIcon : RadioButtonUncheckedOutlinedIcon;
-
-  return (
-    <Box
-      className={className}
-      sx={{
-        width: 44,
-        height: 44,
-        borderRadius: '50%',
-        display: 'grid',
-        placeItems: 'center',
-        color: completed || active ? '#fff' : '#64748b',
-        background: completed
-          ? `linear-gradient(135deg, ${ACCENT_GREEN_DARK} 0%, ${ACCENT_GREEN} 100%)`
-          : active
-            ? `linear-gradient(135deg, ${ACCENT_GREEN} 0%, #14b8a6 100%)`
-            : '#fff',
-        border: completed || active ? '0' : '2px solid #cbd5e1',
-        boxShadow: completed || active
-          ? '0 12px 24px rgba(16, 185, 129, 0.24)'
-          : '0 8px 18px rgba(15, 23, 42, 0.08)',
-      }}
-    >
-      <Icon fontSize="small" />
-    </Box>
-  );
-}
+const SUCCESS = '#229E5A';
+const ACCENTS = [
+  AI_DIGITAL_COLORS.yvesKleinBlue,
+  AI_DIGITAL_COLORS.lime,
+  AI_DIGITAL_COLORS.pink,
+];
 
 function getRoadmapProgress(roadmap) {
   const completedCount = roadmap.lessons.filter((lesson) => lesson.isCompleted).length;
@@ -104,6 +50,86 @@ function formatDate(isoString) {
   } catch {
     return '';
   }
+}
+
+function RoadmapStep({ lesson, index, state }) {
+  const isDone = state === 'done';
+  const isCurrent = state === 'current';
+
+  return (
+    <Box
+      sx={{
+        flex: '1 1 0',
+        minWidth: 126,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 1.25,
+        position: 'relative',
+      }}
+    >
+      <Box
+        sx={{
+          width: 44,
+          height: 44,
+          borderRadius: '50%',
+          backgroundColor: isDone ? SUCCESS : isCurrent ? AI_DIGITAL_COLORS.yvesKleinBlue : '#fff',
+          border: isDone || isCurrent ? 0 : '2px solid rgba(0, 9, 220, 0.2)',
+          color: isCurrent || isDone ? '#fff' : '#80808E',
+          display: 'grid',
+          placeItems: 'center',
+          fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+          fontWeight: 900,
+          fontSize: 15,
+          lineHeight: 1,
+          zIndex: 1,
+          position: 'relative',
+          boxShadow: isCurrent ? '0 0 0 6px rgba(0, 9, 220, 0.12)' : 'none',
+        }}
+      >
+        {isDone ? <CheckOutlinedIcon sx={{ fontSize: 17, strokeWidth: 3 }} /> : index + 1}
+      </Box>
+
+      <Box
+        component={Link}
+        href={`/lessons/${lesson.id}`}
+        onClick={(event) => event.stopPropagation()}
+        sx={{
+          color: isCurrent
+            ? AI_DIGITAL_COLORS.yvesKleinBlue
+            : isDone
+              ? '#0B0B0B'
+              : '#80808E',
+          textAlign: 'center',
+          textDecoration: 'none',
+          fontSize: 12,
+          fontWeight: isCurrent || isDone ? 700 : 600,
+          lineHeight: 1.3,
+          px: 0.5,
+          display: '-webkit-box',
+          overflow: 'hidden',
+          WebkitLineClamp: 2,
+          WebkitBoxOrient: 'vertical',
+          '&:hover': {
+            color: AI_DIGITAL_COLORS.yvesKleinBlue,
+            textDecoration: 'underline',
+            textUnderlineOffset: 3,
+          },
+        }}
+      >
+        {lesson.title}
+      </Box>
+    </Box>
+  );
+}
+
+function getPrimaryLessonHref(roadmap, activeStep) {
+  const targetLesson =
+    activeStep >= 0
+      ? roadmap.lessons[activeStep]
+      : roadmap.lessons[roadmap.lessons.length - 1];
+
+  return targetLesson ? `/lessons/${targetLesson.id}` : '#';
 }
 
 export default function RoadmapsGrid({
@@ -136,104 +162,134 @@ export default function RoadmapsGrid({
           gap: 2,
         }}
       >
-        {roadmaps.map((roadmap) => {
-        const progress = getRoadmapProgress(roadmap);
-        const canOpenRoadmap = Boolean(onOpenRoadmap && roadmap.viewerCanManage);
-        const tags = Array.isArray(roadmap.tags) ? roadmap.tags : [];
+        {roadmaps.map((roadmap, roadmapIndex) => {
+          const progress = getRoadmapProgress(roadmap);
+          const canOpenRoadmap = Boolean(onOpenRoadmap && roadmap.viewerCanManage);
+          const tags = Array.isArray(roadmap.tags) ? roadmap.tags : [];
+          const accentColor = ACCENTS[roadmapIndex % ACCENTS.length];
+          const primaryLessonHref = getPrimaryLessonHref(roadmap, progress.activeStep);
+          const hasEnrollmentAction = Boolean(onEnrollRoadmap || onUnenrollRoadmap);
+          const showContinueAction = roadmap.isEnrolled && progress.totalCount > 0;
+          const progressRatio =
+            progress.totalCount <= 1
+              ? progress.completedCount > 0 ? 1 : 0
+              : Math.min(progress.completedCount, progress.totalCount - 1) / (progress.totalCount - 1);
+          const trackInset = progress.totalCount > 0
+            ? `${100 / (progress.totalCount * 2)}%`
+            : '50%';
 
-        return (
-          <Paper
-            key={roadmap.id}
-            elevation={0}
-            onClick={canOpenRoadmap ? () => onOpenRoadmap(roadmap) : undefined}
-            sx={{
-              p: { xs: 2.25, md: 3 },
-              borderRadius: 4,
-              border: '1px solid #dbe4ea',
-              background:
-                'linear-gradient(135deg, #ffffff 0%, #f8fffc 58%, #eefbf7 100%)',
-              boxShadow: '0 18px 44px rgba(15, 23, 42, 0.06)',
-              cursor: canOpenRoadmap ? 'pointer' : 'default',
-              transition: 'transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease',
-              '&:hover': canOpenRoadmap
-                ? {
-                    transform: 'translateY(-2px)',
-                    borderColor: '#99f6e4',
-                    boxShadow: '0 24px 56px rgba(15, 23, 42, 0.1)',
-                  }
-                : undefined,
-            }}
-          >
-            <Stack spacing={3}>
-              <Stack
-                direction={{ xs: 'column', md: 'row' }}
-                spacing={2}
-                sx={{
-                  alignItems: { xs: 'stretch', md: 'flex-start' },
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Stack direction="row" spacing={2} sx={{ minWidth: 0 }}>
-                  <Box
-                    sx={{
-                      width: 52,
-                      height: 52,
-                      borderRadius: 2,
-                      display: 'grid',
-                      placeItems: 'center',
-                      color: ACCENT_GREEN_DARK,
-                      backgroundColor: ACCENT_GREEN_LIGHT,
-                      flexShrink: 0,
-                    }}
-                  >
-                    <AccountTreeOutlinedIcon />
-                  </Box>
-
-                  <Box sx={{ minWidth: 0 }}>
-                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 1 }}>
+          return (
+            <Paper
+              key={roadmap.id}
+              elevation={0}
+              onClick={canOpenRoadmap ? () => onOpenRoadmap(roadmap) : undefined}
+              sx={{
+                p: { xs: 2.25, md: 3 },
+                borderRadius: 2,
+                border: '1px solid rgba(0, 9, 220, 0.12)',
+                backgroundColor: '#fff',
+                position: 'relative',
+                overflow: 'hidden',
+                cursor: canOpenRoadmap ? 'pointer' : 'default',
+                transition: 'border-color 150ms ease, box-shadow 150ms ease',
+                '&:hover': canOpenRoadmap
+                  ? {
+                      borderColor: 'rgba(0, 9, 220, 0.28)',
+                      boxShadow: '0 18px 40px rgba(11, 11, 11, 0.08)',
+                    }
+                  : undefined,
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 4,
+                  backgroundColor: accentColor,
+                },
+              }}
+            >
+              <Stack spacing={2.5}>
+                <Stack
+                  direction={{ xs: 'column', md: 'row' }}
+                  spacing={2}
+                  sx={{
+                    alignItems: { xs: 'stretch', md: 'flex-start' },
+                    justifyContent: 'space-between',
+                    pl: { xs: 0, md: 0.25 },
+                  }}
+                >
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap', mb: 1.25 }}>
                       <Chip
-                        label={roadmap.isEnrolled ? 'Subscribed' : 'Roadmap'}
-                        sx={{
-                          color: roadmap.isEnrolled ? '#fff' : ACCENT_GREEN_DARK,
-                          backgroundColor: roadmap.isEnrolled ? ACCENT_GREEN : ACCENT_GREEN_LIGHT,
-                          fontWeight: 800,
-                        }}
+                        icon={<AccountTreeOutlinedIcon />}
+                        label="Roadmap"
                         size="small"
+                        sx={{
+                          height: 25,
+                          borderRadius: 999,
+                          backgroundColor: '#F5F5FE',
+                          color: AI_DIGITAL_COLORS.yvesKleinBlue,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                          '& .MuiChip-icon': {
+                            color: 'inherit',
+                            fontSize: 14,
+                          },
+                        }}
                       />
                       <Chip
-                        icon={<PlaylistAddCheckOutlinedIcon />}
                         label={`${progress.completedCount}/${progress.totalCount} completed`}
-                        variant="outlined"
                         size="small"
-                        sx={{ fontWeight: 700 }}
+                        sx={{
+                          height: 25,
+                          borderRadius: 999,
+                          backgroundColor: '#F2F1F3',
+                          color: '#33344A',
+                          fontSize: 11,
+                          fontWeight: 700,
+                        }}
                       />
                       {roadmap.viewerCanManage && (
                         <Chip
                           label="Editable"
-                          variant="outlined"
                           size="small"
-                          sx={{ fontWeight: 700 }}
+                          sx={{
+                            height: 25,
+                            borderRadius: 999,
+                            backgroundColor: '#fff',
+                            border: '1px solid rgba(0, 9, 220, 0.18)',
+                            color: '#33344A',
+                            fontSize: 11,
+                            fontWeight: 700,
+                          }}
                         />
                       )}
                     </Stack>
 
                     <Typography
-                      variant="h4"
+                      component="h3"
                       sx={{
-                        fontWeight: 950,
-                        lineHeight: 1.08,
-                        mb: 1,
-                        color: '#0f172a',
+                        color: '#0B0B0B',
+                        fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                        fontSize: { xs: 26, md: 32 },
+                        fontWeight: 900,
+                        letterSpacing: 0,
+                        lineHeight: 1,
                       }}
                     >
                       {roadmap.title}
                     </Typography>
 
                     <Typography
-                      variant="body2"
-                      color="text.secondary"
                       sx={{
-                        maxWidth: 820,
+                        mt: 1,
+                        color: '#80808E',
+                        fontSize: 14,
+                        lineHeight: 1.45,
+                        maxWidth: 620,
                         display: '-webkit-box',
                         overflow: 'hidden',
                         WebkitLineClamp: 2,
@@ -250,172 +306,193 @@ export default function RoadmapsGrid({
                             key={tag}
                             label={tag}
                             size="small"
-                            variant="outlined"
-                            sx={{ fontWeight: 700, backgroundColor: '#fff' }}
+                            sx={{
+                              height: 24,
+                              borderRadius: 999,
+                              backgroundColor: '#F2F1F3',
+                              color: '#33344A',
+                              fontSize: 11,
+                              fontWeight: 700,
+                            }}
                           />
                         ))}
                         {tags.length > 5 && (
                           <Chip
                             label={`+${tags.length - 5}`}
                             size="small"
-                            sx={{ fontWeight: 800 }}
+                            sx={{ height: 24, borderRadius: 999, fontWeight: 800 }}
                           />
                         )}
                       </Stack>
                     )}
                   </Box>
+
+                  <Box sx={{ textAlign: { xs: 'left', md: 'right' }, flexShrink: 0 }}>
+                    <Typography
+                      sx={{
+                        color: AI_DIGITAL_COLORS.yvesKleinBlue,
+                        fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                        fontSize: 36,
+                        fontWeight: 900,
+                        letterSpacing: 0,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {progress.percent}%
+                    </Typography>
+                    <Typography sx={{ mt: 0.5, color: '#80808E', fontSize: 11 }}>
+                      {roadmap.createdBy || 'AI Onboarding'} - Created {formatDate(roadmap.createdAt)}
+                    </Typography>
+                  </Box>
                 </Stack>
+
+                {progress.totalCount > 0 && (
+                  <Box sx={{ overflowX: 'auto', px: { xs: 0, md: 2 }, py: 1 }}>
+                    <Box
+                      sx={{
+                        position: 'relative',
+                        minWidth: Math.max(520, roadmap.lessons.length * 150),
+                        pt: 1,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          position: 'absolute',
+                          left: trackInset,
+                          right: trackInset,
+                          top: 30,
+                          height: 2,
+                          backgroundColor: 'rgba(0, 9, 220, 0.14)',
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            height: '100%',
+                            width: `${progressRatio * 100}%`,
+                            backgroundColor: AI_DIGITAL_COLORS.yvesKleinBlue,
+                          }}
+                        />
+                      </Box>
+                      <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                        {roadmap.lessons.map((lesson, index) => (
+                          <RoadmapStep
+                            key={lesson.id}
+                            lesson={lesson}
+                            index={index}
+                            state={
+                              index < progress.completedCount
+                                ? 'done'
+                                : index === progress.completedCount
+                                  ? 'current'
+                                  : 'idle'
+                            }
+                          />
+                        ))}
+                      </Box>
+                    </Box>
+                  </Box>
+                )}
 
                 <Stack
+                  direction={{ xs: 'column', sm: 'row' }}
                   spacing={1}
                   sx={{
-                    alignItems: { xs: 'stretch', md: 'flex-end' },
-                    flexShrink: 0,
+                    alignItems: { xs: 'stretch', sm: 'center' },
+                    justifyContent: 'space-between',
+                    pt: 2,
+                    borderTop: '1px solid rgba(0, 9, 220, 0.12)',
                   }}
                 >
-                  <Typography variant="h5" sx={{ fontWeight: 950, color: ACCENT_GREEN_DARK }}>
-                    {progress.percent}%
+                  <Typography sx={{ color: '#80808E', fontSize: 13 }}>
+                    {progress.totalCount} lesson{progress.totalCount === 1 ? '' : 's'}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary">
-                    Created {formatDate(roadmap.createdAt)}
-                  </Typography>
-                  <Chip
-                    icon={<PersonOutlineOutlinedIcon />}
-                    label={roadmap.createdBy || 'AI Onboarding'}
-                    variant="outlined"
-                    size="small"
-                  />
+
+                  <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} sx={{ alignItems: { sm: 'center' } }}>
+                    {showContinueAction && (
+                      <Button
+                        component={Link}
+                        href={primaryLessonHref}
+                        variant="contained"
+                        endIcon={<ArrowForwardOutlinedIcon />}
+                        onClick={(event) => event.stopPropagation()}
+                        sx={{
+                          borderRadius: 999,
+                          backgroundColor: AI_DIGITAL_COLORS.yvesKleinBlue,
+                          boxShadow: 'none',
+                          color: '#fff',
+                          px: 2.25,
+                          py: 1.2,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                          '&:hover': {
+                            backgroundColor: '#0007B8',
+                            boxShadow: 'none',
+                          },
+                        }}
+                      >
+                        Continue path
+                      </Button>
+                    )}
+
+                    {hasEnrollmentAction && (
+                      <Button
+                        variant={roadmap.isEnrolled ? 'outlined' : 'contained'}
+                        color="inherit"
+                        startIcon={!roadmap.isEnrolled ? <PlaylistAddOutlinedIcon /> : undefined}
+                        endIcon={canAssignLearning ? <ArrowDropDownOutlinedIcon /> : undefined}
+                        onClick={(event) => {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (canAssignLearning) {
+                            setEnrollmentMenu({
+                              anchorEl: event.currentTarget,
+                              roadmap,
+                            });
+                            return;
+                          }
+
+                          if (roadmap.isEnrolled) {
+                            onUnenrollRoadmap?.(roadmap);
+                            return;
+                          }
+
+                          onEnrollRoadmap?.(roadmap);
+                        }}
+                        sx={{
+                          borderRadius: 999,
+                          borderColor: 'rgba(0, 9, 220, 0.24)',
+                          boxShadow: 'none',
+                          px: 2.25,
+                          py: 1.2,
+                          color: roadmap.isEnrolled ? '#33344A' : '#fff',
+                          backgroundColor: roadmap.isEnrolled ? '#fff' : AI_DIGITAL_COLORS.yvesKleinBlue,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                          '&:hover': {
+                            borderColor: 'rgba(0, 9, 220, 0.36)',
+                            backgroundColor: roadmap.isEnrolled ? '#F5F5FE' : '#0007B8',
+                            boxShadow: 'none',
+                          },
+                        }}
+                      >
+                        {canAssignLearning
+                          ? roadmap.isEnrolled
+                            ? 'Added to...'
+                            : 'Add to...'
+                          : roadmap.isEnrolled
+                            ? 'Remove path'
+                            : 'Subscribe'}
+                      </Button>
+                    )}
+                  </Stack>
                 </Stack>
               </Stack>
-
-              <Box
-                sx={{
-                  overflowX: 'auto',
-                  px: { xs: 0, md: 1 },
-                  pb: 0.5,
-                }}
-              >
-                <Stepper
-                  alternativeLabel
-                  activeStep={progress.activeStep}
-                  connector={<RoadmapConnector />}
-                  sx={{
-                    minWidth: Math.max(560, roadmap.lessons.length * 150),
-                    py: 1,
-                    '& .MuiStepLabel-label': {
-                      mt: 1,
-                      fontSize: 13,
-                      fontWeight: 800,
-                      color: '#475569',
-                      lineHeight: 1.25,
-                    },
-                    '& .MuiStepLabel-label.Mui-completed': {
-                      color: ACCENT_GREEN_DARK,
-                    },
-                    '& .MuiStepLabel-label.Mui-active': {
-                      color: '#0f766e',
-                    },
-                  }}
-                >
-                  {roadmap.lessons.map((lesson) => (
-                    <Step key={lesson.id} completed={lesson.isCompleted}>
-                      <StepLabel slots={{ stepIcon: RoadmapStepIcon }}>
-                        <Box
-                          component={Link}
-                          href={`/lessons/${lesson.id}`}
-                          onClick={(event) => event.stopPropagation()}
-                          sx={{
-                            color: 'inherit',
-                            textDecoration: 'none',
-                            borderRadius: 1,
-                            px: 0.5,
-                            py: 0.25,
-                            display: 'inline-block',
-                            transition: 'background-color 0.15s ease, color 0.15s ease',
-                            '&:hover': {
-                              color: ACCENT_GREEN_DARK,
-                              backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                              textDecoration: 'underline',
-                              textUnderlineOffset: 3,
-                            },
-                          }}
-                        >
-                          {lesson.title}
-                        </Box>
-                      </StepLabel>
-                    </Step>
-                  ))}
-                </Stepper>
-              </Box>
-
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={1}
-                sx={{
-                  alignItems: { xs: 'stretch', sm: 'center' },
-                  justifyContent: 'space-between',
-                }}
-              >
-                <Typography variant="body2" color="text.secondary">
-                  {progress.totalCount} lesson{progress.totalCount === 1 ? '' : 's'} in this roadmap
-                </Typography>
-
-                <Button
-                  variant={roadmap.isEnrolled ? 'outlined' : 'contained'}
-                  color={roadmap.isEnrolled ? 'inherit' : 'primary'}
-                  startIcon={
-                    roadmap.isEnrolled ? (
-                      <CheckCircleOutlineOutlinedIcon />
-                    ) : (
-                      <PlaylistAddOutlinedIcon />
-                    )
-                  }
-                  endIcon={canAssignLearning ? <ArrowDropDownOutlinedIcon /> : undefined}
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    if (canAssignLearning) {
-                      setEnrollmentMenu({
-                        anchorEl: event.currentTarget,
-                        roadmap,
-                      });
-                      return;
-                    }
-
-                    if (roadmap.isEnrolled) {
-                      onUnenrollRoadmap?.(roadmap);
-                      return;
-                    }
-
-                    onEnrollRoadmap?.(roadmap);
-                  }}
-                  sx={{
-                    borderRadius: 999,
-                    textTransform: 'none',
-                    fontWeight: 900,
-                    px: 2.5,
-                    ...(roadmap.isEnrolled
-                      ? {}
-                      : {
-                          backgroundColor: ACCENT_GREEN,
-                          '&:hover': {
-                            backgroundColor: ACCENT_GREEN_DARK,
-                          },
-                        }),
-                  }}
-                >
-                  {canAssignLearning
-                    ? roadmap.isEnrolled
-                      ? 'Added to...'
-                      : 'Add to...'
-                    : roadmap.isEnrolled
-                      ? 'Unsubscribe'
-                      : 'Subscribe'}
-                </Button>
-              </Stack>
-            </Stack>
-          </Paper>
-        );
+            </Paper>
+          );
         })}
       </Box>
 

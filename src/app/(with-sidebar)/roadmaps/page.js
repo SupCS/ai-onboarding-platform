@@ -16,23 +16,43 @@ export default async function MyRoadmapsPage() {
       <Paper
         elevation={0}
         sx={{
-          p: 3,
-          borderRadius: 4,
-          border: '1px solid #e5e7eb',
-          background:
-            'radial-gradient(circle at 8% 0%, rgba(20, 184, 166, 0.12), transparent 28%), radial-gradient(circle at 92% 4%, rgba(0, 9, 220, 0.08), transparent 30%), linear-gradient(180deg, #F9F9F9 0%, #EEF7F5 100%)',
+          p: { xs: 2.5, md: 5 },
+          borderRadius: 0,
+          border: 0,
+          backgroundColor: '#F9F9F9',
+          minHeight: 'calc(100vh - 64px)',
         }}
       >
-        <Stack spacing={3}>
-          <Stack spacing={0.75}>
-            <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>
-              Personal learning
+        <Stack spacing={4}>
+          <Stack spacing={1.5}>
+            <Typography
+              sx={{
+                color: '#0009DC',
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                lineHeight: 1.2,
+                textTransform: 'uppercase',
+              }}
+            >
+              Knowledge base
             </Typography>
-            <Typography variant="h4" sx={{ fontWeight: 900 }}>
-              My Roadmaps
+            <Typography
+              component="h1"
+              sx={{
+                m: 0,
+                color: '#0B0B0B',
+                fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                fontSize: { xs: 48, md: 64 },
+                fontWeight: 900,
+                letterSpacing: 0,
+                lineHeight: 0.95,
+              }}
+            >
+              Roadmaps
             </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Roadmaps you subscribe to from the library will appear here.
+            <Typography sx={{ color: '#80808E', fontSize: 15, lineHeight: 1.5 }}>
+              Curated learning paths built from existing lessons.
             </Typography>
           </Stack>
 

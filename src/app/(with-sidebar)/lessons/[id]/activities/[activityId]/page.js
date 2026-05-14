@@ -51,7 +51,7 @@ export default async function LessonActivityPage({ params }) {
   return (
     <Box
       sx={{
-        minHeight: 'calc(100vh - 48px)',
+        minHeight: '100vh',
         mx: -3,
         my: -3,
         px: { xs: 2, md: 5 },
@@ -60,7 +60,13 @@ export default async function LessonActivityPage({ params }) {
           'radial-gradient(circle at 12% 0%, rgba(0, 9, 220, 0.14), transparent 30%), radial-gradient(circle at 88% 10%, rgba(174, 243, 62, 0.2), transparent 28%), linear-gradient(180deg, #f8fafc 0%, #edf7ff 100%)',
       }}
     >
-      <Container maxWidth="lg" disableGutters>
+      <Container
+        maxWidth={activity.type === 'flashcards' ? false : 'lg'}
+        disableGutters
+        sx={activity.type === 'flashcards'
+          ? { width: { xs: '100%', md: '92%' }, maxWidth: 1500 }
+          : undefined}
+      >
         {activity.type === 'quiz' ? (
           <QuizActivityPlayer
             lesson={lesson}
