@@ -14,15 +14,16 @@
 .simple-editor-wrapper.lesson-details-editor {
   flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
   max-height: none;
   overflow: hidden;
   background: #ffffff;
+  display: flex;
+  flex-direction: column;
 }
 
 .simple-editor-wrapper.lesson-details-editor .simple-editor-content {
   min-height: 0;
-  height: 100%;
+  flex: 1 1 auto;
   overflow: auto;
 }
 
