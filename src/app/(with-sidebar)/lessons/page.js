@@ -1,4 +1,4 @@
-import { Container, Paper, Stack, Typography } from '@mui/material';
+import { Box, Container, Stack, Typography } from '@mui/material';
 import MyLessonsClient from '../../../components/lessons/MyLessonsClient';
 import { getCurrentUser } from '../../../lib/currentUser';
 import { getLessonsForUser } from '../../../lib/lessons';
@@ -12,26 +12,59 @@ export default async function MyLessonsPage() {
   const lessons = currentUser ? await getLessonsForUser(currentUser.id) : [];
 
   return (
-    <Container maxWidth={false} disableGutters>
-      <Paper
-        elevation={0}
+    <Box
+      sx={{
+        minHeight: 'calc(100vh - 48px)',
+        mx: -3,
+        my: -3,
+        px: { xs: 2, md: 5 },
+        py: { xs: 3, md: 5 },
+        backgroundColor: '#F9F9F9',
+      }}
+    >
+      <Container
+        maxWidth={false}
+        disableGutters
         sx={{
-          p: 3,
-          borderRadius: 4,
-          border: '1px solid #e5e7eb',
-          background:
-            'radial-gradient(circle at 8% 0%, rgba(0, 9, 220, 0.08), transparent 28%), radial-gradient(circle at 92% 4%, rgba(142, 231, 241, 0.28), transparent 30%), linear-gradient(180deg, #F9F9F9 0%, #EEF3FF 100%)',
+          maxWidth: 1500,
+          mx: 'auto',
         }}
       >
-        <Stack spacing={3}>
-          <Stack spacing={0.75}>
-            <Typography variant="overline" color="primary" sx={{ fontWeight: 800 }}>
+        <Stack spacing={{ xs: 3, md: 4 }}>
+          <Stack spacing={1}>
+            <Typography
+              sx={{
+                color: '#0009DC',
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                lineHeight: 1.2,
+                textTransform: 'uppercase',
+              }}
+            >
               Personal learning
             </Typography>
-            <Typography variant="h4" sx={{ fontWeight: 900 }}>
+            <Typography
+              component="h1"
+              sx={{
+                color: '#0B0B0B',
+                fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                fontSize: { xs: 48, md: 64 },
+                fontWeight: 900,
+                letterSpacing: 0,
+                lineHeight: 0.95,
+              }}
+            >
               My Lessons
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography
+              sx={{
+                maxWidth: 620,
+                color: '#80808E',
+                fontSize: 15,
+                lineHeight: 1.5,
+              }}
+            >
               Lessons you add from the library will appear here. Open any card to
               continue reading.
             </Typography>
@@ -39,7 +72,7 @@ export default async function MyLessonsPage() {
 
           <MyLessonsClient initialLessons={lessons} />
         </Stack>
-      </Paper>
-    </Container>
+      </Container>
+    </Box>
   );
 }

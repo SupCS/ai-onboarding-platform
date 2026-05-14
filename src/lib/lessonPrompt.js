@@ -1,18 +1,19 @@
-export const LESSON_PROMPT_VERSION = 'theoretical-lesson-v4-instructions-html';
+export const LESSON_PROMPT_VERSION = 'theoretical-lesson-v5-no-body-h1-html';
 
 export const TIPTAP_HTML_GUIDE = [
   'Output format:',
   '- Return HTML only. Do not wrap it in Markdown fences. Do not include explanations outside the HTML.',
   '- The HTML must be compatible with a Tiptap rich text editor.',
-  '- Start with exactly one <h1> containing a concise natural title. Do not copy the user instructions verbatim as the title.',
-  '- Then write the lesson directly as clear sections and subsections.',
+  '- Do not start the lesson body with an <h1> that repeats the lesson title. The app renders the lesson title separately above the body.',
+  '- If the lesson needs a short introduction, write it as one or two plain <p> paragraphs without a heading.',
+  '- Start the structured body with <h2> sections. Use <h3> and <h4> for subsections.',
   '- Do not include Short Description, Learning Objectives, or Lesson Outline.',
   '- Include Prerequisites only if the lesson truly cannot be understood without them.',
   '- Include Key Terms only if definitions are genuinely useful and not already explained in the main sections.',
   '- End with an <h2>Summary</h2> section.',
   '',
   'Allowed HTML structure:',
-  '- Headings: <h1>, <h2>, <h3>, <h4>.',
+  '- Headings: <h2>, <h3>, <h4>. Avoid <h1> in generated lesson body because the app title is already the page H1.',
   '- Paragraphs: <p>.',
   '- Lists: <ul>, <ol>, <li>. Put paragraph text inside list items as <p>...</p> when useful.',
   '- Emphasis: <strong>, <em>, <u>, <s>, <code>.',

@@ -8,6 +8,18 @@ import OpenInNewOutlinedIcon from '@mui/icons-material/OpenInNewOutlined';
 import SmartDisplayOutlinedIcon from '@mui/icons-material/SmartDisplayOutlined';
 import { AI_DIGITAL_COLORS, hexToRgba } from '../../lib/brandColors';
 
+async function readResponseBody(response) {
+  const contentType = response.headers.get('content-type') || '';
+
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+
+  return {
+    error: await response.text(),
+  };
+}
+
 export function getSourceAttachments(sourceReferences = []) {
   return sourceReferences.flatMap((source) => {
     const youtubeMetadataByUrl = new Map(
@@ -119,7 +131,7 @@ function useYouTubeAssetPreview(attachment) {
         const response = await fetch(
           `/api/youtube/oembed?url=${encodeURIComponent(attachment.url)}`
         );
-        const data = await response.json();
+        const data = await readResponseBody(response);
 
         if (!response.ok) {
           throw new Error(data.error || 'Failed to load YouTube metadata.');
@@ -180,7 +192,7 @@ function useStorageImagePreview(attachment, isImage) {
         const response = await fetch(
           `/api/files/preview?storageKey=${encodeURIComponent(attachment.storageKey)}`
         );
-        const data = await response.json();
+        const data = await readResponseBody(response);
 
         if (!response.ok) {
           throw new Error(data.error || 'Failed to load image preview.');
@@ -407,7 +419,7 @@ export default function LessonAttachments({
       const response = await fetch(
         `/api/files/preview?storageKey=${encodeURIComponent(attachment.storageKey)}`
       );
-      const data = await response.json();
+      const data = await readResponseBody(response);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to open attachment.');

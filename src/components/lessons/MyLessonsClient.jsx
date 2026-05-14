@@ -121,10 +121,38 @@ export default function MyLessonsClient({ initialLessons = [] }) {
                 justifyContent: 'space-between',
               }}
             >
-              <Typography variant="h5" sx={{ fontWeight: 900 }}>
-                Not completed
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Stack spacing={0.25}>
+                <Typography
+                  sx={{
+                    color: '#0B0B0B',
+                    fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                    fontSize: { xs: 28, md: 34 },
+                    fontWeight: 900,
+                    letterSpacing: 0,
+                    lineHeight: 1,
+                  }}
+                >
+                  Not completed
+                </Typography>
+                <Typography
+                  sx={{
+                    color: '#6F7282',
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                >
+                  Continue lessons that are still in progress.
+                </Typography>
+              </Stack>
+              <Typography
+                sx={{
+                  color: '#0009DC',
+                  fontSize: 13,
+                  fontWeight: 900,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                }}
+              >
                 {incompleteLessons.length} lesson{incompleteLessons.length === 1 ? '' : 's'}
               </Typography>
             </Stack>
@@ -155,10 +183,38 @@ export default function MyLessonsClient({ initialLessons = [] }) {
                 justifyContent: 'space-between',
               }}
             >
-              <Typography variant="h5" sx={{ fontWeight: 900 }}>
-                Completed
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
+              <Stack spacing={0.25}>
+                <Typography
+                  sx={{
+                    color: '#0B0B0B',
+                    fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                    fontSize: { xs: 28, md: 34 },
+                    fontWeight: 900,
+                    letterSpacing: 0,
+                    lineHeight: 1,
+                  }}
+                >
+                  Completed
+                </Typography>
+                <Typography
+                  sx={{
+                    color: '#6F7282',
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                >
+                  Finished lessons stay here for review.
+                </Typography>
+              </Stack>
+              <Typography
+                sx={{
+                  color: '#0009DC',
+                  fontSize: 13,
+                  fontWeight: 900,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                }}
+              >
                 {completedLessons.length} lesson{completedLessons.length === 1 ? '' : 's'}
               </Typography>
             </Stack>

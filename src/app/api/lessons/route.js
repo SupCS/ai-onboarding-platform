@@ -282,7 +282,8 @@ export async function POST(request) {
         const readyLesson = await markLessonReady(lesson.id, {
           title:
             extractHtmlTitle(generatedHtml) ||
-            extractMarkdownTitle(generatedContent),
+            extractMarkdownTitle(generatedContent) ||
+            lesson.title,
           contentMarkdown: generatedContent,
           contentHtml: generatedHtml,
           generationMetadata: {
