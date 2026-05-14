@@ -44,7 +44,7 @@
 .simple-editor-wrapper.lesson-details-editor:has(.tiptap-toolbar) .tiptap.ProseMirror.simple-editor {
   max-width: none;
   margin: 0;
-  padding: 2rem clamp(1rem, 3vw, 3rem) 4rem;
+  padding: 2rem clamp(1rem, 3vw, 3rem) 8rem;
   background:
     linear-gradient(90deg, rgba(174, 243, 62, 0.38) 0, rgba(174, 243, 62, 0.38) 4px, transparent 4px) 0 0 / 100% 100% no-repeat,
     #ffffff;
