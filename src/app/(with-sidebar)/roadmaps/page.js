@@ -49,7 +49,7 @@ export default async function MyRoadmapsPage() {
                 lineHeight: 0.95,
               }}
             >
-              Roadmaps
+              My Roadmaps
             </Typography>
             <Typography sx={{ color: '#80808E', fontSize: 15, lineHeight: 1.5 }}>
               Curated learning paths built from existing lessons.

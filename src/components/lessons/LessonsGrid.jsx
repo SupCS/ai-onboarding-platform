@@ -9,20 +9,63 @@ import {
   MenuItem,
   Paper,
   Stack,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import Link from 'next/link';
-import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
 import ArrowDropDownOutlinedIcon from '@mui/icons-material/ArrowDropDownOutlined';
 import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
-import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
-import PersonOutlineOutlinedIcon from '@mui/icons-material/PersonOutlineOutlined';
 import PlaylistAddOutlinedIcon from '@mui/icons-material/PlaylistAddOutlined';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import RemoveCircleOutlineOutlinedIcon from '@mui/icons-material/RemoveCircleOutlineOutlined';
-import ScheduleOutlinedIcon from '@mui/icons-material/ScheduleOutlined';
 import StyleOutlinedIcon from '@mui/icons-material/StyleOutlined';
 import { getLessonCoverBackground } from '../../lib/brandColors';
+
+const CARD_TOKENS = {
+  ink: '#0B0B0B',
+  slate: '#33344A',
+  mute: '#80808E',
+  blue: '#0009DC',
+  blue50: '#F5F5FE',
+  blue100: '#E5E5FA',
+  blue200: '#C7C7F0',
+  bg3: '#F2F1F3',
+  orange: '#FF642D',
+  success: 'rgb(34,158,90)',
+};
+
+const STATUS_PALETTE = {
+  ready: {
+    fg: CARD_TOKENS.success,
+    bg: 'rgba(34,158,90,0.10)',
+    dot: CARD_TOKENS.success,
+  },
+  draft: {
+    fg: CARD_TOKENS.orange,
+    bg: 'rgba(255,100,45,0.10)',
+    dot: CARD_TOKENS.orange,
+  },
+  generating: {
+    fg: CARD_TOKENS.orange,
+    bg: 'rgba(255,100,45,0.10)',
+    dot: CARD_TOKENS.orange,
+  },
+  failed: {
+    fg: '#D92D20',
+    bg: 'rgba(217,45,32,0.10)',
+    dot: '#D92D20',
+  },
+  archived: {
+    fg: CARD_TOKENS.mute,
+    bg: 'rgba(128,128,142,0.12)',
+    dot: CARD_TOKENS.mute,
+  },
+  private: {
+    fg: CARD_TOKENS.mute,
+    bg: 'rgba(128,128,142,0.12)',
+    dot: CARD_TOKENS.mute,
+  },
+};
 
 function formatDate(isoString) {
   try {
@@ -34,22 +77,6 @@ function formatDate(isoString) {
   } catch {
     return '';
   }
-}
-
-function getStatusColor(status) {
-  if (status === 'ready') {
-    return 'success';
-  }
-
-  if (status === 'failed') {
-    return 'error';
-  }
-
-  if (status === 'generating') {
-    return 'warning';
-  }
-
-  return 'default';
 }
 
 function getPublicationLabel(lesson) {
@@ -64,12 +91,8 @@ function getPublicationLabel(lesson) {
   return lesson.status;
 }
 
-function getPublicationColor(lesson) {
-  if (lesson.isArchived || lesson.publicationStatus === 'archived') {
-    return 'default';
-  }
-
-  return getStatusColor(lesson.status);
+function getStatusPalette(label) {
+  return STATUS_PALETTE[label] || STATUS_PALETTE.private;
 }
 
 function getLessonPreview(lesson) {
@@ -95,72 +118,22 @@ function getLessonPreview(lesson) {
   return withoutHeadings || lesson.description || 'Generated lesson preview will appear here.';
 }
 
-function isActivityPassed(activity) {
-  if (activity.type === 'quiz') {
-    return Boolean(activity.progress?.isCompleted) && Number(activity.progress?.score || 0) >= 80;
-  }
-
-  return Boolean(activity.progress?.isCompleted);
-}
-
-function getActivityTypeLabel(activity) {
-  if (activity.type === 'quiz') {
-    return `${activity.itemCount} question quiz`;
-  }
-
-  if (activity.type === 'flashcards') {
-    return `${activity.itemCount} flashcards`;
-  }
-
-  return 'Activity';
-}
-
 function getActivityIcon(type) {
   if (type === 'quiz') {
-    return <QuizOutlinedIcon sx={{ fontSize: 16 }} />;
+    return <QuizOutlinedIcon sx={{ fontSize: 13 }} />;
   }
 
-  return <StyleOutlinedIcon sx={{ fontSize: 16 }} />;
+  return <StyleOutlinedIcon sx={{ fontSize: 13 }} />;
 }
 
-function getActivityStatus(activity) {
-  if (activity.type === 'quiz' && activity.progress) {
-    const score = Number(activity.progress?.score || 0);
-
-    if (activity.progress.status === 'failed' || score < 80) {
-      return {
-        label: `Not passed (${score}%)`,
-        color: 'warning',
-      };
-    }
-
-    return {
-      label: `Passed (${score}%)`,
-      color: 'success',
-    };
-  }
-
-  if (isActivityPassed(activity)) {
-    return {
-      label: 'Completed',
-      color: 'success',
-    };
-  }
-
-  return {
-    label: 'Not started',
-    color: 'default',
-  };
-}
-
-function getActivitySummary(activities) {
-  if (activities.length === 0) {
-    return null;
-  }
-
-  const completedCount = activities.filter(isActivityPassed).length;
-
-  return `${completedCount}/${activities.length} activities complete`;
+function getActivityCounts(activities) {
+  return activities.reduce(
+    (counts, activity) => ({
+      flashcards: counts.flashcards + (activity.type === 'flashcards' ? 1 : 0),
+      quizzes: counts.quizzes + (activity.type === 'quiz' ? 1 : 0),
+    }),
+    { flashcards: 0, quizzes: 0 }
+  );
 }
 
 export default function LessonsGrid({
@@ -180,12 +153,30 @@ export default function LessonsGrid({
     anchorEl: null,
     lesson: null,
   });
+  const [expandedTagLessonIds, setExpandedTagLessonIds] = useState(() => new Set());
   const isEnrollmentMenuOpen = Boolean(enrollmentMenu.anchorEl);
 
   const closeEnrollmentMenu = () => {
     setEnrollmentMenu({
       anchorEl: null,
       lesson: null,
+    });
+  };
+
+  const toggleExpandedTags = (event, lessonId) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setExpandedTagLessonIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(lessonId)) {
+        next.delete(lessonId);
+      } else {
+        next.add(lessonId);
+      }
+
+      return next;
     });
   };
 
@@ -206,8 +197,14 @@ export default function LessonsGrid({
       >
         {lessons.map((lesson) => {
         const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
-        const activitySummary = getActivitySummary(activities);
+        const activityCounts = getActivityCounts(activities);
         const tags = Array.isArray(lesson.tags) ? lesson.tags : [];
+        const publicationLabel = getPublicationLabel(lesson);
+        const statusPalette = getStatusPalette(publicationLabel);
+        const areTagsExpanded = expandedTagLessonIds.has(lesson.id);
+        const visibleTags = areTagsExpanded ? tags : tags.slice(0, 2);
+        const hiddenTagCount = Math.max(tags.length - 2, 0);
+        const hasActivities = activityCounts.flashcards > 0 || activityCounts.quizzes > 0;
 
         return (
           <Paper
@@ -221,107 +218,117 @@ export default function LessonsGrid({
                 : undefined
             }
             sx={{
-              borderRadius: 4,
-              border: '1px solid #e5e7eb',
+              borderRadius: '14px',
+              border: `1px solid ${CARD_TOKENS.blue100}`,
               backgroundColor: '#fff',
-              overflow: 'hidden',
-              minHeight: 340,
+              p: '14px',
+              minHeight: 400,
               display: 'flex',
               flexDirection: 'column',
+              gap: '10px',
               color: 'inherit',
               textDecoration: 'none',
               cursor:
                 getLessonHref || (isOpenEnabled && onOpenLesson)
                   ? 'pointer'
                   : 'default',
-              transition: 'transform 0.18s ease, box-shadow 0.18s ease',
+              transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
               '&:hover':
                 getLessonHref || (isOpenEnabled && onOpenLesson)
                   ? {
                       transform: 'translateY(-2px)',
-                      boxShadow: '0 18px 40px rgba(15, 23, 42, 0.08)',
+                      borderColor: CARD_TOKENS.blue200,
+                      boxShadow: '0 12px 32px rgba(11, 11, 11, 0.08)',
                     }
                   : undefined,
             }}
           >
           <Box
             sx={{
-              height: 160,
-              borderBottom: '1px solid #eef2f7',
+              aspectRatio: '16 / 8',
+              borderRadius: '10px',
               background: getLessonCoverBackground(lesson),
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
               position: 'relative',
               overflow: 'hidden',
             }}
           >
-            <Box
+            <Chip
+              label={publicationLabel}
+              size="small"
               sx={{
                 position: 'absolute',
-                inset: 0,
-                background:
-                  'radial-gradient(circle at 20% 20%, rgba(255,255,255,0.32), transparent 28%), radial-gradient(circle at 80% 70%, rgba(255,255,255,0.22), transparent 30%)',
+                top: 12,
+                right: 12,
+                height: 24,
+                borderRadius: 999,
+                border: '1px solid rgba(11,11,11,0.06)',
+                backgroundColor: 'rgba(255,255,255,0.95)',
+                color: statusPalette.fg,
+                boxShadow: '0 2px 8px rgba(11,11,11,0.08)',
+                backdropFilter: 'blur(8px)',
+                fontSize: 11,
+                fontWeight: 700,
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                '& .MuiChip-label': {
+                  px: 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  '&::before': {
+                    content: '""',
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    backgroundColor: statusPalette.dot,
+                  },
+                },
               }}
             />
-            <Stack spacing={1} sx={{ alignItems: 'center', zIndex: 1 }}>
-              <ImageOutlinedIcon sx={{ fontSize: 34, opacity: 0.9 }} />
-              <Typography variant="caption" sx={{ fontWeight: 700 }}>
-                Cover image coming soon
-              </Typography>
-            </Stack>
           </Box>
 
-          <Box
-            sx={{
-              p: 2,
-              display: 'flex',
-              flexDirection: 'column',
-              flexGrow: 1,
-            }}
-          >
-            <Stack direction="row" spacing={1} sx={{ mb: 1, alignItems: 'center' }}>
-              <AutoStoriesOutlinedIcon fontSize="small" color="action" />
-              <Chip
-                label={getPublicationLabel(lesson)}
-                color={getPublicationColor(lesson)}
-                size="small"
-                variant="outlined"
-              />
-              {showProgressStatus && (
-                <Chip
-                  label={lesson.isCompleted ? 'Completed' : 'Not completed'}
-                  color={lesson.isCompleted ? 'success' : 'default'}
-                  size="small"
-                  variant={lesson.isCompleted ? 'filled' : 'outlined'}
-                />
-              )}
-            </Stack>
-
             <Typography
-              variant="h6"
+              component="h3"
               sx={{
-                fontWeight: 800,
-                lineHeight: 1.25,
-                mb: 1,
+                mx: 0.5,
+                mt: 0.5,
+                mb: 0,
+                color: CARD_TOKENS.ink,
+                fontSize: 16,
+                fontWeight: 700,
+                letterSpacing: '-0.01em',
+                lineHeight: 1.3,
                 display: '-webkit-box',
                 overflow: 'hidden',
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
+                textWrap: 'balance',
               }}
             >
               {lesson.title}
             </Typography>
 
+            {showProgressStatus && (
+              <Box sx={{ px: 0.5 }}>
+                <Chip
+                  label={lesson.isCompleted ? 'Completed' : 'Not completed'}
+                  color={lesson.isCompleted ? 'success' : 'default'}
+                  size="small"
+                  variant={lesson.isCompleted ? 'filled' : 'outlined'}
+                  sx={{ height: 22, borderRadius: 999, fontSize: 11, fontWeight: 700 }}
+                />
+              </Box>
+            )}
+
             <Typography
-              variant="body2"
-              color="text.secondary"
               sx={{
-                mb: activities.length > 0 ? 1.5 : 2,
+                mx: 0.5,
+                color: CARD_TOKENS.slate,
+                fontSize: 12,
+                lineHeight: 1.5,
                 display: '-webkit-box',
                 overflow: 'hidden',
-                WebkitLineClamp: 3,
+                WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
               }}
             >
@@ -329,107 +336,164 @@ export default function LessonsGrid({
             </Typography>
 
             {tags.length > 0 && (
-              <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', mb: 1.5 }}>
-                {tags.slice(0, 4).map((tag) => (
+              <Stack direction="row" spacing={0.625} useFlexGap sx={{ flexWrap: 'wrap', px: 0.5 }}>
+                {visibleTags.map((tag) => (
                   <Chip
                     key={tag}
                     label={tag}
                     size="small"
-                    variant="outlined"
                     sx={{
-                      height: 24,
+                      height: 23,
                       maxWidth: '100%',
-                      fontWeight: 750,
+                      borderRadius: 999,
+                      border: `1px solid ${CARD_TOKENS.blue100}`,
                       backgroundColor: '#fff',
+                      color: CARD_TOKENS.slate,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      '& .MuiChip-label': {
+                        px: 1.1,
+                      },
                     }}
                   />
                 ))}
-                {tags.length > 4 && (
+                {hiddenTagCount > 0 && !areTagsExpanded && (
                   <Chip
-                    label={`+${tags.length - 4}`}
+                    label={`+${hiddenTagCount} more`}
                     size="small"
-                    sx={{ height: 24, fontWeight: 800 }}
+                    onClick={(event) => toggleExpandedTags(event, lesson.id)}
+                    sx={{
+                      height: 23,
+                      borderRadius: 999,
+                      backgroundColor: CARD_TOKENS.bg3,
+                      color: CARD_TOKENS.mute,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        backgroundColor: CARD_TOKENS.blue50,
+                      },
+                    }}
+                  />
+                )}
+                {hiddenTagCount > 0 && areTagsExpanded && (
+                  <Chip
+                    label="Less"
+                    size="small"
+                    onClick={(event) => toggleExpandedTags(event, lesson.id)}
+                    sx={{
+                      height: 23,
+                      borderRadius: 999,
+                      backgroundColor: CARD_TOKENS.bg3,
+                      color: CARD_TOKENS.mute,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      '&:hover': {
+                        backgroundColor: CARD_TOKENS.blue50,
+                      },
+                    }}
                   />
                 )}
               </Stack>
             )}
 
-            {activities.length > 0 && (
-              <Box
-                sx={{
-                  mb: 2,
-                  p: 1,
-                  borderRadius: 2.5,
-                  border: '1px solid #eef2f7',
-                  backgroundColor: '#f8fafc',
-                }}
-              >
-                <Stack spacing={0.75}>
+            {hasActivities && (
+              <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', px: 0.5 }}>
+                {activityCounts.flashcards > 0 && (
                   <Chip
-                    label={activitySummary}
+                    icon={getActivityIcon('flashcards')}
+                    label={`${activityCounts.flashcards} ${
+                      activityCounts.flashcards === 1 ? 'flashcard set' : 'flashcard sets'
+                    }`}
                     size="small"
-                    color={activities.every(isActivityPassed) ? 'success' : 'primary'}
-                    variant={activities.every(isActivityPassed) ? 'filled' : 'outlined'}
                     sx={{
-                      alignSelf: 'flex-start',
-                      fontWeight: 800,
-                      backgroundColor: activities.every(isActivityPassed) ? undefined : '#fff',
+                      height: 24,
+                      borderRadius: 999,
+                      backgroundColor: CARD_TOKENS.blue50,
+                      color: CARD_TOKENS.blue,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      '& .MuiChip-icon': {
+                        color: 'inherit',
+                        ml: 0.9,
+                        mr: -0.4,
+                      },
                     }}
                   />
-
-                  {activities.slice(0, 3).map((activity) => {
-                    const activityStatus = getActivityStatus(activity);
-
-                    return (
-                      <Stack
-                        key={activity.id}
-                        direction="row"
-                        spacing={0.75}
-                        sx={{ alignItems: 'center', minWidth: 0 }}
-                      >
-                        <Box
-                          sx={{
-                            color: activity.type === 'quiz' ? '#0009DC' : '#0f766e',
-                            display: 'inline-flex',
-                          }}
-                        >
-                          {getActivityIcon(activity.type)}
-                        </Box>
-                        <Typography variant="caption" sx={{ flex: '1 1 auto', minWidth: 0 }} noWrap>
-                          {getActivityTypeLabel(activity)}
-                        </Typography>
-                        <Chip
-                          label={activityStatus.label}
-                          size="small"
-                          color={activityStatus.color}
-                          variant={activityStatus.color === 'default' ? 'outlined' : 'filled'}
-                          sx={{ height: 22, fontWeight: 700 }}
-                        />
-                      </Stack>
-                    );
-                  })}
-
-                  {activities.length > 3 && (
-                    <Typography variant="caption" color="text.secondary">
-                      +{activities.length - 3} more activit{activities.length - 3 === 1 ? 'y' : 'ies'}
-                    </Typography>
-                  )}
-                </Stack>
-              </Box>
+                )}
+                {activityCounts.quizzes > 0 && (
+                  <Chip
+                    icon={getActivityIcon('quiz')}
+                    label={`${activityCounts.quizzes} ${activityCounts.quizzes === 1 ? 'quiz' : 'quizzes'}`}
+                    size="small"
+                    sx={{
+                      height: 24,
+                      borderRadius: 999,
+                      backgroundColor: 'rgba(34,158,90,0.10)',
+                      color: CARD_TOKENS.success,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      '& .MuiChip-icon': {
+                        color: 'inherit',
+                        ml: 0.9,
+                        mr: -0.4,
+                      },
+                    }}
+                  />
+                )}
+              </Stack>
             )}
 
-            <Stack spacing={0.75} sx={{ mt: 'auto' }}>
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <PersonOutlineOutlinedIcon fontSize="small" color="action" />
-                <Typography variant="caption" color="text.secondary" noWrap>
-                  Created by {lesson.createdBy || 'AI Onboarding'}
-                </Typography>
-              </Stack>
-
-              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                <ScheduleOutlinedIcon fontSize="small" color="action" />
-                <Typography variant="caption" color="text.secondary">
-                  Created {formatDate(lesson.createdAt)}
+            <Stack
+              direction="row"
+              spacing={1}
+              sx={{
+                mt: 'auto',
+                mx: 0.5,
+                pt: 1.5,
+                pb: 0.5,
+                borderTop: `1px solid ${CARD_TOKENS.blue100}`,
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                minWidth: 0,
+              }}
+            >
+              <Stack
+                direction="row"
+                spacing={0.5}
+                sx={{
+                  minWidth: 0,
+                  flex: '1 1 auto',
+                  alignItems: 'center',
+                  color: CARD_TOKENS.mute,
+                  fontSize: 11,
+                }}
+              >
+                <Tooltip title={lesson.createdBy || 'AI Onboarding'} enterDelay={400}>
+                  <Typography
+                    component="span"
+                    sx={{
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                      color: 'inherit',
+                      fontSize: 'inherit',
+                    }}
+                  >
+                    {lesson.createdBy || 'AI Onboarding'}
+                  </Typography>
+                </Tooltip>
+                <Typography
+                  component="span"
+                  sx={{
+                    flexShrink: 0,
+                    color: 'inherit',
+                    fontSize: 'inherit',
+                  }}
+                >
+                  - {formatDate(lesson.createdAt)}
                 </Typography>
               </Stack>
 
@@ -456,11 +520,23 @@ export default function LessonsGrid({
                     });
                   }}
                   sx={{
-                    mt: 1,
-                    alignSelf: 'flex-start',
+                    flexShrink: 0,
                     borderRadius: 999,
+                    borderColor: lesson.isEnrolled ? CARD_TOKENS.blue200 : 'transparent',
+                    backgroundColor: lesson.isEnrolled ? 'transparent' : CARD_TOKENS.blue,
+                    boxShadow: 'none',
+                    color: lesson.isEnrolled ? CARD_TOKENS.mute : '#fff',
+                    px: 1.5,
+                    py: 0.875,
+                    fontSize: 11,
+                    fontWeight: lesson.isEnrolled ? 600 : 700,
+                    letterSpacing: lesson.isEnrolled ? '0.02em' : '0.04em',
                     textTransform: 'none',
-                    fontWeight: 700,
+                    '&:hover': {
+                      borderColor: lesson.isEnrolled ? CARD_TOKENS.blue200 : 'transparent',
+                      backgroundColor: lesson.isEnrolled ? CARD_TOKENS.blue50 : '#0007B8',
+                      boxShadow: 'none',
+                    },
                   }}
                 >
                   {lesson.isEnrolled
@@ -497,11 +573,23 @@ export default function LessonsGrid({
                     onEnrollLesson?.(lesson);
                   }}
                   sx={{
-                    mt: 1,
-                    alignSelf: 'flex-start',
+                    flexShrink: 0,
                     borderRadius: 999,
+                    borderColor: lesson.isEnrolled ? CARD_TOKENS.blue200 : 'transparent',
+                    backgroundColor: lesson.isEnrolled ? 'transparent' : CARD_TOKENS.blue,
+                    boxShadow: 'none',
+                    color: lesson.isEnrolled ? CARD_TOKENS.mute : '#fff',
+                    px: 1.5,
+                    py: 0.875,
+                    fontSize: 11,
+                    fontWeight: lesson.isEnrolled ? 600 : 700,
+                    letterSpacing: lesson.isEnrolled ? '0.02em' : '0.04em',
                     textTransform: 'none',
-                    fontWeight: 700,
+                    '&:hover': {
+                      borderColor: lesson.isEnrolled ? CARD_TOKENS.blue200 : 'transparent',
+                      backgroundColor: lesson.isEnrolled ? CARD_TOKENS.blue50 : '#0007B8',
+                      boxShadow: 'none',
+                    },
                   }}
                 >
                   {lesson.isEnrolled
@@ -526,18 +614,25 @@ export default function LessonsGrid({
                     onUnenrollLesson?.(lesson);
                   }}
                   sx={{
-                    mt: 1,
-                    alignSelf: 'flex-start',
+                    flexShrink: 0,
                     borderRadius: 999,
+                    borderColor: CARD_TOKENS.blue200,
+                    color: CARD_TOKENS.mute,
+                    px: 1.5,
+                    py: 0.875,
+                    fontSize: 11,
+                    fontWeight: 600,
                     textTransform: 'none',
-                    fontWeight: 700,
+                    '&:hover': {
+                      borderColor: CARD_TOKENS.blue200,
+                      backgroundColor: CARD_TOKENS.blue50,
+                    },
                   }}
                 >
                   Remove from My Lessons
                 </Button>
               )}
             </Stack>
-          </Box>
           </Paper>
         );
         })}
