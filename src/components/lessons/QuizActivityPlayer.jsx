@@ -24,6 +24,20 @@ import ConfettiBurst from '../roadmaps/ConfettiBurst';
 import RoadmapCompletionCelebration from '../roadmaps/RoadmapCompletionCelebration';
 
 const PASSING_SCORE = 80;
+const QUIZ_COLORS = {
+  ink: '#0B0B0B',
+  slate: '#33344A',
+  mute: '#80808E',
+  blue: '#0009DC',
+  blue50: '#F5F5FE',
+  blue100: '#E5E5FA',
+  blue200: '#C7C7F0',
+  bg2: '#FAFAFB',
+  lime: '#AEF33E',
+  orange: '#FF642D',
+  success: 'rgb(34,158,90)',
+  danger: 'rgb(214,47,47)',
+};
 
 function getQuestions(activity) {
   return Array.isArray(activity?.payload?.items) ? activity.payload.items : [];
@@ -71,6 +85,74 @@ function formatAttemptDate(value) {
   }).format(new Date(value));
 }
 
+function getOptionState({ isSelected, isSubmitted, isCorrectOption, isWrongSelection }) {
+  if (isSubmitted && isCorrectOption) {
+    return 'correct';
+  }
+
+  if (isSubmitted && isWrongSelection) {
+    return 'incorrect';
+  }
+
+  if (isSelected) {
+    return 'selected';
+  }
+
+  return 'idle';
+}
+
+function getOptionPalette(state) {
+  const palettes = {
+    idle: {
+      bg: '#fff',
+      border: QUIZ_COLORS.blue100,
+      dotBorder: '#9999E0',
+      dotInner: 'transparent',
+    },
+    selected: {
+      bg: QUIZ_COLORS.blue50,
+      border: QUIZ_COLORS.blue,
+      dotBorder: QUIZ_COLORS.blue,
+      dotInner: QUIZ_COLORS.blue,
+    },
+    correct: {
+      bg: 'rgba(34,158,90,0.06)',
+      border: QUIZ_COLORS.success,
+      dotBorder: QUIZ_COLORS.success,
+      dotInner: QUIZ_COLORS.success,
+    },
+    incorrect: {
+      bg: 'rgba(214,47,47,0.05)',
+      border: QUIZ_COLORS.danger,
+      dotBorder: QUIZ_COLORS.danger,
+      dotInner: QUIZ_COLORS.danger,
+    },
+  };
+
+  return palettes[state] || palettes.idle;
+}
+
+function isActivityComplete(activity) {
+  if (activity.type === 'quiz') {
+    return Boolean(activity.progress?.completedAt) && Number(activity.progress?.score || 0) >= PASSING_SCORE;
+  }
+
+  return Boolean(activity.progress?.completedAt);
+}
+
+function getContinuePathHref(lesson, currentActivityId) {
+  const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
+  const currentIndex = activities.findIndex((item) => item.id === currentActivityId);
+  const followingActivities = currentIndex >= 0 ? activities.slice(currentIndex + 1) : activities;
+  const nextIncompleteActivity = followingActivities.find((item) => !isActivityComplete(item));
+
+  if (nextIncompleteActivity) {
+    return `/lessons/${lesson.id}/activities/${nextIncompleteActivity.id}`;
+  }
+
+  return `/lessons/${lesson.id}`;
+}
+
 export default function QuizActivityPlayer({
   lesson,
   activity,
@@ -88,6 +170,9 @@ export default function QuizActivityPlayer({
   const [results, setResults] = useState(savedResults);
   const [score, setScore] = useState(activity.progress?.score ?? null);
   const [attempts, setAttempts] = useState(initialAttempts);
+  const [lessonActivities, setLessonActivities] = useState(() =>
+    Array.isArray(lesson.activities) ? lesson.activities : []
+  );
   const [isSaving, setIsSaving] = useState(false);
   const [isConfettiActive, setIsConfettiActive] = useState(false);
   const [completedRoadmapsCelebration, setCompletedRoadmapsCelebration] = useState([]);
@@ -102,6 +187,13 @@ export default function QuizActivityPlayer({
   const isSubmitted = Array.isArray(results);
   const isPassed = isSubmitted && Number(score || 0) >= PASSING_SCORE;
   const canSubmit = questions.length > 0 && answeredCount === questions.length && !isSaving;
+  const continuePathHref = getContinuePathHref(
+    {
+      ...lesson,
+      activities: lessonActivities,
+    },
+    activity.id
+  );
 
   useEffect(() => {
     setAttemptQuestions(buildAttemptQuestions(questions));
@@ -112,7 +204,8 @@ export default function QuizActivityPlayer({
     setResults(savedResults);
     setScore(activity.progress?.score ?? null);
     setAttempts(initialAttempts);
-  }, [activity.id, activity.progress?.score, initialAttempts, questions, savedResults]);
+    setLessonActivities(Array.isArray(lesson.activities) ? lesson.activities : []);
+  }, [activity.id, activity.progress?.score, initialAttempts, lesson.activities, questions, savedResults]);
 
   useEffect(() => {
     if (!isConfettiActive) {
@@ -176,6 +269,9 @@ export default function QuizActivityPlayer({
       setResults(nextResults);
       if (data.attempt?.id) {
         setAttempts((current) => [data.attempt, ...current]);
+      }
+      if (Array.isArray(data.activities)) {
+        setLessonActivities(data.activities);
       }
       router.refresh();
 
@@ -260,41 +356,109 @@ export default function QuizActivityPlayer({
         <Paper
           elevation={0}
           sx={{
-            p: { xs: 2, md: 3 },
-            borderRadius: 4,
-            border: '1px solid rgba(15, 23, 42, 0.08)',
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(240,253,250,0.96) 100%)',
+            p: { xs: '24px', md: '32px' },
+            mb: 0.5,
+            borderRadius: '20px',
+            border: `1px solid ${QUIZ_COLORS.blue100}`,
+            background: `linear-gradient(135deg, #fff 0%, ${QUIZ_COLORS.blue50} 100%)`,
           }}
         >
-          <Stack spacing={2}>
+          <Stack sx={{ gap: '24px' }}>
             <Stack
               direction={{ xs: 'column', md: 'row' }}
-              spacing={1.5}
-              sx={{ alignItems: { xs: 'stretch', md: 'center' }, justifyContent: 'space-between' }}
+              sx={{
+                alignItems: { xs: 'stretch', md: 'flex-start' },
+                justifyContent: 'space-between',
+                gap: '24px',
+              }}
             >
-              <Stack spacing={0.75}>
-                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                  <Chip icon={<QuizOutlinedIcon />} label="Quiz" color="primary" sx={{ fontWeight: 800 }} />
+              <Box>
+                <Stack
+                  direction="row"
+                  useFlexGap
+                  sx={{
+                    alignItems: 'center',
+                    gap: '10px',
+                    flexWrap: 'wrap',
+                    mb: '16px',
+                  }}
+                >
                   <Chip
-                    label={isSubmitted ? `${score}% score` : `${answeredCount}/${questions.length} answered`}
-                    color={isPassed ? 'success' : 'default'}
-                    variant={isPassed ? 'filled' : 'outlined'}
-                    sx={{ backgroundColor: isPassed ? undefined : '#fff', fontWeight: 700 }}
+                    icon={<QuizOutlinedIcon />}
+                    label="Quiz"
+                    sx={{
+                      height: 30,
+                      borderRadius: 999,
+                      backgroundColor: QUIZ_COLORS.blue,
+                      color: '#fff',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      '& .MuiChip-icon': {
+                        color: 'inherit',
+                        fontSize: 15,
+                      },
+                    }}
+                  />
+                  <Chip
+                    label={`${questions.length} question${questions.length === 1 ? '' : 's'}`}
+                    sx={{
+                      height: 30,
+                      borderRadius: 999,
+                      border: `1px solid ${QUIZ_COLORS.blue100}`,
+                      backgroundColor: 'rgba(255,255,255,0.7)',
+                      color: QUIZ_COLORS.slate,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
                   />
                   <Chip
                     label={`${PASSING_SCORE}% to pass`}
-                    variant="outlined"
-                    sx={{ backgroundColor: '#fff', fontWeight: 700 }}
+                    sx={{
+                      height: 30,
+                      borderRadius: 999,
+                      border: `1px solid ${QUIZ_COLORS.blue100}`,
+                      backgroundColor: 'rgba(255,255,255,0.7)',
+                      color: QUIZ_COLORS.slate,
+                      fontSize: 12,
+                      fontWeight: 600,
+                    }}
                   />
+                  {isSubmitted && (
+                    <Chip
+                      label={`${isPassed ? 'Passed' : 'Not passed'} - ${score}%`}
+                      sx={{
+                        height: 30,
+                        borderRadius: 999,
+                        backgroundColor: isPassed ? QUIZ_COLORS.success : QUIZ_COLORS.orange,
+                        color: '#fff',
+                        fontSize: 12,
+                        fontWeight: 700,
+                        letterSpacing: '0.04em',
+                        textTransform: 'uppercase',
+                      }}
+                    />
+                  )}
                 </Stack>
 
-                <Typography variant="h3" component="h1" sx={{ fontWeight: 950, lineHeight: 1 }}>
+                <Typography
+                  component="h1"
+                  sx={{
+                    color: QUIZ_COLORS.ink,
+                    fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                    fontSize: { xs: 42, md: 56 },
+                    fontWeight: 900,
+                    letterSpacing: 0,
+                    lineHeight: 0.95,
+                  }}
+                >
                   {activity.title || 'Lesson quiz'}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  From lesson: {lesson.title}
+                <Typography sx={{ color: QUIZ_COLORS.mute, fontSize: 14 }}>
+                  From lesson - {lesson.title}
                 </Typography>
-              </Stack>
+              </Box>
 
               <Button
                 component={Link}
@@ -302,44 +466,76 @@ export default function QuizActivityPlayer({
                 startIcon={<ArrowBackOutlinedIcon />}
                 variant="outlined"
                 color="inherit"
-                sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 800 }}
+                sx={{
+                  borderRadius: 999,
+                  borderColor: QUIZ_COLORS.blue200,
+                  color: QUIZ_COLORS.blue,
+                  px: 2.5,
+                  py: 1.35,
+                  fontSize: 12,
+                  fontWeight: 700,
+                  letterSpacing: '0.06em',
+                  textTransform: 'uppercase',
+                  '&:hover': {
+                    borderColor: QUIZ_COLORS.blue,
+                    backgroundColor: QUIZ_COLORS.blue50,
+                  },
+                }}
               >
                 Back to lesson
               </Button>
             </Stack>
 
-            <Box>
-              <LinearProgress
-                variant="determinate"
-                value={isSubmitted ? Number(score || 0) : progressValue}
-                color={isSubmitted && !isPassed ? 'warning' : 'primary'}
-                sx={{
-                  height: 10,
-                  borderRadius: 999,
-                  backgroundColor: '#e5e7eb',
-                  '& .MuiLinearProgress-bar': {
-                    borderRadius: 999,
-                  },
-                }}
-              />
-              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
-                {isSubmitted
-                  ? isPassed
-                    ? 'Passed'
-                    : 'Not passed yet'
-                  : `${progressValue}% answered`}
-              </Typography>
+            <Box sx={{ mb: '8px' }}>
+              <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center' }}>
+                <Typography
+                  sx={{
+                    color: isSubmitted && isPassed ? QUIZ_COLORS.success : QUIZ_COLORS.blue,
+                    fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                    fontSize: 36,
+                    fontWeight: 900,
+                    lineHeight: 1,
+                  }}
+                >
+                  {isSubmitted
+                    ? `${Math.round((Number(score || 0) / 100) * questions.length)}/${questions.length}`
+                    : `${answeredCount}/${questions.length}`}
+                </Typography>
+                <Box sx={{ flex: 1, minWidth: 0 }}>
+                  <LinearProgress
+                    variant="determinate"
+                    value={isSubmitted ? Number(score || 0) : progressValue}
+                    sx={{
+                      height: 8,
+                      borderRadius: 999,
+                      backgroundColor: 'rgba(0,9,220,0.08)',
+                      '& .MuiLinearProgress-bar': {
+                        borderRadius: 999,
+                        backgroundColor: isSubmitted && isPassed
+                          ? QUIZ_COLORS.success
+                          : isSubmitted
+                            ? QUIZ_COLORS.orange
+                            : QUIZ_COLORS.blue,
+                      },
+                    }}
+                  />
+                  <Stack direction="row" sx={{ justifyContent: 'space-between', mt: 0.75 }}>
+                    <Typography sx={{ color: QUIZ_COLORS.mute, fontSize: 12 }}>
+                      {isSubmitted
+                        ? isPassed
+                          ? 'Quiz passed'
+                          : 'Try again to reach the passing score'
+                        : 'Answer all questions to submit'}
+                    </Typography>
+                    <Typography sx={{ color: QUIZ_COLORS.mute, fontSize: 12 }}>
+                      {PASSING_SCORE}% to pass
+                    </Typography>
+                  </Stack>
+                </Box>
+              </Stack>
             </Box>
           </Stack>
         </Paper>
-
-        {isSubmitted && (
-          <Alert severity={isPassed ? 'success' : 'warning'} sx={{ borderRadius: 3 }}>
-            {isPassed
-              ? `You scored ${score}%. This quiz is passed.`
-              : `You scored ${score}%. You need at least ${PASSING_SCORE}% to pass.`}
-          </Alert>
-        )}
 
         <Stack spacing={2}>
           {attemptQuestions.map((question, questionIndex) => {
@@ -351,32 +547,58 @@ export default function QuizActivityPlayer({
                 key={`${question.question}-${questionIndex}`}
                 elevation={0}
                 sx={{
-                  p: { xs: 2, md: 3 },
-                  borderRadius: 3,
-                  border: '1px solid rgba(15, 23, 42, 0.1)',
+                  p: { xs: 2.5, md: '28px' },
+                  borderRadius: '16px',
+                  border: `1px solid ${QUIZ_COLORS.blue100}`,
                   backgroundColor: '#fff',
+                  overflow: 'hidden',
                 }}
               >
-                <Stack spacing={2}>
-                  <Stack direction="row" spacing={1} sx={{ alignItems: 'flex-start' }}>
-                    <Chip label={questionIndex + 1} color="primary" sx={{ fontWeight: 900 }} />
-                    <Typography variant="h6" sx={{ fontWeight: 900, lineHeight: 1.25 }}>
+                <Stack spacing="18px">
+                  <Stack direction="row" sx={{ alignItems: 'flex-start', gap: '14px' }}>
+                    <Box
+                      sx={{
+                        flexShrink: 0,
+                        width: 32,
+                        height: 32,
+                        borderRadius: '50%',
+                        backgroundColor: QUIZ_COLORS.blue,
+                        color: '#fff',
+                        display: 'grid',
+                        placeItems: 'center',
+                        fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                        fontWeight: 800,
+                        fontSize: 14,
+                      }}
+                    >
+                      {questionIndex + 1}
+                    </Box>
+                    <Typography
+                      component="h3"
+                      sx={{
+                        color: QUIZ_COLORS.ink,
+                        fontSize: 18,
+                        fontWeight: 700,
+                        letterSpacing: '-0.01em',
+                        lineHeight: 1.4,
+                      }}
+                    >
                       {question.question}
                     </Typography>
                   </Stack>
 
-                  <Stack spacing={1}>
+                  <Stack sx={{ gap: '10px' }}>
                     {(question.options || []).map((option) => {
                       const isSelected = selectedAnswer === option;
                       const isCorrectOption = result?.correctAnswer === option;
                       const isWrongSelection = isSubmitted && isSelected && !isCorrectOption;
-                      const optionColor = isCorrectOption
-                        ? '#dcfce7'
-                        : isWrongSelection
-                          ? '#fee2e2'
-                          : isSelected
-                            ? '#eff6ff'
-                            : '#f8fafc';
+                      const optionState = getOptionState({
+                        isSelected,
+                        isSubmitted,
+                        isCorrectOption,
+                        isWrongSelection,
+                      });
+                      const optionPalette = getOptionPalette(optionState);
 
                       return (
                         <Box
@@ -388,44 +610,103 @@ export default function QuizActivityPlayer({
                             width: '100%',
                             display: 'flex',
                             alignItems: 'center',
-                            gap: 1,
-                            p: 1.25,
-                            borderRadius: 2,
-                            border: isCorrectOption
-                              ? '1px solid #16a34a'
-                              : isWrongSelection
-                                ? '1px solid #dc2626'
-                                : isSelected
-                                  ? '1px solid #0009DC'
-                                  : '1px solid #e5e7eb',
-                            backgroundColor: optionColor,
-                            color: '#0f172a',
+                            gap: '14px',
+                            px: '20px',
+                            py: '16px',
+                            borderRadius: 999,
+                            border: `1.5px solid ${optionPalette.border}`,
+                            backgroundColor: optionPalette.bg,
+                            color: QUIZ_COLORS.ink,
                             textAlign: 'left',
                             cursor: isSubmitted ? 'default' : 'pointer',
+                            transition: 'border-color 120ms ease, background-color 120ms ease',
+                            '&:hover': !isSubmitted
+                              ? {
+                                  borderColor: isSelected ? QUIZ_COLORS.blue : QUIZ_COLORS.blue200,
+                                  backgroundColor: isSelected ? QUIZ_COLORS.blue50 : QUIZ_COLORS.bg2,
+                                }
+                              : undefined,
                           }}
                         >
                           <Radio
                             checked={isSelected}
                             disabled={isSubmitted}
                             size="small"
-                            sx={{ p: 0.5 }}
+                            sx={{
+                              p: 0.5,
+                              flexShrink: 0,
+                              color: optionPalette.dotBorder,
+                              '&.Mui-checked': {
+                                color: optionPalette.dotInner || QUIZ_COLORS.blue,
+                              },
+                            }}
                           />
-                          <Typography sx={{ flex: '1 1 auto', fontWeight: isSelected || isCorrectOption ? 800 : 600 }}>
+                          <Typography
+                            sx={{
+                              flex: '1 1 auto',
+                              minWidth: 0,
+                              fontSize: 15,
+                              fontWeight: 600,
+                              letterSpacing: '-0.01em',
+                              lineHeight: 1.35,
+                            }}
+                          >
                             {option}
                           </Typography>
-                          {isCorrectOption && <CheckCircleOutlineOutlinedIcon color="success" />}
-                          {isWrongSelection && <HighlightOffOutlinedIcon color="error" />}
+                          {isCorrectOption && (
+                            <CheckCircleOutlineOutlinedIcon
+                              sx={{
+                                color: QUIZ_COLORS.success,
+                                fontSize: 24,
+                                flexShrink: 0,
+                              }}
+                            />
+                          )}
+                          {isWrongSelection && (
+                            <HighlightOffOutlinedIcon
+                              sx={{
+                                color: QUIZ_COLORS.danger,
+                                fontSize: 24,
+                                flexShrink: 0,
+                              }}
+                            />
+                          )}
                         </Box>
                       );
                     })}
                   </Stack>
 
                   {isSubmitted && (
-                    <Alert severity={result?.isCorrect ? 'success' : 'error'} sx={{ borderRadius: 2 }}>
-                      <Typography variant="body2" sx={{ fontWeight: 800, mb: 0.5 }}>
+                    <Alert
+                      severity={result?.isCorrect ? 'success' : 'error'}
+                      sx={{
+                        mt: 0.75,
+                        px: '18px',
+                        py: '14px',
+                        borderRadius: '12px',
+                        border: result?.isCorrect
+                          ? '1px solid rgba(34,158,90,0.2)'
+                          : '1px solid rgba(214,47,47,0.18)',
+                        backgroundColor: result?.isCorrect
+                          ? 'rgba(34,158,90,0.07)'
+                          : 'rgba(214,47,47,0.05)',
+                        '& .MuiAlert-icon': {
+                          color: result?.isCorrect ? QUIZ_COLORS.success : QUIZ_COLORS.danger,
+                        },
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontSize: 13,
+                          fontWeight: 700,
+                          letterSpacing: '0.02em',
+                          textTransform: 'uppercase',
+                          mb: 0.75,
+                        }}
+                      >
                         {result?.isCorrect ? 'Correct' : 'Incorrect'}
                       </Typography>
-                      <Typography variant="body2">
+                      <Typography sx={{ fontSize: 14, lineHeight: 1.55, fontWeight: 500 }}>
                         {result?.explanation || 'No explanation was provided for this question.'}
                       </Typography>
                     </Alert>
@@ -436,20 +717,8 @@ export default function QuizActivityPlayer({
           })}
         </Stack>
 
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ justifyContent: 'flex-end' }}>
-          {isSubmitted && (
-            <Button
-              startIcon={<RestartAltOutlinedIcon />}
-              onClick={handleRetry}
-              variant="outlined"
-              color="inherit"
-              disabled={isSaving}
-              sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 800 }}
-            >
-              Try again
-            </Button>
-          )}
-          {!isSubmitted && (
+        {!isSubmitted && (
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ justifyContent: 'flex-end' }}>
             <Button
               startIcon={<CheckCircleOutlineOutlinedIcon />}
               onClick={handleSubmit}
@@ -458,8 +727,18 @@ export default function QuizActivityPlayer({
               sx={{
                 minWidth: { xs: '100%', sm: 220 },
                 borderRadius: 999,
-                textTransform: 'none',
-                fontWeight: 900,
+                backgroundColor: QUIZ_COLORS.blue,
+                boxShadow: 'none',
+                px: 2.75,
+                py: 1.35,
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                '&:hover': {
+                  backgroundColor: '#0007B8',
+                  boxShadow: 'none',
+                },
               }}
             >
               {isSaving
@@ -468,30 +747,153 @@ export default function QuizActivityPlayer({
                   ? 'Submit quiz'
                   : 'Answer all questions'}
             </Button>
-          )}
-        </Stack>
+          </Stack>
+        )}
 
-        {attempts.length > 0 && (
-          <Paper
-            elevation={0}
+        {isSubmitted && (
+          <Box
             sx={{
-              p: { xs: 2, md: 3 },
-              borderRadius: 3,
-              border: '1px solid rgba(15, 23, 42, 0.1)',
-              backgroundColor: '#fff',
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+              gap: 2,
+              mt: 1,
+              alignItems: 'start',
             }}
           >
-            <Stack spacing={2}>
-              <Box>
-                <Typography variant="h6" sx={{ fontWeight: 900 }}>
-                  Attempt history
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Every submitted quiz attempt is saved for this user.
-                </Typography>
-              </Box>
+            <Box
+              sx={{
+                backgroundColor: QUIZ_COLORS.blue,
+                color: '#fff',
+                borderRadius: 4,
+                p: 3.5,
+                minHeight: 300,
+              }}
+            >
+              <Typography
+                sx={{
+                  mb: 1.5,
+                  opacity: 0.7,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Your score
+              </Typography>
+              <Typography
+                sx={{
+                  fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                  fontSize: { xs: 78, md: 96 },
+                  fontWeight: 900,
+                  letterSpacing: 0,
+                  lineHeight: 0.9,
+                }}
+              >
+                {score ?? 0}
+                <Box component="span" sx={{ fontSize: { xs: 38, md: 48 } }}>
+                  %
+                </Box>
+              </Typography>
+              <Typography sx={{ mt: 1.5, fontSize: 14, opacity: 0.85 }}>
+                {results?.filter((result) => result.isCorrect).length || 0} of {questions.length} correct - {isPassed ? 'Passed' : 'Not passed'}
+              </Typography>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} sx={{ mt: 3 }}>
+                <Button
+                  component={isPassed ? Link : 'button'}
+                  href={isPassed ? continuePathHref : undefined}
+                  disabled={!isPassed}
+                  sx={{
+                    borderRadius: 999,
+                    backgroundColor: QUIZ_COLORS.lime,
+                    color: QUIZ_COLORS.slate,
+                    px: 2.5,
+                    py: 1.35,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    '&:hover': {
+                      backgroundColor: QUIZ_COLORS.lime,
+                    },
+                    '&.Mui-disabled': {
+                      backgroundColor: 'rgba(255,255,255,0.16)',
+                      color: 'rgba(255,255,255,0.48)',
+                    },
+                  }}
+                >
+                  Continue path
+                </Button>
+                <Button
+                  startIcon={<RestartAltOutlinedIcon />}
+                  onClick={handleRetry}
+                  disabled={isSaving}
+                  sx={{
+                    borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,0.3)',
+                    color: '#fff',
+                    px: 2.5,
+                    py: 1.35,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    '&:hover': {
+                      borderColor: 'rgba(255,255,255,0.45)',
+                      backgroundColor: 'rgba(255,255,255,0.08)',
+                    },
+                  }}
+                >
+                  Try again
+                </Button>
+              </Stack>
+            </Box>
 
-              <Stack spacing={1}>
+            <Box
+              sx={{
+                backgroundColor: '#fff',
+                border: `1px solid ${QUIZ_COLORS.blue100}`,
+                borderRadius: 4,
+                p: 3.5,
+                height: { xs: 'auto', md: 300 },
+                display: 'flex',
+                flexDirection: 'column',
+                minHeight: 0,
+                overflow: 'hidden',
+              }}
+            >
+              <Typography
+                sx={{
+                  color: QUIZ_COLORS.ink,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  letterSpacing: '-0.01em',
+                  mb: 0.5,
+                }}
+              >
+                Attempt history
+              </Typography>
+              <Typography sx={{ color: QUIZ_COLORS.mute, fontSize: 13, mb: 2 }}>
+                Every submitted attempt is saved.
+              </Typography>
+              <Stack
+                spacing={1}
+                sx={{
+                  flex: '1 1 auto',
+                  overflowY: 'auto',
+                  pr: 0.5,
+                  minHeight: 0,
+                  scrollbarWidth: 'thin',
+                  scrollbarColor: `${QUIZ_COLORS.blue200} transparent`,
+                  '&::-webkit-scrollbar': {
+                    width: 6,
+                  },
+                  '&::-webkit-scrollbar-thumb': {
+                    backgroundColor: QUIZ_COLORS.blue200,
+                    borderRadius: 999,
+                  },
+                }}
+              >
                 {attempts.map((attempt) => (
                   <Box
                     key={attempt.id}
@@ -500,36 +902,63 @@ export default function QuizActivityPlayer({
                       gridTemplateColumns: { xs: '1fr', sm: '1fr auto auto' },
                       gap: 1,
                       alignItems: 'center',
-                      p: 1.25,
-                      borderRadius: 2,
-                      backgroundColor: attempt.passed ? '#f0fdf4' : '#fff7ed',
-                      border: attempt.passed ? '1px solid #bbf7d0' : '1px solid #fed7aa',
+                      px: 1.75,
+                      py: 1.5,
+                      borderRadius: 2.5,
+                      backgroundColor: attempt.passed ? 'rgba(34,158,90,0.06)' : QUIZ_COLORS.bg2,
+                      border: attempt.passed ? '1px solid rgba(34,158,90,0.18)' : `1px solid ${QUIZ_COLORS.blue100}`,
                     }}
                   >
                     <Box>
-                      <Typography sx={{ fontWeight: 900 }}>
+                      <Typography sx={{ color: QUIZ_COLORS.ink, fontSize: 13, fontWeight: 700 }}>
                         Attempt {attempt.attemptNumber}
                       </Typography>
-                      <Typography variant="caption" color="text.secondary">
+                      <Typography sx={{ color: QUIZ_COLORS.mute, fontSize: 11 }}>
                         {formatAttemptDate(attempt.createdAt)}
                       </Typography>
                     </Box>
 
                     <Chip
                       label={`${attempt.score ?? 0}%`}
-                      color={attempt.passed ? 'success' : 'warning'}
-                      sx={{ fontWeight: 900 }}
+                      sx={{
+                        borderRadius: 999,
+                        backgroundColor: attempt.passed ? QUIZ_COLORS.success : QUIZ_COLORS.orange,
+                        color: '#fff',
+                        fontSize: 11,
+                        fontWeight: 700,
+                      }}
                     />
                     <Chip
                       label={`${attempt.correctCount}/${attempt.totalCount} correct`}
-                      variant="outlined"
-                      sx={{ backgroundColor: '#fff', fontWeight: 800 }}
+                      sx={{
+                        borderRadius: 999,
+                        border: `1px solid ${QUIZ_COLORS.blue100}`,
+                        backgroundColor: '#fff',
+                        color: QUIZ_COLORS.mute,
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
                     />
                   </Box>
                 ))}
+                {attempts.length === 0 && (
+                  <Box
+                    sx={{
+                      px: 1.75,
+                      py: 1.5,
+                      borderRadius: 2.5,
+                      backgroundColor: QUIZ_COLORS.bg2,
+                      border: `1px solid ${QUIZ_COLORS.blue100}`,
+                    }}
+                  >
+                    <Typography sx={{ color: QUIZ_COLORS.mute, fontSize: 13 }}>
+                      This submitted attempt is being saved.
+                    </Typography>
+                  </Box>
+                )}
               </Stack>
-            </Stack>
-          </Paper>
+            </Box>
+          </Box>
         )}
       </Stack>
 

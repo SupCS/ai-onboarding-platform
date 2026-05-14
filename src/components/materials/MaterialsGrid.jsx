@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import {
   Box,
   Chip,
   Paper,
   Stack,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
@@ -13,6 +15,17 @@ import SmartDisplayOutlinedIcon from '@mui/icons-material/SmartDisplayOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import { AI_DIGITAL_COLORS } from '../../lib/brandColors';
+
+const CARD_TOKENS = {
+  ink: '#0B0B0B',
+  slate: '#33344A',
+  mute: '#80808E',
+  blue: '#0009DC',
+  blue50: '#F5F5FE',
+  blue100: '#E5E5FA',
+  blue200: '#C7C7F0',
+  bg3: '#F2F1F3',
+};
 
 function formatDate(isoString) {
   try {
@@ -147,6 +160,25 @@ export default function MaterialsGrid({
   materials,
   onOpenMaterial,
 }) {
+  const [expandedTagMaterialIds, setExpandedTagMaterialIds] = useState(() => new Set());
+
+  const toggleExpandedTags = (event, materialId) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    setExpandedTagMaterialIds((prev) => {
+      const next = new Set(prev);
+
+      if (next.has(materialId)) {
+        next.delete(materialId);
+      } else {
+        next.add(materialId);
+      }
+
+      return next;
+    });
+  };
+
   return (
     <Box
       sx={{
@@ -158,12 +190,15 @@ export default function MaterialsGrid({
         lg: 'repeat(4, minmax(0, 1fr))',
         xl: 'repeat(5, minmax(0, 1fr))',
         },
-        gap: 2.5,
+        gap: 2,
       }}
     >
       {materials.map((material) => {
         const badges = getMaterialBadges(material);
         const tags = Array.isArray(material.tags) ? material.tags : [];
+        const areTagsExpanded = expandedTagMaterialIds.has(material.id);
+        const visibleTags = areTagsExpanded ? tags : tags.slice(0, 2);
+        const hiddenTagCount = Math.max(tags.length - 2, 0);
         const metaItems = getMaterialMetaItems(material);
         const firstYoutubeUrl = material.youtubeUrls?.[0] || '';
         const youtubeThumbnail = firstYoutubeUrl
@@ -185,29 +220,28 @@ export default function MaterialsGrid({
             elevation={0}
             onClick={() => onOpenMaterial(material)}
             sx={{
-              borderRadius: 1.75,
-              border: '1px solid rgba(0, 9, 220, 0.12)',
+              borderRadius: '14px',
+              border: `1px solid ${CARD_TOKENS.blue100}`,
               backgroundColor: '#fff',
-              minHeight: 332,
-              p: 2,
+              minHeight: 400,
+              p: '14px',
               display: 'flex',
               flexDirection: 'column',
-              gap: 1.5,
+              gap: '10px',
               cursor: 'pointer',
-              transition: 'border-color 150ms ease, box-shadow 150ms ease, transform 150ms ease',
+              transition: 'transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease',
               '&:hover': {
                 transform: 'translateY(-2px)',
-                borderColor: 'rgba(0, 9, 220, 0.28)',
-                boxShadow: '0 18px 40px rgba(11, 11, 11, 0.08)',
+                borderColor: CARD_TOKENS.blue200,
+                boxShadow: '0 12px 32px rgba(11, 11, 11, 0.08)',
               },
             }}
           >
           <Box
             sx={{
-                aspectRatio: '16 / 10',
-                borderRadius: 1.25,
-                border: '1px solid rgba(0, 9, 220, 0.12)',
-                backgroundColor: '#F5F5FE',
+                aspectRatio: '16 / 8',
+                borderRadius: '10px',
+                backgroundColor: CARD_TOKENS.blue50,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -257,7 +291,7 @@ export default function MaterialsGrid({
                   justifyContent: 'center',
                   px: 2,
                   textAlign: 'center',
-                  backgroundColor: '#F5F5FE',
+                  backgroundColor: CARD_TOKENS.blue50,
                 }}
               >
                 <LinkOutlinedIcon sx={{ fontSize: 42, color: AI_DIGITAL_COLORS.yvesKleinBlue }} />
@@ -266,7 +300,7 @@ export default function MaterialsGrid({
                   sx={{
                     maxWidth: '100%',
                     fontWeight: 800,
-                    color: '#0B0B0B',
+                    color: CARD_TOKENS.ink,
                     display: '-webkit-box',
                     overflow: 'hidden',
                     WebkitLineClamp: 2,
@@ -307,7 +341,7 @@ export default function MaterialsGrid({
                   size="small"
                   sx={{
                     borderRadius: 999,
-                    backgroundColor: '#F5F5FE',
+                    backgroundColor: CARD_TOKENS.blue50,
                     color: AI_DIGITAL_COLORS.yvesKleinBlue,
                     fontSize: 11,
                     fontWeight: 800,
@@ -336,54 +370,41 @@ export default function MaterialsGrid({
                 }}
                 >
                 <DescriptionOutlinedIcon sx={{ color: '#80808E' }} />
-                <Typography variant="body2" sx={{ color: '#80808E', fontSize: 12 }}>
+                <Typography variant="body2" sx={{ color: CARD_TOKENS.mute, fontSize: 12 }}>
                     Material preview
                 </Typography>
                 </Stack>
             )}
             </Box>
 
-            <Box
-              sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                flexGrow: 1,
-              }}
-            >
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  gap: 1,
-                  mb: 1,
-                }}
-              >
                 <Typography
                   component="h3"
                   sx={{
-                    color: '#0B0B0B',
+                    mx: 0.5,
+                    mt: 0.5,
+                    mb: 0,
+                    color: CARD_TOKENS.ink,
                     fontSize: 16,
                     fontWeight: 700,
                     lineHeight: 1.3,
-                    letterSpacing: 0,
+                    letterSpacing: '-0.01em',
                     display: '-webkit-box',
                     overflow: 'hidden',
                     WebkitLineClamp: 2,
                     WebkitBoxOrient: 'vertical',
+                    textWrap: 'balance',
                   }}
                 >
                   {material.title}
                 </Typography>
-              </Box>
 
               {material.description && (
                 <Typography
-                  variant="body2"
                   sx={{
-                    color: '#33344A',
-                    fontSize: 13,
-                    lineHeight: 1.45,
-                    mb: 1.5,
+                    mx: 0.5,
+                    color: CARD_TOKENS.slate,
+                    fontSize: 12,
+                    lineHeight: 1.5,
                     display: '-webkit-box',
                     overflow: 'hidden',
                     WebkitLineClamp: 2,
@@ -397,39 +418,82 @@ export default function MaterialsGrid({
               {tags.length > 0 && (
                 <Stack
                   direction="row"
-                  spacing={0.75}
+                  spacing={0.625}
                   useFlexGap
                   sx={{
                     flexWrap: 'wrap',
-                    mb: 1.5,
+                    px: 0.5,
                   }}
                 >
-                  {tags.map((tag) => (
+                  {visibleTags.map((tag) => (
                     <Chip
                       key={tag}
                       label={tag}
                       size="small"
                       sx={{
-                        height: 24,
+                        height: 23,
+                        maxWidth: '100%',
                         borderRadius: 999,
-                        backgroundColor: '#F2F1F3',
-                        color: '#33344A',
+                        border: `1px solid ${CARD_TOKENS.blue100}`,
+                        backgroundColor: '#fff',
+                        color: CARD_TOKENS.slate,
                         fontSize: 11,
-                        fontWeight: 700,
+                        fontWeight: 600,
+                        '& .MuiChip-label': {
+                          px: 1.1,
+                        },
                       }}
                     />
                   ))}
+                  {hiddenTagCount > 0 && !areTagsExpanded && (
+                    <Chip
+                      label={`+${hiddenTagCount} more`}
+                      size="small"
+                      onClick={(event) => toggleExpandedTags(event, material.id)}
+                      sx={{
+                        height: 23,
+                        borderRadius: 999,
+                        backgroundColor: CARD_TOKENS.bg3,
+                        color: CARD_TOKENS.mute,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor: CARD_TOKENS.blue50,
+                        },
+                      }}
+                    />
+                  )}
+                  {hiddenTagCount > 0 && areTagsExpanded && (
+                    <Chip
+                      label="Less"
+                      size="small"
+                      onClick={(event) => toggleExpandedTags(event, material.id)}
+                      sx={{
+                        height: 23,
+                        borderRadius: 999,
+                        backgroundColor: CARD_TOKENS.bg3,
+                        color: CARD_TOKENS.mute,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        '&:hover': {
+                          backgroundColor: CARD_TOKENS.blue50,
+                        },
+                      }}
+                    />
+                  )}
                 </Stack>
               )}
 
               {badges.length > 0 && (
                 <Stack
                   direction="row"
-                  spacing={1}
+                  spacing={0.75}
                   useFlexGap
                   sx={{
                     flexWrap: 'wrap',
-                    mb: 1.5,
+                    px: 0.5,
                   }}
                 >
                   {badges.map((badge) => (
@@ -440,10 +504,10 @@ export default function MaterialsGrid({
                       sx={{
                         height: 24,
                         borderRadius: 999,
-                        backgroundColor: '#F5F5FE',
-                        color: AI_DIGITAL_COLORS.yvesKleinBlue,
+                        backgroundColor: CARD_TOKENS.blue50,
+                        color: CARD_TOKENS.blue,
                         fontSize: 11,
-                        fontWeight: 700,
+                        fontWeight: 600,
                       }}
                     />
                   ))}
@@ -451,56 +515,99 @@ export default function MaterialsGrid({
               )}
 
               {metaItems.length > 0 && (
-                <Stack spacing={0.75} sx={{ mb: 2 }}>
-                  {metaItems.map((item) => (
-                    <Box
+                <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', px: 0.5 }}>
+                  {metaItems.slice(0, 2).map((item) => (
+                    <Chip
                       key={item.key}
-                      sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}
-                    >
-                      {item.icon}
-                      <Typography variant="caption" sx={{ color: '#80808E' }} noWrap>
-                        {item.label}
-                      </Typography>
-                    </Box>
+                      icon={item.icon}
+                      label={item.label}
+                      size="small"
+                      sx={{
+                        height: 24,
+                        maxWidth: '100%',
+                        borderRadius: 999,
+                        backgroundColor: CARD_TOKENS.blue50,
+                        color: CARD_TOKENS.blue,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        '& .MuiChip-icon': {
+                          color: 'inherit',
+                          fontSize: 13,
+                          ml: 0.9,
+                          mr: -0.4,
+                        },
+                      }}
+                    />
                   ))}
+                  {metaItems.length > 2 && (
+                    <Chip
+                      label={`+${metaItems.length - 2} sources`}
+                      size="small"
+                      sx={{
+                        height: 24,
+                        borderRadius: 999,
+                        backgroundColor: CARD_TOKENS.bg3,
+                        color: CARD_TOKENS.mute,
+                        fontSize: 11,
+                        fontWeight: 600,
+                      }}
+                    />
+                  )}
                 </Stack>
               )}
 
-              <Box
+              <Stack
+                direction="row"
                 sx={{
                   mt: 'auto',
+                  mx: 0.5,
                   pt: 1.5,
-                  borderTop: '1px solid rgba(0, 9, 220, 0.12)',
-                  display: 'flex',
+                  pb: 0.5,
+                  borderTop: `1px solid ${CARD_TOKENS.blue100}`,
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   gap: 1,
+                  minWidth: 0,
                 }}
               >
-                <Typography
-                  variant="caption"
+                <Stack
+                  direction="row"
+                  spacing={0.5}
                   sx={{
                     minWidth: 0,
-                    color: '#33344A',
-                    fontSize: 12,
-                    fontWeight: 700,
-                  }}
-                  noWrap
-                >
-                  By {material.createdBy || 'Unknown author'}
-                </Typography>
-                <Typography
-                  variant="caption"
-                  sx={{
-                    flexShrink: 0,
-                    color: '#80808E',
-                    fontSize: 12,
+                    flex: '1 1 auto',
+                    alignItems: 'center',
+                    color: CARD_TOKENS.mute,
+                    fontSize: 11,
                   }}
                 >
-                  Added {formatDate(material.createdAt)}
-                </Typography>
-              </Box>
-            </Box>
+                  <Tooltip title={material.createdBy || 'Unknown author'} enterDelay={400}>
+                    <Typography
+                      component="span"
+                      sx={{
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                        color: 'inherit',
+                        fontSize: 'inherit',
+                      }}
+                    >
+                      {material.createdBy || 'Unknown author'}
+                    </Typography>
+                  </Tooltip>
+                  <Typography
+                    component="span"
+                    sx={{
+                      flexShrink: 0,
+                      color: 'inherit',
+                      fontSize: 'inherit',
+                    }}
+                  >
+                    - {formatDate(material.createdAt)}
+                  </Typography>
+                </Stack>
+              </Stack>
           </Paper>
         );
       })}

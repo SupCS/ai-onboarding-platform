@@ -6,6 +6,7 @@ import { getCurrentUser } from '../../../../../../lib/currentUser';
 import {
   getLessonActivityForUser,
   getLessonActivityAttemptsForUser,
+  getLessonActivitiesForUser,
   getLessonById,
   getLessonEnrollmentForUser,
 } from '../../../../../../lib/lessons';
@@ -47,6 +48,7 @@ export default async function LessonActivityPage({ params }) {
   const attempts = activity.type === 'quiz'
     ? await getLessonActivityAttemptsForUser(id, activityId, currentUser.id)
     : [];
+  const lessonActivities = await getLessonActivitiesForUser(id, currentUser.id);
 
   return (
     <Box
@@ -69,7 +71,10 @@ export default async function LessonActivityPage({ params }) {
       >
         {activity.type === 'quiz' ? (
           <QuizActivityPlayer
-            lesson={lesson}
+            lesson={{
+              ...lesson,
+              activities: lessonActivities,
+            }}
             activity={activity}
             initialAttempts={attempts}
           />
