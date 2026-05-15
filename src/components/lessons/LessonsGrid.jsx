@@ -84,11 +84,39 @@ function getPublicationLabel(lesson) {
     return 'archived';
   }
 
+  if (lesson.status !== 'ready') {
+    return lesson.status;
+  }
+
   if (!lesson.isPublished) {
-    return 'private';
+    return 'draft';
   }
 
   return lesson.status;
+}
+
+function getEnrollmentActionLabel(lesson, enrolledLabel, defaultLabel) {
+  if (lesson.isEnrolled) {
+    return enrolledLabel;
+  }
+
+  if (lesson.isArchived) {
+    return 'Archived';
+  }
+
+  if (lesson.status === 'draft') {
+    return 'Draft...';
+  }
+
+  if (lesson.status === 'generating') {
+    return 'Generating...';
+  }
+
+  if (lesson.status === 'failed') {
+    return 'Failed';
+  }
+
+  return lesson.isPublished ? defaultLabel : 'Draft...';
 }
 
 function getStatusPalette(label) {
@@ -539,13 +567,7 @@ export default function LessonsGrid({
                     },
                   }}
                 >
-                  {lesson.isEnrolled
-                    ? 'Added to...'
-                    : lesson.isArchived
-                      ? 'Archived'
-                      : lesson.isPublished
-                        ? 'Add to...'
-                        : 'Publish before adding'}
+                  {getEnrollmentActionLabel(lesson, 'Added to...', 'Add to...')}
                 </Button>
               )}
 
@@ -592,13 +614,7 @@ export default function LessonsGrid({
                     },
                   }}
                 >
-                  {lesson.isEnrolled
-                    ? 'Remove from My Lessons'
-                    : lesson.isArchived
-                      ? 'Archived'
-                      : lesson.isPublished
-                        ? 'Add to My Lessons'
-                        : 'Publish before adding'}
+                  {getEnrollmentActionLabel(lesson, 'Remove from My Lessons', 'Add to My Lessons')}
                 </Button>
               )}
 

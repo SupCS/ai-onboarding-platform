@@ -212,7 +212,10 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
         }
       }
 
-      if (lessonStatusFilter === 'ready' && (lesson.status !== 'ready' || isArchived)) {
+      if (
+        lessonStatusFilter === 'ready' &&
+        (lesson.status !== 'ready' || !lesson.isPublished || isArchived)
+      ) {
         return false;
       }
 
@@ -220,7 +223,10 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
         return false;
       }
 
-      if (lessonStatusFilter === 'pending' && (lesson.status === 'ready' || isArchived)) {
+      if (
+        lessonStatusFilter === 'pending' &&
+        ((lesson.status === 'ready' && lesson.isPublished) || isArchived)
+      ) {
         return false;
       }
 
@@ -1409,18 +1415,49 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
         onClose={handleCloseLessonDialog}
         fullWidth
         maxWidth="lg"
+        slotProps={{
+          paper: {
+            sx: {
+              borderRadius: 2.5,
+              overflow: 'hidden',
+            },
+          },
+        }}
       >
-        <DialogTitle sx={{ pr: 7 }}>
+        <DialogTitle
+          sx={{
+            px: 3,
+            py: 2,
+            pr: 7,
+            color: '#80808E',
+            borderBottom: '1px solid #E3E5FF',
+            fontSize: 13,
+            fontWeight: 700,
+            lineHeight: 1,
+          }}
+        >
           Create lesson
           <IconButton
             aria-label="Close create lesson dialog"
             onClick={handleCloseLessonDialog}
-            sx={{ position: 'absolute', right: 16, top: 12 }}
+            sx={{
+              position: 'absolute',
+              right: 16,
+              top: 10,
+              width: 32,
+              height: 32,
+              border: '1px solid #CBD0FF',
+              backgroundColor: '#fff',
+              color: '#33344A',
+              '&:hover': {
+                backgroundColor: '#F5F5FE',
+              },
+            }}
           >
-            <CloseOutlinedIcon />
+            <CloseOutlinedIcon sx={{ fontSize: 17 }} />
           </IconButton>
         </DialogTitle>
-        <DialogContent dividers>
+        <DialogContent sx={{ p: 0 }}>
           <LessonPromptForm
             materials={sortedMaterials}
             onLessonGenerated={handleLessonGenerated}

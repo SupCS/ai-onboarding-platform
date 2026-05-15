@@ -83,6 +83,43 @@ function getImageFilesFromDataTransfer(dataTransfer) {
     .filter((file) => file.type?.startsWith("image/"))
 }
 
+function insertImageFiles({ editor, files, insertPosition, uploadImage }) {
+  Promise.all(
+    files.map(async (file) => {
+      const image = await uploadImage(file)
+
+      if (!image?.src) {
+        return null
+      }
+
+      return {
+        type: "image",
+        attrs: {
+          src: image.src,
+          alt: image.alt || file.name,
+          title: image.title || file.name,
+        },
+      }
+    })
+  )
+    .then((imageNodes) => {
+      const nodes = imageNodes.filter(Boolean)
+
+      if (!nodes.length || editor?.isDestroyed) {
+        return
+      }
+
+      editor
+        ?.chain()
+        .focus()
+        .insertContentAt(insertPosition, nodes)
+        .run()
+    })
+    .catch((error) => {
+      console.error("Failed to insert image into editor:", error)
+    })
+}
+
 const MainToolbarContent = ({
   onHighlighterClick,
   onLinkClick,
@@ -219,40 +256,40 @@ export function SimpleEditor({
 
         const insertPosition = view.state.selection.from
 
-        Promise.all(
-          imageFiles.map(async (file) => {
-            const image = await imageUploadRef.current(file)
+        insertImageFiles({
+          editor,
+          files: imageFiles,
+          insertPosition,
+          uploadImage: imageUploadRef.current,
+        })
 
-            if (!image?.src) {
-              return null
-            }
+        return true
+      },
+      handleDrop: (view, event) => {
+        if (!editableRef.current || !imageUploadRef.current) {
+          return false
+        }
 
-            return {
-              type: "image",
-              attrs: {
-                src: image.src,
-                alt: image.alt || file.name,
-                title: image.title || file.name,
-              },
-            }
-          })
-        )
-          .then((imageNodes) => {
-            const nodes = imageNodes.filter(Boolean)
+        const imageFiles = getImageFilesFromDataTransfer(event.dataTransfer)
 
-            if (!nodes.length || view.isDestroyed) {
-              return
-            }
+        if (imageFiles.length === 0) {
+          return false
+        }
 
-            editor
-              ?.chain()
-              .focus()
-              .insertContentAt(insertPosition, nodes)
-              .run()
-          })
-          .catch((error) => {
-            console.error("Failed to paste image into editor:", error)
-          })
+        event.preventDefault()
+
+        const coordinates = view.posAtCoords({
+          left: event.clientX,
+          top: event.clientY,
+        })
+        const insertPosition = coordinates?.pos ?? view.state.selection.from
+
+        insertImageFiles({
+          editor,
+          files: imageFiles,
+          insertPosition,
+          uploadImage: imageUploadRef.current,
+        })
 
         return true
       },
@@ -339,7 +376,10 @@ export function SimpleEditor({
           </Toolbar>
         )}
 
-        <EditorContent editor={editor} role="presentation" className="simple-editor-content" />
+        <div className="simple-editor-scroll">
+          <EditorContent editor={editor} role="presentation" className="simple-editor-content" />
+          <div className="simple-editor-bottom-spacer" aria-hidden="true" />
+        </div>
       </EditorContext.Provider>
     </div>
   );

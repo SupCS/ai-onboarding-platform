@@ -14,39 +14,40 @@
 .simple-editor-wrapper.lesson-details-editor {
   flex: 1 1 auto;
   min-height: 0;
-  height: 100%;
   max-height: none;
   overflow: hidden;
   background: #ffffff;
+  display: flex;
+  flex-direction: column;
+}
+
+.simple-editor-scroll {
+  width: 100%;
+  min-height: 420px;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.simple-editor-wrapper.lesson-details-editor .simple-editor-scroll {
+  min-height: 0;
+  overflow: auto;
+  flex: 1 1 auto;
 }
 
 .simple-editor-wrapper.lesson-details-editor .simple-editor-content {
   min-height: 0;
-  height: 100%;
-  overflow: auto;
+  overflow: visible;
+  flex: 0 0 auto;
 }
 
-.simple-editor-wrapper.lesson-details-editor .tiptap.ProseMirror.simple-editor {
-  min-height: 100%;
-  max-width: 860px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 2.75rem clamp(1.25rem, 4vw, 4rem) 4rem;
-  color: #172033;
-  font-size: 1rem;
-  line-height: 1.78;
-  background:
-    linear-gradient(90deg, rgba(0, 9, 220, 0.06) 0, rgba(0, 9, 220, 0.06) 3px, transparent 3px) 0 0 / 100% 100% no-repeat,
-    #ffffff;
+.simple-editor-bottom-spacer {
+  display: none;
 }
 
-.simple-editor-wrapper.lesson-details-editor:has(.tiptap-toolbar) .tiptap.ProseMirror.simple-editor {
-  max-width: none;
-  margin: 0;
-  padding: 2rem clamp(1rem, 3vw, 3rem) 4rem;
-  background:
-    linear-gradient(90deg, rgba(174, 243, 62, 0.38) 0, rgba(174, 243, 62, 0.38) 4px, transparent 4px) 0 0 / 100% 100% no-repeat,
-    #ffffff;
+.simple-editor-wrapper.lesson-details-editor .simple-editor-bottom-spacer {
+  display: block;
+  flex: 0 0 0px;
 }
 
 .simple-editor-wrapper .tiptap-toolbar[data-variant="fixed"] {
@@ -57,7 +58,6 @@
 
 .simple-editor-content {
   width: 100%;
-  min-height: 420px;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -127,35 +127,6 @@
   text-underline-offset: 0.18em;
 }
 
-.simple-editor-wrapper.lesson-details-editor .tiptap.ProseMirror.simple-editor a[href] {
-  display: inline-flex;
-  align-items: center;
-  max-width: min(100%, 24rem);
-  min-height: 1.55rem;
-  margin: 0 0.12rem;
-  padding: 0.12rem 0.52rem;
-  border: 1px solid rgba(0, 9, 220, 0.18);
-  border-radius: 999px;
-  color: #0009dc;
-  background: rgba(142, 231, 241, 0.2);
-  font-size: 0.88em;
-  font-weight: 850;
-  line-height: 1.2;
-  text-decoration: none;
-  vertical-align: baseline;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.simple-editor-wrapper.lesson-details-editor .tiptap.ProseMirror.simple-editor a[href]::after {
-  content: ">";
-  flex: 0 0 auto;
-  margin-left: 0.35rem;
-  font-size: 0.78em;
-  line-height: 1;
-}
-
 .simple-editor-content .tiptap.ProseMirror.simple-editor code {
   border-radius: 0.35rem;
   padding: 0.12rem 0.35rem;
@@ -172,9 +143,5 @@
 @media screen and (max-width: 480px) {
   .simple-editor-content .tiptap.ProseMirror.simple-editor {
     padding: 1rem;
-  }
-
-  .simple-editor-wrapper.lesson-details-editor .tiptap.ProseMirror.simple-editor {
-    padding: 1.25rem 1rem 2.5rem;
   }
 }

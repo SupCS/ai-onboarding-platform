@@ -57,11 +57,11 @@ export default function LessonReader({ html }) {
           fontWeight: 600,
         },
         '& code': {
-          px: 0.75,
-          py: 0.25,
-          borderRadius: 1,
-          backgroundColor: '#eef2ff',
-          color: '#3730a3',
+          px: '0.35rem',
+          py: '0.12rem',
+          borderRadius: '0.35rem',
+          backgroundColor: 'rgba(174, 243, 62, 0.32)',
+          color: '#080808',
           fontSize: '0.92em',
         },
         '& pre': {

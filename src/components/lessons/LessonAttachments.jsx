@@ -9,15 +9,19 @@ import SmartDisplayOutlinedIcon from '@mui/icons-material/SmartDisplayOutlined';
 import { AI_DIGITAL_COLORS, hexToRgba } from '../../lib/brandColors';
 
 async function readResponseBody(response) {
-  const contentType = response.headers.get('content-type') || '';
+  const text = await response.text();
 
-  if (contentType.includes('application/json')) {
-    return response.json();
+  if (!text) {
+    return {};
   }
 
-  return {
-    error: await response.text(),
-  };
+  try {
+    return JSON.parse(text);
+  } catch {
+    return {
+      error: text,
+    };
+  }
 }
 
 export function getSourceAttachments(sourceReferences = []) {
@@ -359,6 +363,133 @@ function LessonAssetCard({
   );
 }
 
+function LessonAssetRow({
+  attachment,
+  index,
+  onOpenAttachment,
+  onOpenSourceMaterial,
+}) {
+  const isYoutube = attachment.kind === 'youtube';
+  const isLink = attachment.kind === 'link';
+  const youtubeAsset = useYouTubeAssetPreview(attachment);
+  const isImage = attachment.kind === 'image' || attachment.mimeType?.startsWith('image/');
+  const imagePreviewUrl = useStorageImagePreview(attachment, isImage);
+  const badge = getFileBadge(attachment);
+  const canOpen = Boolean(isYoutube || isLink || attachment.storageKey || onOpenSourceMaterial);
+  const title = isYoutube ? youtubeAsset.title : attachment.name;
+  const subtitle = isYoutube
+    ? 'YouTube video'
+    : isLink
+      ? 'Web link'
+      : isImage
+        ? 'Image'
+        : badge.label;
+
+  return (
+    <Box
+      key={attachment.id || `${attachment.sourceId}-${attachment.name}-${index}`}
+      component="button"
+      type="button"
+      disabled={!canOpen}
+      onClick={() => onOpenAttachment(attachment)}
+      sx={{
+        width: '100%',
+        display: 'grid',
+        gridTemplateColumns: '36px minmax(0, 1fr) auto',
+        gap: 1.25,
+        alignItems: 'center',
+        p: 1.25,
+        border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.2)}`,
+        borderRadius: 1.25,
+        backgroundColor: '#fff',
+        color: 'inherit',
+        cursor: canOpen ? 'pointer' : 'not-allowed',
+        font: 'inherit',
+        opacity: canOpen ? 1 : 0.62,
+        textAlign: 'left',
+        transition: 'border-color 120ms ease, background-color 120ms ease',
+        '&:hover': canOpen
+          ? {
+              borderColor: AI_DIGITAL_COLORS.yvesKleinBlue,
+              backgroundColor: '#F5F5FE',
+            }
+          : undefined,
+      }}
+    >
+      <Box
+        sx={{
+          width: 36,
+          height: 36,
+          display: 'grid',
+          placeItems: 'center',
+          borderRadius: 1,
+          color: isImage ? '#0f766e' : AI_DIGITAL_COLORS.yvesKleinBlue,
+          backgroundColor: isImage
+            ? 'rgba(15, 118, 110, 0.1)'
+            : hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.08),
+          overflow: 'hidden',
+        }}
+      >
+        {isImage && imagePreviewUrl ? (
+          <Box
+            component="img"
+            src={imagePreviewUrl}
+            alt=""
+            sx={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+            }}
+          />
+        ) : isYoutube ? (
+          <SmartDisplayOutlinedIcon sx={{ fontSize: 18 }} />
+        ) : isLink ? (
+          <LinkOutlinedIcon sx={{ fontSize: 18 }} />
+        ) : isImage ? (
+          <ImageOutlinedIcon sx={{ fontSize: 18 }} />
+        ) : (
+          <Typography sx={{ color: badge.color, fontSize: 10, fontWeight: 900, lineHeight: 1 }}>
+            {badge.label}
+          </Typography>
+        )}
+      </Box>
+
+      <Box sx={{ minWidth: 0 }}>
+        <Typography
+          sx={{
+            color: '#0B0B0B',
+            fontSize: 13,
+            fontWeight: 700,
+            lineHeight: 1.25,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {title}
+        </Typography>
+        <Typography
+          sx={{
+            mt: 0.35,
+            color: '#80808E',
+            fontSize: 11,
+            fontWeight: 600,
+            lineHeight: 1.2,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {subtitle}
+        </Typography>
+      </Box>
+
+      {canOpen && <OpenInNewOutlinedIcon sx={{ color: '#80808E', fontSize: 16 }} />}
+    </Box>
+  );
+}
+
 function getFileBadge(attachment) {
   const mimeType = (attachment.mimeType || '').toLowerCase();
   const name = (attachment.name || '').toLowerCase();
@@ -448,6 +579,19 @@ export default function LessonAttachments({
         </Typography>
       )}
 
+      {layout === 'list' ? (
+        <Box sx={{ display: 'grid', gap: 1 }}>
+          {resolvedAttachments.map((attachment, index) => (
+            <LessonAssetRow
+              key={attachment.id || `${attachment.sourceId}-${attachment.name}-${index}`}
+              attachment={attachment}
+              index={index}
+              onOpenAttachment={handleOpenAttachment}
+              onOpenSourceMaterial={onOpenSourceMaterial}
+            />
+          ))}
+        </Box>
+      ) : (
       <Box
         sx={{
           display: 'grid',
@@ -475,6 +619,7 @@ export default function LessonAttachments({
           />
         ))}
       </Box>
+      )}
     </Box>
   );
 }

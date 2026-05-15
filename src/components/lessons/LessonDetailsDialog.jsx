@@ -11,7 +11,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControl,
   InputLabel,
   MenuItem,
@@ -34,18 +33,15 @@ import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined';
 import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import RocketLaunchOutlinedIcon from '@mui/icons-material/RocketLaunchOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
-import SourceOutlinedIcon from '@mui/icons-material/SourceOutlined';
 import StyleOutlinedIcon from '@mui/icons-material/StyleOutlined';
-import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
 import UnarchiveOutlinedIcon from '@mui/icons-material/UnarchiveOutlined';
 import ViewSidebarOutlinedIcon from '@mui/icons-material/ViewSidebarOutlined';
-import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import LessonAttachments, { getSourceAttachments } from './LessonAttachments';
+import LessonReader from './LessonReader';
 import { SimpleEditor } from '../tiptap/tiptap-templates/simple/simple-editor';
 import { markdownToHtml } from '../../lib/lessonContent';
 import { AI_DIGITAL_COLORS, hexToRgba } from '../../lib/brandColors';
@@ -65,22 +61,6 @@ function formatDateTime(isoString) {
   }
 }
 
-function getStatusColor(status) {
-  if (status === 'ready') {
-    return 'success';
-  }
-
-  if (status === 'failed') {
-    return 'error';
-  }
-
-  if (status === 'generating') {
-    return 'warning';
-  }
-
-  return 'default';
-}
-
 const revisionOptions = [
   { value: 'simpler', label: 'Simpler' },
   { value: 'deeper', label: 'Deeper' },
@@ -94,45 +74,166 @@ const activityTypeOptions = [
   { value: 'flashcards', label: 'Flashcards', min: 5, max: 40, defaultCount: 12 },
 ];
 
+const LESSON_DIALOG_COLORS = {
+  blue: '#0009DC',
+  ink: '#0B0B0B',
+  slate: '#33344A',
+  mute: '#80808E',
+  blue50: '#F5F5FE',
+  blue100: '#E3E5FF',
+  blue200: '#CBD0FF',
+  success: '#229E5A',
+};
+
+const lessonActionButtonSx = {
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+};
+
+const lessonSecondaryButtonSx = {
+  ...lessonActionButtonSx,
+  borderColor: LESSON_DIALOG_COLORS.blue200,
+  color: LESSON_DIALOG_COLORS.blue,
+  backgroundColor: '#fff',
+  '&:hover': {
+    borderColor: LESSON_DIALOG_COLORS.blue,
+    backgroundColor: LESSON_DIALOG_COLORS.blue50,
+  },
+};
+
+const lessonPrimaryButtonSx = {
+  ...lessonActionButtonSx,
+  backgroundColor: LESSON_DIALOG_COLORS.blue,
+  color: '#fff',
+  boxShadow: '0 8px 18px rgba(0, 9, 220, 0.22)',
+  '&:hover': {
+    backgroundColor: LESSON_DIALOG_COLORS.blue,
+    boxShadow: '0 10px 22px rgba(0, 9, 220, 0.26)',
+  },
+};
+
+const lessonDarkButtonSx = {
+  ...lessonActionButtonSx,
+  backgroundColor: LESSON_DIALOG_COLORS.ink,
+  color: '#fff',
+  boxShadow: 'none',
+  '&:hover': {
+    backgroundColor: LESSON_DIALOG_COLORS.ink,
+    boxShadow: 'none',
+  },
+};
+
+const lessonDangerButtonSx = {
+  ...lessonActionButtonSx,
+  borderColor: 'rgba(214, 47, 47, 0.28)',
+  color: '#D62F2F',
+  backgroundColor: '#fff',
+  '&:hover': {
+    borderColor: '#D62F2F',
+    backgroundColor: 'rgba(214, 47, 47, 0.05)',
+  },
+};
+
+const activityTextFieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 1.5,
+    backgroundColor: '#fff',
+    '& fieldset': { borderColor: LESSON_DIALOG_COLORS.blue200 },
+    '&:hover fieldset': { borderColor: LESSON_DIALOG_COLORS.blue },
+    '&.Mui-focused fieldset': { borderColor: LESSON_DIALOG_COLORS.blue },
+  },
+  '& .MuiInputLabel-root': {
+    color: LESSON_DIALOG_COLORS.mute,
+    fontSize: 13,
+    fontWeight: 700,
+  },
+  '& .MuiInputBase-input': {
+    color: LESSON_DIALOG_COLORS.ink,
+    fontSize: 14,
+    lineHeight: 1.45,
+  },
+};
+
+const activityPlainFieldSx = {
+  '& .MuiInputLabel-root': {
+    color: LESSON_DIALOG_COLORS.mute,
+    fontSize: 12,
+    fontWeight: 800,
+    letterSpacing: '0.04em',
+  },
+  '& .MuiInputBase-root': {
+    color: LESSON_DIALOG_COLORS.ink,
+    fontSize: 15,
+    lineHeight: 1.45,
+  },
+  '& .MuiInputBase-input': {
+    py: 0.75,
+  },
+  '& .MuiInput-underline:before': {
+    borderBottomColor: 'rgba(0, 9, 220, 0.14)',
+  },
+  '& .MuiInput-underline:hover:not(.Mui-disabled):before': {
+    borderBottomColor: 'rgba(0, 9, 220, 0.28)',
+  },
+  '& .MuiInput-underline:after': {
+    borderBottomColor: LESSON_DIALOG_COLORS.blue,
+  },
+};
+
+const activityCardSx = {
+  p: { xs: 1.5, md: 2.25 },
+  borderRadius: 1.75,
+  border: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
+  backgroundColor: '#fff',
+};
+
+const activityBadgeSx = {
+  height: 28,
+  borderRadius: 999,
+  px: 1.25,
+  color: LESSON_DIALOG_COLORS.blue,
+  backgroundColor: LESSON_DIALOG_COLORS.blue50,
+  fontSize: 11,
+  fontWeight: 800,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+};
+
 function getActivityTypeSettings(type) {
   return activityTypeOptions.find((option) => option.value === type) || activityTypeOptions[0];
 }
 
-function DetailPanel({ icon, title, children, accent = AI_DIGITAL_COLORS.yvesKleinBlue }) {
+function DetailPanel({ title, children }) {
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        p: 2,
-        borderRadius: 2,
-        border: `1px solid ${hexToRgba(accent, 0.22)}`,
-        backgroundColor: '#fff',
-        boxShadow: `0 14px 34px ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.05)}`,
-      }}
-    >
-      <Stack spacing={1.5}>
-        <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-          <Box
-            sx={{
-              width: 32,
-              height: 32,
-              borderRadius: 1.5,
-              display: 'grid',
-              placeItems: 'center',
-              color: AI_DIGITAL_COLORS.midnightCharcoal,
-              backgroundColor: hexToRgba(accent, 0.18),
-            }}
-          >
-            {icon}
-          </Box>
-          <Typography variant="subtitle1" sx={{ fontWeight: 900 }}>
-            {title}
-          </Typography>
-        </Stack>
+    <Box>
+      <Typography
+        sx={{
+          mb: 1.25,
+          color: LESSON_DIALOG_COLORS.mute,
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: '0.08em',
+          lineHeight: 1,
+          textTransform: 'uppercase',
+        }}
+      >
+        {title}
+      </Typography>
 
+      <Box
+        sx={{
+          p: 1.25,
+          borderRadius: 1.25,
+          border: `1px solid ${LESSON_DIALOG_COLORS.blue200}`,
+          backgroundColor: '#fff',
+        }}
+      >
         {children}
-      </Stack>
-    </Paper>
+      </Box>
+    </Box>
   );
 }
 
@@ -231,6 +332,7 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
   }
 
   const isFlashcards = activity.type === 'flashcards';
+  const itemCount = isFlashcards ? draft.cards.length : draft.items.length;
 
   const updateDraft = (updater) => {
     onDraftChange((current) => {
@@ -262,47 +364,75 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
   };
 
   return (
-    <Stack sx={{ minHeight: 0, height: '100%' }}>
+    <Stack sx={{ minHeight: 0, height: '100%', backgroundColor: '#fff' }}>
       <Box
         sx={{
-          px: { xs: 1.5, md: 2 },
-          py: 1.5,
-          borderBottom: '1px solid #e8edf5',
+          px: { xs: 2, md: 3.5 },
+          py: 2.25,
+          borderBottom: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
           backgroundColor: '#fff',
         }}
       >
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ justifyContent: 'space-between' }}>
-          <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-            {isFlashcards ? (
-              <StyleOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} />
-            ) : (
-              <QuizOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} />
-            )}
+          <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center' }}>
+            <Box
+              sx={{
+                width: 38,
+                height: 38,
+                borderRadius: '50%',
+                display: 'grid',
+                placeItems: 'center',
+                color: LESSON_DIALOG_COLORS.blue,
+                backgroundColor: LESSON_DIALOG_COLORS.blue50,
+              }}
+            >
+              {isFlashcards ? (
+                <StyleOutlinedIcon fontSize="small" />
+              ) : (
+                <QuizOutlinedIcon fontSize="small" />
+              )}
+            </Box>
             <Box>
-              <Typography variant="subtitle2" sx={{ fontWeight: 900, lineHeight: 1.2 }}>
-                {isFlashcards ? 'Flashcards editor' : 'Quiz editor'}
+              <Typography
+                sx={{
+                  color: LESSON_DIALOG_COLORS.blue,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  lineHeight: 1,
+                  mb: 0.75,
+                  textTransform: 'uppercase',
+                }}
+              >
+                Activity editor
               </Typography>
-              <Typography variant="caption" color="text.secondary">
-                Edit saved activity content. Changes are saved into this lesson activity.
+              <Typography sx={{ color: LESSON_DIALOG_COLORS.ink, fontSize: 24, fontWeight: 900, lineHeight: 1 }}>
+                {isFlashcards ? 'Flashcards editor' : 'Quiz editor'}
               </Typography>
             </Box>
           </Stack>
 
           <Chip
-            label={`${isFlashcards ? draft.cards.length : draft.items.length} item${(isFlashcards ? draft.cards.length : draft.items.length) === 1 ? '' : 's'}`}
+            label={`${itemCount} item${itemCount === 1 ? '' : 's'}`}
             size="small"
             sx={{
+              ...activityBadgeSx,
               alignSelf: { xs: 'flex-start', md: 'center' },
-              fontWeight: 800,
-              color: AI_DIGITAL_COLORS.yvesKleinBlue,
-              backgroundColor: hexToRgba(AI_DIGITAL_COLORS.skywave, 0.24),
             }}
           />
         </Stack>
       </Box>
 
-      <Box sx={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto', p: { xs: 1.5, md: 2 } }}>
-        <Stack spacing={2}>
+      <Box
+        sx={{
+          flex: '1 1 auto',
+          minHeight: 0,
+          overflow: 'auto',
+          p: { xs: 2, md: 3.5 },
+          backgroundColor: '#fff',
+        }}
+      >
+        <Stack spacing={2.25}>
           <TextField
             label={isFlashcards ? 'Flashcards title' : 'Quiz title'}
             value={draft.title}
@@ -312,24 +442,16 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
             }))}
             disabled={disabled}
             fullWidth
+            sx={activityTextFieldSx}
           />
 
           {isFlashcards ? (
             <>
               {draft.cards.map((card, cardIndex) => (
-                <Paper
-                  key={`card-${cardIndex}`}
-                  elevation={0}
-                  sx={{
-                    p: { xs: 1.5, md: 2 },
-                    borderRadius: 2,
-                    border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.12)}`,
-                    backgroundColor: '#fff',
-                  }}
-                >
+                <Paper key={`card-${cardIndex}`} elevation={0} sx={activityCardSx}>
                   <Stack spacing={1.5}>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Chip label={`Card ${cardIndex + 1}`} size="small" sx={{ fontWeight: 900 }} />
+                      <Chip label={`Card ${cardIndex + 1}`} size="small" sx={activityBadgeSx} />
                       <IconButton
                         aria-label="Remove flashcard"
                         size="small"
@@ -338,6 +460,10 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
                           ...currentDraft,
                           cards: currentDraft.cards.filter((_, index) => index !== cardIndex),
                         }))}
+                        sx={{
+                          color: '#D62F2F',
+                          '&.Mui-disabled': { color: LESSON_DIALOG_COLORS.mute },
+                        }}
                       >
                         <DeleteOutlineOutlinedIcon fontSize="small" />
                       </IconButton>
@@ -350,6 +476,7 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
                       multiline
                       minRows={2}
                       fullWidth
+                      sx={activityTextFieldSx}
                     />
                     <TextField
                       label="Back"
@@ -359,6 +486,7 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
                       multiline
                       minRows={2}
                       fullWidth
+                      sx={activityTextFieldSx}
                     />
                     <TextField
                       label="Explanation"
@@ -368,6 +496,7 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
                       multiline
                       minRows={2}
                       fullWidth
+                      sx={activityTextFieldSx}
                     />
                   </Stack>
                 </Paper>
@@ -380,7 +509,7 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
                   ...currentDraft,
                   cards: [...currentDraft.cards, { front: '', back: '', explanation: '' }],
                 }))}
-                sx={{ alignSelf: 'flex-start', textTransform: 'none', fontWeight: 800 }}
+                sx={{ ...lessonSecondaryButtonSx, alignSelf: 'flex-start' }}
               >
                 Add card
               </Button>
@@ -388,19 +517,10 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
           ) : (
             <>
               {draft.items.map((item, itemIndex) => (
-                <Paper
-                  key={`question-${itemIndex}`}
-                  elevation={0}
-                  sx={{
-                    p: { xs: 1.5, md: 2 },
-                    borderRadius: 2,
-                    border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.12)}`,
-                    backgroundColor: '#fff',
-                  }}
-                >
+                <Paper key={`question-${itemIndex}`} elevation={0} sx={activityCardSx}>
                   <Stack spacing={1.5}>
                     <Stack direction="row" spacing={1} sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-                      <Chip label={`Question ${itemIndex + 1}`} size="small" sx={{ fontWeight: 900 }} />
+                      <Chip label={`Question ${itemIndex + 1}`} size="small" sx={activityBadgeSx} />
                       <IconButton
                         aria-label="Remove question"
                         size="small"
@@ -409,6 +529,10 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
                           ...currentDraft,
                           items: currentDraft.items.filter((_, index) => index !== itemIndex),
                         }))}
+                        sx={{
+                          color: '#D62F2F',
+                          '&.Mui-disabled': { color: LESSON_DIALOG_COLORS.mute },
+                        }}
                       >
                         <DeleteOutlineOutlinedIcon fontSize="small" />
                       </IconButton>
@@ -418,59 +542,78 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
                       value={item.question}
                       onChange={(event) => updateQuizItem(itemIndex, { ...item, question: event.target.value })}
                       disabled={disabled}
+                      variant="standard"
                       multiline
                       minRows={2}
                       fullWidth
+                      sx={activityPlainFieldSx}
                     />
-                    <Stack spacing={1}>
-                      {item.options.map((option, optionIndex) => (
-                        <Box
-                          key={`option-${optionIndex}`}
-                          sx={{
-                            display: 'grid',
-                            gridTemplateColumns: 'auto minmax(0, 1fr)',
-                            gap: 1,
-                            alignItems: 'center',
-                          }}
-                        >
-                          <Radio
-                            checked={item.correctAnswer === option && Boolean(option)}
-                            disabled={disabled || !option}
-                            onChange={() => updateQuizItem(itemIndex, { ...item, correctAnswer: option })}
-                            size="small"
-                          />
-                          <TextField
-                            label={`Option ${optionIndex + 1}`}
-                            value={option}
-                            onChange={(event) => {
-                              const nextOptions = item.options.map((currentOption, index) => (
-                                index === optionIndex ? event.target.value : currentOption
-                              ));
-                              const nextCorrectAnswer = item.correctAnswer === option
-                                ? event.target.value
-                                : item.correctAnswer;
+                    <Stack spacing={0.75}>
+                      {item.options.map((option, optionIndex) => {
+                        const isCorrectOption = item.correctAnswer === option && Boolean(option);
 
-                              updateQuizItem(itemIndex, {
-                                ...item,
-                                options: nextOptions,
-                                correctAnswer: nextCorrectAnswer,
-                              });
+                        return (
+                          <Box
+                            key={`option-${optionIndex}`}
+                            sx={{
+                              display: 'grid',
+                              gridTemplateColumns: 'auto minmax(0, 1fr)',
+                              gap: 1,
+                              alignItems: 'center',
+                              px: 1.25,
+                              py: 0.75,
+                              borderRadius: 999,
+                              border: isCorrectOption ? `1.5px solid ${LESSON_DIALOG_COLORS.blue}` : '1.5px solid transparent',
+                              backgroundColor: isCorrectOption ? LESSON_DIALOG_COLORS.blue50 : '#fff',
                             }}
-                            disabled={disabled}
-                            size="small"
-                            fullWidth
-                          />
-                        </Box>
-                      ))}
+                          >
+                            <Radio
+                              checked={isCorrectOption}
+                              disabled={disabled || !option}
+                              onChange={() => updateQuizItem(itemIndex, { ...item, correctAnswer: option })}
+                              size="small"
+                              sx={{
+                                color: LESSON_DIALOG_COLORS.blue200,
+                                '&.Mui-checked': { color: LESSON_DIALOG_COLORS.blue },
+                              }}
+                            />
+                            <TextField
+                              label={`Option ${optionIndex + 1}`}
+                              value={option}
+                              onChange={(event) => {
+                                const nextOptions = item.options.map((currentOption, index) => (
+                                  index === optionIndex ? event.target.value : currentOption
+                                ));
+                                const nextCorrectAnswer = item.correctAnswer === option
+                                  ? event.target.value
+                                  : item.correctAnswer;
+
+                                updateQuizItem(itemIndex, {
+                                  ...item,
+                                  options: nextOptions,
+                                  correctAnswer: nextCorrectAnswer,
+                                });
+                              }}
+                              disabled={disabled}
+                              variant="standard"
+                              size="small"
+                              fullWidth
+                              sx={activityPlainFieldSx}
+                            />
+                          </Box>
+                        );
+                      })}
                     </Stack>
                     <TextField
                       label="Explanation"
                       value={item.explanation}
                       onChange={(event) => updateQuizItem(itemIndex, { ...item, explanation: event.target.value })}
                       disabled={disabled}
+                      variant="standard"
                       multiline
                       minRows={2}
                       fullWidth
+                      sx={activityPlainFieldSx}
                     />
                   </Stack>
                 </Paper>
@@ -491,7 +634,7 @@ function ActivityEditor({ activity, draft, onDraftChange, disabled }) {
                     },
                   ],
                 }))}
-                sx={{ alignSelf: 'flex-start', textTransform: 'none', fontWeight: 800 }}
+                sx={{ ...lessonSecondaryButtonSx, alignSelf: 'flex-start' }}
               >
                 Add question
               </Button>
@@ -584,19 +727,24 @@ export default function LessonDetailsDialog({
 
   useEffect(() => {
     if (isEditing) {
-      setIsRightPanelCollapsed(true);
+      setIsRightPanelCollapsed(false);
     }
   }, [isEditing]);
 
   useEffect(() => {
     const nextActivities = Array.isArray(lesson?.activities) ? lesson.activities : [];
+    const canOpenActivities = Boolean(lesson?.viewerCanManage);
     const hasQuiz = nextActivities.some((activity) => activity.type === 'quiz');
     const hasFlashcards = nextActivities.some((activity) => activity.type === 'flashcards');
 
-    if ((activeView === 'quiz' && !hasQuiz) || (activeView === 'flashcards' && !hasFlashcards)) {
+    if (
+      ((activeView === 'quiz' || activeView === 'flashcards') && !canOpenActivities) ||
+      (activeView === 'quiz' && !hasQuiz) ||
+      (activeView === 'flashcards' && !hasFlashcards)
+    ) {
       setActiveView('lesson');
     }
-  }, [activeView, lesson?.activities]);
+  }, [activeView, lesson?.activities, lesson?.viewerCanManage]);
 
   if (!lesson) {
     return null;
@@ -613,11 +761,12 @@ export default function LessonDetailsDialog({
     : [];
   const lastRevision = revisionHistory[revisionHistory.length - 1] || null;
   const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
+  const canManageCurrentLesson = Boolean(lesson.viewerCanManage);
   const quizActivity = activities.find((activity) => activity.type === 'quiz') || null;
   const flashcardsActivity = activities.find((activity) => activity.type === 'flashcards') || null;
-  const activeActivity = activeView === 'quiz'
+  const activeActivity = canManageCurrentLesson && activeView === 'quiz'
     ? quizActivity
-    : activeView === 'flashcards'
+    : canManageCurrentLesson && activeView === 'flashcards'
       ? flashcardsActivity
       : null;
   const activeActivityDraft = activeActivity
@@ -626,18 +775,17 @@ export default function LessonDetailsDialog({
   const activitySettings = getActivityTypeSettings(activityType);
   const hasAssets = allAssets.length > 0;
   const isRightPanelVisible = !isRightPanelCollapsed;
-  const canManageCurrentLesson = Boolean(lesson.viewerCanManage);
   const isLessonArchived = lesson.isArchived || lesson.publicationStatus === 'archived';
   const canPublishLesson =
     lesson.status === 'ready' &&
     !lesson.isPublished &&
     !isLessonArchived &&
     canManageCurrentLesson;
-  const publicationLabel = isLessonArchived
-    ? 'Archived'
-    : lesson.isPublished
-      ? 'Published'
-      : 'Private draft';
+  const lastEditedAt = lesson.updatedAt || lesson.createdAt;
+  const lastEditedLabel = lastEditedAt
+    ? `Edited ${formatDateTime(lastEditedAt)}`
+    : 'Edited date unknown';
+  const visibleTags = isEditing ? draftTags : normalizeLessonTagInput(lesson.tags || []);
 
 
   const handleSave = async () => {
@@ -1092,299 +1240,34 @@ export default function LessonDetailsDialog({
       slotProps={{
         paper: {
           sx: {
-            height: '94vh',
-            borderRadius: 3,
+            width: 'calc(100vw - 40px)',
+            maxWidth: 1180,
+            height: 'calc(100vh - 50px)',
+            maxHeight: 760,
+            borderRadius: '20px',
             display: 'flex',
             flexDirection: 'column',
+            minHeight: 0,
             overflow: 'hidden',
-            backgroundColor: AI_DIGITAL_COLORS.silverHaze,
+            backgroundColor: '#fff',
             border: 0,
-            boxShadow: `0 28px 80px ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.2)}`,
+            boxShadow: '0 40px 80px rgba(11, 11, 11, 0.25)',
           },
         },
       }}
     >
-      <DialogTitle
-        sx={{
-          p: 0,
-          flex: '0 0 auto',
-          color: '#fff',
-          background: `linear-gradient(115deg, ${AI_DIGITAL_COLORS.yvesKleinBlue} 0%, ${AI_DIGITAL_COLORS.violetPulse} 64%, ${AI_DIGITAL_COLORS.neonAzure} 100%)`,
-        }}
-      >
-        <Box
-          sx={{
-            px: { xs: 2, md: 3 },
-            py: isEditing ? { xs: 1.25, md: 1.5 } : { xs: 1.5, md: 2 },
-          }}
-        >
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: { xs: '1fr', md: 'minmax(0, 1fr) auto' },
-              gap: { xs: 1.25, md: 2 },
-              alignItems: 'start',
-            }}
-          >
-            <Stack spacing={isEditing ? 0.75 : 1}>
-              <Box sx={{ minWidth: 0, flex: '1 1 auto', width: '100%' }}>
-                <Stack direction="row" spacing={1} sx={{ alignItems: 'center', mb: 1 }}>
-                  <Chip
-                    icon={isEditing ? <EditOutlinedIcon /> : <VisibilityOutlinedIcon />}
-                    label={isEditing ? 'Editing lesson' : 'Lesson preview'}
-                    size="small"
-                    sx={{
-                      color: AI_DIGITAL_COLORS.midnightCharcoal,
-                      backgroundColor: AI_DIGITAL_COLORS.lime,
-                      fontWeight: 900,
-                      '& .MuiChip-icon': { color: AI_DIGITAL_COLORS.midnightCharcoal },
-                    }}
-                  />
-                  <Chip
-                    label={lesson.status}
-                    color={getStatusColor(lesson.status)}
-                    size="small"
-                    sx={{ backgroundColor: 'rgba(255,255,255,0.16)', color: '#fff', fontWeight: 800 }}
-                  />
-                  <Chip
-                    label={publicationLabel}
-                    size="small"
-                    sx={{
-                      backgroundColor: lesson.isPublished || isLessonArchived
-                        ? 'rgba(255,255,255,0.16)'
-                        : AI_DIGITAL_COLORS.lime,
-                      color: lesson.isPublished || isLessonArchived ? '#fff' : AI_DIGITAL_COLORS.midnightCharcoal,
-                      fontWeight: 900,
-                    }}
-                  />
-                </Stack>
-
-                {isEditing ? (
-                  <Box
-                    component="input"
-                    value={draftTitle}
-                    onChange={(event) => setDraftTitle(event.target.value)}
-                    placeholder="Lesson title"
-                    sx={{
-                      display: 'block',
-                      width: '100%',
-                      maxWidth: 980,
-                      minWidth: 0,
-                      border: 0,
-                      outline: 0,
-                      p: 0,
-                      m: 0,
-                      color: '#fff',
-                      backgroundColor: 'transparent',
-                      fontFamily: 'Arial, sans-serif',
-                      fontSize: isEditing
-                        ? { xs: '1.2rem', md: '1.45rem' }
-                        : { xs: '1.65rem', md: '2.125rem' },
-                      fontWeight: 950,
-                      lineHeight: 1.14,
-                      letterSpacing: 0,
-                      '&::placeholder': {
-                        color: 'rgba(255,255,255,0.68)',
-                      },
-                      '&:focus': {
-                        boxShadow: `0 2px 0 ${AI_DIGITAL_COLORS.lime}`,
-                      },
-                    }}
-                  />
-                ) : (
-                  <Typography
-                    variant="h4"
-                    sx={{
-                      fontWeight: 950,
-                      lineHeight: 1.08,
-                      letterSpacing: 0,
-                      maxWidth: 980,
-                      wordBreak: 'break-word',
-                    }}
-                  >
-                    {lesson.title}
-                  </Typography>
-                )}
-
-                {isEditing ? (
-                  <Autocomplete
-                    multiple
-                    freeSolo
-                    options={suggestedLessonTags}
-                    value={draftTags}
-                    onChange={(_event, nextTags) => setDraftTags(normalizeLessonTagInput(nextTags))}
-                    sx={{
-                      maxWidth: 760,
-                      mt: 1.25,
-                      '& .MuiOutlinedInput-root': {
-                        color: '#fff',
-                        backgroundColor: 'rgba(255,255,255,0.12)',
-                        '& fieldset': { borderColor: 'rgba(255,255,255,0.34)' },
-                        '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.58)' },
-                        '&.Mui-focused fieldset': { borderColor: AI_DIGITAL_COLORS.lime },
-                      },
-                      '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.76)' },
-                      '& .MuiInputLabel-root.Mui-focused': { color: '#fff' },
-                      '& .MuiChip-root': {
-                        color: AI_DIGITAL_COLORS.midnightCharcoal,
-                        backgroundColor: AI_DIGITAL_COLORS.lime,
-                        fontWeight: 800,
-                      },
-                      '& .MuiSvgIcon-root': { color: '#fff' },
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Tags"
-                        placeholder="Add a tag"
-                        size="small"
-                      />
-                    )}
-                  />
-                ) : lesson.tags?.length > 0 && (
-                  <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', mt: 1.25 }}>
-                    {lesson.tags.map((tag) => (
-                      <Chip
-                        key={tag}
-                        label={tag}
-                        size="small"
-                        sx={{
-                          color: '#fff',
-                          borderColor: 'rgba(255,255,255,0.38)',
-                          backgroundColor: 'rgba(255,255,255,0.12)',
-                          fontWeight: 800,
-                        }}
-                        variant="outlined"
-                      />
-                    ))}
-                  </Stack>
-                )}
-              </Box>
-
-              {!isEditing && (
-                <>
-                  {lesson.description && (
-                    <Typography sx={{ maxWidth: 900, color: 'rgba(255,255,255,0.84)', lineHeight: 1.45 }}>
-                      {lesson.description}
-                    </Typography>
-                  )}
-
-                  {(metadata.model || metadata.promptVersion || metadata.lastRevisionAt) && (
-                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                      {metadata.model && <Chip label={`Model: ${metadata.model}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
-                      {metadata.promptVersion && <Chip label={`Prompt: ${metadata.promptVersion}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
-                      {metadata.lastRevisionAt && <Chip label={`Revised ${formatDateTime(metadata.lastRevisionAt)}`} size="small" sx={{ backgroundColor: 'rgba(255,255,255,0.14)', color: '#fff' }} />}
-                    </Stack>
-                  )}
-                </>
-              )}
-            </Stack>
-
-            <Stack
-              spacing={1}
-              sx={{
-                alignItems: { xs: 'flex-start', md: 'flex-end' },
-                minWidth: { md: 260 },
-              }}
-            >
-              <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center', justifyContent: 'flex-end' }}>
-                <IconButton
-                  aria-label="Close lesson details"
-                  onClick={onClose}
-                  sx={{
-                    width: 34,
-                    height: 34,
-                    color: '#fff',
-                    backgroundColor: 'rgba(255,255,255,0.12)',
-                    '&:hover': { backgroundColor: 'rgba(255,255,255,0.22)' },
-                  }}
-                >
-                  <CloseOutlinedIcon />
-                </IconButton>
-              </Stack>
-
-              {!isEditing && (
-                <Stack
-                  direction="row"
-                  spacing={1}
-                  useFlexGap
-                  sx={{
-                    flexWrap: 'wrap',
-                    justifyContent: { xs: 'flex-start', md: 'flex-end' },
-                  }}
-                >
-                  <Chip label={`Created ${formatDateTime(lesson.createdAt)}`} size="small" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.36)' }} variant="outlined" />
-                  <Chip label={`By ${lesson.createdBy || 'AI Onboarding'}`} size="small" sx={{ color: '#fff', borderColor: 'rgba(255,255,255,0.36)' }} variant="outlined" />
-                </Stack>
-              )}
-            </Stack>
-          </Box>
-        </Box>
-
-        <Box sx={{ px: { xs: 1, md: 3 }, pb: 1.25 }}>
-          <Tabs
-            value={activeView}
-            onChange={(_event, nextView) => {
-              setActiveView(nextView);
-              setActivitySaveError('');
-              setActivitySaveSuccess('');
-            }}
-            variant="scrollable"
-            scrollButtons="auto"
-            sx={{
-              minHeight: 40,
-              '& .MuiTabs-indicator': {
-                height: 3,
-                borderRadius: 999,
-                backgroundColor: AI_DIGITAL_COLORS.lime,
-              },
-              '& .MuiTab-root': {
-                minHeight: 40,
-                mr: 1,
-                px: 1.5,
-                borderRadius: 1.5,
-                color: 'rgba(255,255,255,0.78)',
-                textTransform: 'none',
-                fontWeight: 900,
-              },
-              '& .Mui-selected': {
-                color: '#fff',
-                backgroundColor: 'rgba(255,255,255,0.14)',
-              },
-            }}
-          >
-            <Tab value="lesson" label="Lesson" />
-            {quizActivity && (
-              <Tab
-                value="quiz"
-                icon={<QuizOutlinedIcon fontSize="small" />}
-                iconPosition="start"
-                label="Quiz"
-              />
-            )}
-            {flashcardsActivity && (
-              <Tab
-                value="flashcards"
-                icon={<StyleOutlinedIcon fontSize="small" />}
-                iconPosition="start"
-                label="Flashcards"
-              />
-            )}
-          </Tabs>
-        </Box>
-      </DialogTitle>
-
       <DialogContent
         dividers
         sx={{
           flex: '1 1 auto',
+          height: 0,
           minHeight: 0,
           overflow: 'hidden',
           display: 'flex',
           flexDirection: 'column',
-          p: { xs: 1.5, md: 2.5 },
-          borderColor: hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.1),
-          backgroundColor: AI_DIGITAL_COLORS.silverHaze,
+          p: 0,
+          borderColor: LESSON_DIALOG_COLORS.blue100,
+          backgroundColor: '#fff',
         }}
       >
         <Box
@@ -1396,9 +1279,10 @@ export default function LessonDetailsDialog({
                 ? 'minmax(0, 1fr) 340px'
                 : 'minmax(0, 1fr)',
             },
-            gap: 2.5,
+            gap: 0,
             alignItems: 'stretch',
             flex: '1 1 auto',
+            height: '100%',
             minHeight: 0,
             overflow: 'hidden',
           }}
@@ -1406,19 +1290,170 @@ export default function LessonDetailsDialog({
           <Paper
             elevation={0}
             sx={{
-              borderRadius: 2,
+              borderRadius: 0,
               border: 0,
               backgroundColor: '#fff',
               minHeight: 0,
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
-              boxShadow: isEditing
-                ? `0 20px 52px ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.12)}`
-                : `0 18px 44px ${hexToRgba(AI_DIGITAL_COLORS.midnightCharcoal, 0.06)}`,
+              boxShadow: 'none',
             }}
           >
-            {activeView !== 'lesson' ? (
+            <Box
+              sx={{
+                flex: '0 0 auto',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                px: { xs: 2, md: 3.5 },
+                py: 2.5,
+                minHeight: 76,
+                borderBottom: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
+                backgroundColor: '#fff',
+              }}
+            >
+              <Tabs
+                value={activeView}
+                onChange={(_event, nextView) => {
+                  setActiveView(nextView);
+                  setActivitySaveError('');
+                  setActivitySaveSuccess('');
+                }}
+                variant="scrollable"
+                scrollButtons={false}
+                sx={{
+                  minHeight: 32,
+                  '& .MuiTabs-indicator': { display: 'none' },
+                  '& .MuiTabs-flexContainer': { gap: 0.5 },
+                  '& .MuiTab-root': {
+                    minHeight: 32,
+                    minWidth: 0,
+                    px: 1.75,
+                    py: 1,
+                    borderRadius: 999,
+                    color: LESSON_DIALOG_COLORS.mute,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    letterSpacing: '0.04em',
+                    lineHeight: 1,
+                    textTransform: 'uppercase',
+                    transition: 'background-color 120ms ease, color 120ms ease',
+                  },
+                  '& .Mui-selected': {
+                    color: LESSON_DIALOG_COLORS.blue,
+                    backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                  },
+                }}
+              >
+                <Tab value="lesson" label="Reading" />
+                {flashcardsActivity && (
+                  <Tab
+                    value="flashcards"
+                    label="Flashcards"
+                    disabled={!canManageCurrentLesson}
+                  />
+                )}
+                {quizActivity && (
+                  <Tab
+                    value="quiz"
+                    label="Quiz"
+                    disabled={!canManageCurrentLesson}
+                  />
+                )}
+              </Tabs>
+
+              <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    display: { xs: 'none', sm: 'flex' },
+                    alignItems: 'center',
+                    gap: 1,
+                    minHeight: 30,
+                    px: 1.5,
+                    borderRadius: 999,
+                    color: LESSON_DIALOG_COLORS.success,
+                    backgroundColor: hexToRgba(LESSON_DIALOG_COLORS.success, 0.1),
+                  }}
+                >
+                  <Box
+                    sx={{
+                      width: 6,
+                      height: 6,
+                      flex: '0 0 auto',
+                      borderRadius: '50%',
+                      backgroundColor: LESSON_DIALOG_COLORS.success,
+                    }}
+                  />
+                  <Typography
+                    component="span"
+                    sx={{
+                      color: LESSON_DIALOG_COLORS.success,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.04em',
+                      lineHeight: 1,
+                      textTransform: 'uppercase',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {lastEditedLabel}
+                  </Typography>
+                </Box>
+
+                <Tooltip title={isRightPanelCollapsed ? 'Show sidebar' : 'Hide sidebar'}>
+                  <IconButton
+                    size="small"
+                    aria-label={isRightPanelCollapsed ? 'Show lesson sidebar' : 'Hide lesson sidebar'}
+                    onClick={() => setIsRightPanelCollapsed((prev) => !prev)}
+                    sx={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 999,
+                      color: isRightPanelCollapsed ? LESSON_DIALOG_COLORS.blue : '#fff',
+                      border: `1px solid ${LESSON_DIALOG_COLORS.blue200}`,
+                      backgroundColor: isRightPanelCollapsed ? '#fff' : LESSON_DIALOG_COLORS.blue,
+                      '&:hover': {
+                        backgroundColor: isRightPanelCollapsed
+                          ? LESSON_DIALOG_COLORS.blue50
+                          : LESSON_DIALOG_COLORS.blue,
+                      },
+                    }}
+                  >
+                    <ViewSidebarOutlinedIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+
+                <Tooltip title="Close">
+                  <IconButton
+                    size="small"
+                    aria-label="Close lesson details"
+                    onClick={onClose}
+                    disabled={isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+                    sx={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 999,
+                      color: LESSON_DIALOG_COLORS.ink,
+                      border: `1px solid ${LESSON_DIALOG_COLORS.blue200}`,
+                      backgroundColor: '#fff',
+                      '&:hover': {
+                        color: LESSON_DIALOG_COLORS.blue,
+                        backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                      },
+                      '&.Mui-disabled': {
+                        color: LESSON_DIALOG_COLORS.mute,
+                        backgroundColor: '#fff',
+                      },
+                    }}
+                  >
+                    <CloseOutlinedIcon sx={{ fontSize: 17 }} />
+                  </IconButton>
+                </Tooltip>
+              </Stack>
+            </Box>
+
+            {activeView !== 'lesson' && canManageCurrentLesson ? (
               <Stack sx={{ minHeight: 0, overflow: 'hidden', height: '100%' }}>
                 {(activitySaveError || activitySaveSuccess) && (
                   <Box sx={{ p: { xs: 1.5, md: 2 }, pb: 0 }}>
@@ -1449,109 +1484,169 @@ export default function LessonDetailsDialog({
               <Stack sx={{ minHeight: 0, overflow: 'hidden', height: '100%' }}>
                 <Box
                   sx={{
-                    px: { xs: 1.5, md: 2 },
-                    py: 1.5,
-                    borderBottom: '1px solid #e8edf5',
-                    backgroundColor: isEditing ? hexToRgba(AI_DIGITAL_COLORS.lime, 0.16) : '#fff',
+                    minHeight: 0,
+                    flex: '1 1 auto',
+                    overflow: isEditing ? 'hidden' : 'auto',
+                    display: isEditing ? 'flex' : 'block',
+                    flexDirection: isEditing ? 'column' : undefined,
+                    backgroundColor: '#fff',
+                    cursor: isEditing ? 'text' : 'default',
                   }}
                 >
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
-                    spacing={1}
-                    sx={{ alignItems: { xs: 'flex-start', sm: 'center' }, justifyContent: 'space-between' }}
+                  <Box
+                    sx={{
+                      flex: '0 0 auto',
+                      maxWidth: isEditing
+                        ? 'calc(100% - 64px)'
+                        : isRightPanelVisible
+                          ? 860
+                          : 'none',
+                      mx: 0,
+                      px: { xs: 3, md: isEditing ? 5 : 7 },
+                      pt: { xs: 3, md: isEditing ? 4 : 7 },
+                      pb: 0,
+                    }}
                   >
-                    <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                      {isEditing ? <EditOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} /> : <VisibilityOutlinedIcon sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue }} />}
-                      <Box>
-                        <Typography variant="subtitle2" sx={{ fontWeight: 900, lineHeight: 1.2 }}>
-                          {isEditing ? 'Editor mode' : 'Reading preview'}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {isEditing ? 'Make changes in the rich-text canvas below.' : 'Review generated lesson content as learners will read it.'}
-                        </Typography>
-                      </Box>
-                    </Stack>
-
-                    <Stack
-                      direction="row"
-                      spacing={1}
-                      useFlexGap
-                      sx={{ flexWrap: 'wrap', justifyContent: { xs: 'flex-start', sm: 'flex-end' } }}
+                    <Typography
+                      sx={{
+                        mb: 1.25,
+                        color: LESSON_DIALOG_COLORS.blue,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        letterSpacing: '0.08em',
+                        lineHeight: 1.1,
+                        textTransform: 'uppercase',
+                      }}
                     >
-                      <Chip
-                        label={`${sourceReferences.length} source${sourceReferences.length === 1 ? '' : 's'} - ${activities.length} activit${activities.length === 1 ? 'y' : 'ies'}`}
-                        size="small"
+                      Lesson - Preview
+                    </Typography>
+
+                    {isEditing ? (
+                      <Box
+                        component="input"
+                        value={draftTitle}
+                        onChange={(event) => setDraftTitle(event.target.value)}
+                        placeholder="Lesson title"
                         sx={{
-                          fontWeight: 800,
-                          color: AI_DIGITAL_COLORS.yvesKleinBlue,
-                          backgroundColor: hexToRgba(AI_DIGITAL_COLORS.skywave, 0.24),
+                          display: 'block',
+                          width: '100%',
+                          border: `1px dashed ${LESSON_DIALOG_COLORS.blue200}`,
+                          outline: 0,
+                          borderRadius: 1,
+                          px: 1.5,
+                          py: 1,
+                          color: LESSON_DIALOG_COLORS.ink,
+                          backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                          fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                          fontSize: { xs: 28, md: 34 },
+                          fontWeight: 900,
+                          lineHeight: 1.02,
+                          letterSpacing: 0,
+                          '&::placeholder': { color: LESSON_DIALOG_COLORS.mute },
+                          '&:focus': { borderColor: LESSON_DIALOG_COLORS.blue },
                         }}
                       />
+                    ) : (
+                      <Typography
+                        component="h1"
+                        sx={{
+                          m: 0,
+                          maxWidth: isRightPanelVisible ? 760 : 1180,
+                          color: LESSON_DIALOG_COLORS.ink,
+                          fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+                          fontSize: { xs: 52, md: 82 },
+                          fontWeight: 900,
+                          letterSpacing: 0,
+                          lineHeight: 0.92,
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {draftTitle || lesson.title}
+                      </Typography>
+                    )}
 
-                      <Tooltip title={isRightPanelCollapsed ? 'Show sidebar' : 'Hide sidebar'}>
-                        <IconButton
-                          size="small"
-                          aria-label={isRightPanelCollapsed ? 'Show lesson sidebar' : 'Hide lesson sidebar'}
-                          onClick={() => setIsRightPanelCollapsed((prev) => !prev)}
-                          sx={{
-                            width: 30,
-                            height: 30,
-                            borderRadius: 1.5,
-                            color: isRightPanelCollapsed
-                              ? AI_DIGITAL_COLORS.yvesKleinBlue
-                              : '#fff',
-                            border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.yvesKleinBlue, 0.22)}`,
-                            backgroundColor: isRightPanelCollapsed
-                              ? '#fff'
-                              : AI_DIGITAL_COLORS.yvesKleinBlue,
-                            '&:hover': {
-                              backgroundColor: isRightPanelCollapsed
-                                ? hexToRgba(AI_DIGITAL_COLORS.skywave, 0.22)
-                                : AI_DIGITAL_COLORS.violetPulse,
-                            },
-                          }}
-                        >
-                          <ViewSidebarOutlinedIcon fontSize="small" />
-                        </IconButton>
-                      </Tooltip>
-                    </Stack>
-                  </Stack>
+                    {!isEditing && lesson.description && (
+                      <Typography
+                        sx={{
+                          maxWidth: 660,
+                          mt: 1.5,
+                          color: '#4C5065',
+                          fontSize: { xs: 18, md: 23 },
+                          lineHeight: 1.38,
+                        }}
+                      >
+                        {lesson.description}
+                      </Typography>
+                    )}
+                  </Box>
+
+                  {isEditing ? (
+                    <SimpleEditor
+                      content={draftHtml}
+                      editable
+                      onChange={(nextHtml) => setDraftHtml(nextHtml)}
+                      onImageUpload={uploadLessonImageAsset}
+                      className="lesson-details-editor"
+                    />
+                  ) : (
+                    <Box
+                      sx={{
+                        width: '100%',
+                        maxWidth: isRightPanelVisible ? 860 : 'none',
+                        px: { xs: 3, md: 7 },
+                        py: { xs: 3, md: 6 },
+                      }}
+                    >
+                      <LessonReader html={draftHtml} />
+                    </Box>
+                  )}
                 </Box>
-
-                <Box sx={{ minHeight: 0, flex: '1 1 auto', overflow: 'hidden' }}>
-                  <SimpleEditor
-                    content={draftHtml}
-                    editable={isEditing}
-                    onChange={(nextHtml) => setDraftHtml(nextHtml)}
-                    onImageUpload={uploadLessonImageAsset}
-                    className="lesson-details-editor"
-                  />
-                </Box>
-
               </Stack>
             )}
           </Paper>
 
           {activeView === 'lesson' && isRightPanelVisible && (
             <Stack
-              spacing={2}
+              spacing={2.5}
               sx={{
                 minHeight: 0,
                 overflow: 'auto',
-                pr: 0.5,
+                px: 3,
+                py: 3,
+                borderLeft: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
+                backgroundColor: '#F9F9F9',
               }}
             >
-            <DetailPanel
-              title="Source materials"
-              icon={<SourceOutlinedIcon fontSize="small" />}
-              accent={AI_DIGITAL_COLORS.brightAqua}
-            >
+            <Box>
+              <Typography
+                sx={{
+                  mb: 1.25,
+                  color: LESSON_DIALOG_COLORS.mute,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  lineHeight: 1,
+                  textTransform: 'uppercase',
+                }}
+              >
+                Source material
+              </Typography>
+
               {sourceReferences.length === 0 ? (
-                <Typography variant="body2" color="text.secondary">
-                  No source snapshot found.
-                </Typography>
+                <Box
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 1.25,
+                    border: `1px solid ${LESSON_DIALOG_COLORS.blue200}`,
+                    backgroundColor: '#fff',
+                  }}
+                >
+                  <Typography sx={{ color: LESSON_DIALOG_COLORS.mute, fontSize: 12, fontWeight: 600 }}>
+                    No source snapshot found.
+                  </Typography>
+                </Box>
               ) : (
-                <Stack spacing={1.25}>
+                <Stack spacing={1}>
                   {sourceReferences.map((source) => (
                     <Box
                       key={source.id}
@@ -1564,59 +1659,280 @@ export default function LessonDetailsDialog({
                       }
                       sx={{
                         width: '100%',
-                        p: 1,
-                        border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.brightAqua, 0.36)}`,
-                        borderRadius: 2,
-                        backgroundColor: hexToRgba(AI_DIGITAL_COLORS.brightAqua, 0.08),
+                        display: 'grid',
+                        gridTemplateColumns: '36px minmax(0, 1fr)',
+                        gap: 1.25,
+                        alignItems: 'center',
+                        p: 1.25,
+                        border: `1px solid ${LESSON_DIALOG_COLORS.blue200}`,
+                        borderRadius: 1.25,
+                        backgroundColor: '#fff',
                         textAlign: 'left',
                         cursor: onOpenSourceMaterial ? 'pointer' : 'default',
                         font: 'inherit',
-                        transition: 'background-color 0.15s ease, border-color 0.15s ease',
+                        transition: 'border-color 120ms ease, background-color 120ms ease',
                         '&:hover': onOpenSourceMaterial
                           ? {
-                              backgroundColor: hexToRgba(AI_DIGITAL_COLORS.brightAqua, 0.16),
-                              borderColor: AI_DIGITAL_COLORS.neonAzure,
+                              borderColor: LESSON_DIALOG_COLORS.blue,
+                              backgroundColor: LESSON_DIALOG_COLORS.blue50,
                             }
                           : undefined,
                       }}
                     >
-                      <Typography variant="body2" sx={{ fontWeight: 700 }}>
-                        {source.sourceNumber}. {source.title}
-                      </Typography>
-                      <Typography variant="caption" color="text.secondary">
-                        {(source.links?.length || 0) +
-                          (source.youtubeUrls?.length || 0)} link(s),{' '}
-                        {source.attachments?.length || 0} attachment(s)
-                      </Typography>
+                      <Box
+                        sx={{
+                          width: 36,
+                          height: 36,
+                          display: 'grid',
+                          placeItems: 'center',
+                          borderRadius: 1,
+                          color: LESSON_DIALOG_COLORS.blue,
+                          backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                          fontSize: 13,
+                          fontWeight: 900,
+                        }}
+                      >
+                        {source.sourceNumber}
+                      </Box>
+                      <Box sx={{ minWidth: 0 }}>
+                        <Typography
+                          sx={{
+                            color: LESSON_DIALOG_COLORS.ink,
+                            fontSize: 13,
+                            fontWeight: 700,
+                            lineHeight: 1.25,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                          }}
+                        >
+                          {source.title}
+                        </Typography>
+                        <Typography sx={{ mt: 0.35, color: LESSON_DIALOG_COLORS.mute, fontSize: 11, fontWeight: 600 }}>
+                          {(source.links?.length || 0) +
+                            (source.youtubeUrls?.length || 0)} link(s) - {source.attachments?.length || 0} attachment(s)
+                        </Typography>
+                      </Box>
                     </Box>
                   ))}
                 </Stack>
               )}
-            </DetailPanel>
+            </Box>
 
-            <DetailPanel
-              title="Generation"
-              icon={<TuneOutlinedIcon fontSize="small" />}
-              accent={AI_DIGITAL_COLORS.digitalLilac}
-            >
-              <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                <Chip label={`Depth: ${lesson.depth || 'standard'}`} size="small" />
-                <Chip label={`Tone: ${lesson.tone || 'clear'}`} size="small" />
-                <Chip label={lesson.desiredFormat || 'structured theoretical lesson'} size="small" />
-              </Stack>
+            <Box>
+              <Typography
+                sx={{
+                  mb: 1.25,
+                  color: LESSON_DIALOG_COLORS.mute,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  lineHeight: 1,
+                  textTransform: 'uppercase',
+                }}
+              >
+                Assets
+              </Typography>
 
-              {lesson.userInstructions && (
-                <>
-                  <Divider sx={{ my: 1.5 }} />
-                  <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.5 }}>
-                    Extra instructions
+              <Box
+                sx={{
+                  p: 1.25,
+                  borderRadius: 1.25,
+                  border: `1px solid ${LESSON_DIALOG_COLORS.blue200}`,
+                  backgroundColor: '#fff',
+                }}
+              >
+                <Stack spacing={1.5}>
+                  {hasAssets && (
+                    <Box
+                      sx={{
+                        '& > *': {
+                          borderRadius: 1.25,
+                        },
+                      }}
+                    >
+                      <LessonAttachments
+                        attachments={allAssets}
+                        onOpenSourceMaterial={onOpenSourceMaterial}
+                        layout="list"
+                        showTitle={false}
+                      />
+                    </Box>
+                  )}
+
+                  {hasAssets && (
+                    <Box sx={{ height: 1, backgroundColor: LESSON_DIALOG_COLORS.blue100 }} />
+                  )}
+
+                  {assetError && <Alert severity="error">{assetError}</Alert>}
+                  <TextField
+                    placeholder="Link or YouTube URL"
+                    value={assetUrl}
+                    onChange={(event) => setAssetUrl(event.target.value)}
+                    size="small"
+                    fullWidth
+                    disabled={!canManageCurrentLesson || isAddingAsset || isDeleting}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 1.25,
+                        backgroundColor: '#fff',
+                        '& fieldset': { borderColor: LESSON_DIALOG_COLORS.blue200 },
+                        '&:hover fieldset': { borderColor: LESSON_DIALOG_COLORS.blue },
+                        '&.Mui-focused fieldset': { borderColor: LESSON_DIALOG_COLORS.blue },
+                      },
+                      '& .MuiInputBase-input': {
+                        fontSize: 13,
+                      },
+                    }}
+                  />
+                  <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                    <Button
+                      variant="contained"
+                      size="small"
+                      startIcon={<LinkOutlinedIcon />}
+                      onClick={handleAddUrlAsset}
+                      disabled={!canManageCurrentLesson || isAddingAsset || isDeleting || !assetUrl.trim()}
+                      sx={{
+                        height: 32,
+                        borderRadius: 999,
+                        boxShadow: 'none',
+                        backgroundColor: LESSON_DIALOG_COLORS.blue,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        letterSpacing: '0.04em',
+                        textTransform: 'uppercase',
+                        '&:hover': { backgroundColor: LESSON_DIALOG_COLORS.blue, boxShadow: 'none' },
+                      }}
+                    >
+                      {isAddingAsset ? 'Adding...' : 'Add link'}
+                    </Button>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      startIcon={<AttachFileOutlinedIcon />}
+                      onClick={() => assetFileInputRef.current?.click()}
+                      disabled={!canManageCurrentLesson || isAddingAsset || isDeleting}
+                      sx={{
+                        height: 32,
+                        borderRadius: 999,
+                        borderColor: LESSON_DIALOG_COLORS.blue200,
+                        color: LESSON_DIALOG_COLORS.blue,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        letterSpacing: '0.04em',
+                        textTransform: 'uppercase',
+                        '&:hover': {
+                          borderColor: LESSON_DIALOG_COLORS.blue,
+                          backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                        },
+                      }}
+                    >
+                      File
+                    </Button>
+                  </Stack>
+                  <Box
+                    component="input"
+                    type="file"
+                    ref={assetFileInputRef}
+                    onChange={(event) => handleAddFileAsset(event.target.files?.[0])}
+                    sx={{ display: 'none' }}
+                  />
+                </Stack>
+              </Box>
+            </Box>
+
+            <Box>
+              <Typography
+                sx={{
+                  mb: 1.25,
+                  color: LESSON_DIALOG_COLORS.mute,
+                  fontSize: 11,
+                  fontWeight: 800,
+                  letterSpacing: '0.08em',
+                  lineHeight: 1,
+                  textTransform: 'uppercase',
+                }}
+              >
+                Tags
+              </Typography>
+
+              <Box
+                sx={{
+                  p: 1.25,
+                  borderRadius: 1.25,
+                  border: `1px solid ${LESSON_DIALOG_COLORS.blue200}`,
+                  backgroundColor: '#fff',
+                }}
+              >
+                {isEditing ? (
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    options={suggestedLessonTags}
+                    value={draftTags}
+                    onChange={(_event, nextTags) => setDraftTags(normalizeLessonTagInput(nextTags))}
+                    disabled={!canManageCurrentLesson || isSaving || isDeleting}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        alignItems: 'flex-start',
+                        minHeight: 42,
+                        p: 0.5,
+                        borderRadius: 1.25,
+                        color: LESSON_DIALOG_COLORS.ink,
+                        backgroundColor: '#fff',
+                        '& fieldset': { borderColor: 'transparent' },
+                        '&:hover fieldset': { borderColor: 'transparent' },
+                        '&.Mui-focused fieldset': { borderColor: LESSON_DIALOG_COLORS.blue },
+                      },
+                      '& .MuiInputBase-input': {
+                        minWidth: '120px',
+                        py: '7px !important',
+                        color: LESSON_DIALOG_COLORS.ink,
+                        fontSize: 13,
+                      },
+                      '& .MuiChip-root': {
+                        height: 28,
+                        borderRadius: 999,
+                        color: LESSON_DIALOG_COLORS.blue,
+                        backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                        fontSize: 12,
+                        fontWeight: 700,
+                      },
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder={draftTags.length > 0 ? 'Add a tag' : 'Add tags'}
+                        size="small"
+                      />
+                    )}
+                  />
+                ) : visibleTags.length > 0 ? (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75 }}>
+                    {visibleTags.map((tag) => (
+                      <Chip
+                        key={tag}
+                        label={tag}
+                        size="small"
+                        sx={{
+                          height: 28,
+                          borderRadius: 999,
+                          color: LESSON_DIALOG_COLORS.blue,
+                          backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          '& .MuiChip-label': { px: 1.25 },
+                        }}
+                      />
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography sx={{ color: LESSON_DIALOG_COLORS.mute, fontSize: 12, fontWeight: 600 }}>
+                    No tags yet.
                   </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    {lesson.userInstructions}
-                  </Typography>
-                </>
-              )}
-            </DetailPanel>
+                )}
+              </Box>
+            </Box>
 
             {lesson.status !== 'failed' && (
               <DetailPanel
@@ -1626,54 +1942,82 @@ export default function LessonDetailsDialog({
               >
                 <Stack spacing={1.5}>
                   <Box>
-                    <Typography variant="body2" color="text.secondary">
-                      Describe what should change. The system will decide how broad the rewrite needs to be.
+                    <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 13, lineHeight: 1.45 }}>
+                      Describe what exactly and how should change.
                     </Typography>
                   </Box>
 
                   {revisionError && <Alert severity="error">{revisionError}</Alert>}
 
-                  <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                    {revisionOptions.map((option) => (
-                      <Chip
-                        key={option.value}
-                        label={option.label}
-                        clickable
-                        color={selectedRevisionOptions.includes(option.value) ? 'primary' : 'default'}
-                        variant={selectedRevisionOptions.includes(option.value) ? 'filled' : 'outlined'}
-                        onClick={() => handleToggleRevisionOption(option.value)}
-                      />
-                    ))}
+                  <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                    {revisionOptions.map((option) => {
+                      const isSelected = selectedRevisionOptions.includes(option.value);
+
+                      return (
+                        <Chip
+                          key={option.value}
+                          label={option.label}
+                          clickable
+                          onClick={() => handleToggleRevisionOption(option.value)}
+                          sx={{
+                            height: 28,
+                            borderRadius: 999,
+                            border: `1px solid ${isSelected ? LESSON_DIALOG_COLORS.blue : LESSON_DIALOG_COLORS.blue200}`,
+                            color: isSelected ? '#fff' : LESSON_DIALOG_COLORS.blue,
+                            backgroundColor: isSelected ? LESSON_DIALOG_COLORS.blue : LESSON_DIALOG_COLORS.blue50,
+                            fontSize: 12,
+                            fontWeight: 700,
+                            '& .MuiChip-label': { px: 1.25 },
+                            '&:hover': {
+                              backgroundColor: isSelected ? LESSON_DIALOG_COLORS.blue : '#fff',
+                            },
+                          }}
+                        />
+                      );
+                    })}
                   </Stack>
 
                   <TextField
-                    label="Revision notes"
                     value={revisionRequest}
                     onChange={(event) => setRevisionRequest(event.target.value)}
                     minRows={4}
                     multiline
                     placeholder="Example: keep the factual content, but make the explanation less course-like and add one clear example for naming conventions."
                     fullWidth
-                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isRevising}
+                    disabled={!canManageCurrentLesson || isDeleting || isSaving || isRevising}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 1.5,
+                        backgroundColor: '#fff',
+                        '& fieldset': { borderColor: LESSON_DIALOG_COLORS.blue200 },
+                        '&:hover fieldset': { borderColor: LESSON_DIALOG_COLORS.blue },
+                        '&.Mui-focused fieldset': { borderColor: LESSON_DIALOG_COLORS.blue },
+                      },
+                      '& .MuiInputBase-input': {
+                        color: LESSON_DIALOG_COLORS.ink,
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                      },
+                    }}
                   />
 
                   {lastRevision && (
                     <Box
                       sx={{
-                        p: 1.5,
-                        borderRadius: 2,
-                        backgroundColor: hexToRgba(AI_DIGITAL_COLORS.pink, 0.08),
-                        border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.pink, 0.22)}`,
+                        p: 1.25,
+                        borderRadius: 1.25,
+                        backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                        border: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
                       }}
                     >
-                      <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mb: 0.5 }}>
+                      <Typography sx={{ color: LESSON_DIALOG_COLORS.blue, fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', mb: 0.5 }}>
                         Last revision
                       </Typography>
-                      <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+                      <Typography sx={{ color: LESSON_DIALOG_COLORS.mute, fontSize: 11, fontWeight: 700, mb: 0.5 }}>
                         {formatDateTime(lastRevision.revisedAt)} • {lastRevision.revisionBrief?.changeScope || 'substantial'}
                       </Typography>
                       {lastRevision.revisionRequest && (
-                        <Typography variant="body2" color="text.secondary">
+                        <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 12, lineHeight: 1.4 }}>
                           {lastRevision.revisionRequest}
                         </Typography>
                       )}
@@ -1684,73 +2028,24 @@ export default function LessonDetailsDialog({
                     variant="contained"
                     startIcon={<AutoAwesomeOutlinedIcon />}
                     onClick={handleRevise}
-                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isRevising}
+                    disabled={!canManageCurrentLesson || isDeleting || isSaving || isRevising}
+                    sx={{
+                      alignSelf: 'flex-start',
+                      minHeight: 36,
+                      px: 2.25,
+                      borderRadius: 999,
+                      boxShadow: 'none',
+                      backgroundColor: LESSON_DIALOG_COLORS.blue,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      '&:hover': { backgroundColor: LESSON_DIALOG_COLORS.blue, boxShadow: 'none' },
+                    }}
                   >
-                    {isRevising ? 'Revising lesson...' : 'Revise lesson'}
+                    {isRevising ? 'Revising...' : 'Revise lesson'}
                   </Button>
                 </Stack>
-              </DetailPanel>
-            )}
-
-            <DetailPanel
-              title="Add asset"
-              icon={<AddOutlinedIcon fontSize="small" />}
-              accent={AI_DIGITAL_COLORS.brightAqua}
-            >
-              <Stack spacing={1.25}>
-                {assetError && <Alert severity="error">{assetError}</Alert>}
-                <TextField
-                  label="Link or YouTube URL"
-                  value={assetUrl}
-                  onChange={(event) => setAssetUrl(event.target.value)}
-                  size="small"
-                  fullWidth
-                  disabled={!canManageCurrentLesson || isAddingAsset || isDeleting}
-                />
-                <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                  <Button
-                    variant="contained"
-                    size="small"
-                    startIcon={<LinkOutlinedIcon />}
-                    onClick={handleAddUrlAsset}
-                    disabled={!canManageCurrentLesson || isAddingAsset || isDeleting || !assetUrl.trim()}
-                    sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 800 }}
-                  >
-                    {isAddingAsset ? 'Adding...' : 'Add link'}
-                  </Button>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    startIcon={<AttachFileOutlinedIcon />}
-                    onClick={() => assetFileInputRef.current?.click()}
-                    disabled={!canManageCurrentLesson || isAddingAsset || isDeleting}
-                    sx={{ borderRadius: 999, textTransform: 'none', fontWeight: 800 }}
-                  >
-                    File
-                  </Button>
-                </Stack>
-                <Box
-                  component="input"
-                  type="file"
-                  ref={assetFileInputRef}
-                  onChange={(event) => handleAddFileAsset(event.target.files?.[0])}
-                  sx={{ display: 'none' }}
-                />
-              </Stack>
-            </DetailPanel>
-
-            {hasAssets && (
-              <DetailPanel
-                title="Assets"
-                icon={<LibraryBooksOutlinedIcon fontSize="small" />}
-                accent={AI_DIGITAL_COLORS.neonAzure}
-              >
-                <LessonAttachments
-                  attachments={allAssets}
-                  onOpenSourceMaterial={onOpenSourceMaterial}
-                  layout="column"
-                  showTitle={false}
-                />
               </DetailPanel>
             )}
 
@@ -1762,7 +2057,7 @@ export default function LessonDetailsDialog({
               >
                 <Stack spacing={1.5}>
                   <Box>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 13, lineHeight: 1.45 }}>
                       Create a saved quiz or flashcards from this lesson. Passing flow comes later.
                     </Typography>
                   </Box>
@@ -1777,7 +2072,14 @@ export default function LessonDetailsDialog({
                       value={activityType}
                       label="Activity type"
                       onChange={(event) => handleActivityTypeChange(event.target.value)}
-                      disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                      disabled={!canManageCurrentLesson || isDeleting || isSaving || isRevising || isGeneratingActivity}
+                      sx={{
+                        borderRadius: 1.5,
+                        fontSize: 13,
+                        '& .MuiOutlinedInput-notchedOutline': { borderColor: LESSON_DIALOG_COLORS.blue200 },
+                        '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: LESSON_DIALOG_COLORS.blue },
+                        '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: LESSON_DIALOG_COLORS.blue },
+                      }}
                     >
                       {activityTypeOptions.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
@@ -1801,24 +2103,39 @@ export default function LessonDetailsDialog({
                       },
                     }}
                     helperText={`Allowed: ${activitySettings.min}-${activitySettings.max}`}
-                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity}
+                    disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity}
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        borderRadius: 1.5,
+                        '& fieldset': { borderColor: LESSON_DIALOG_COLORS.blue200 },
+                        '&:hover fieldset': { borderColor: LESSON_DIALOG_COLORS.blue },
+                        '&.Mui-focused fieldset': { borderColor: LESSON_DIALOG_COLORS.blue },
+                      },
+                      '& .MuiInputBase-input': { fontSize: 13 },
+                      '& .MuiFormHelperText-root': {
+                        color: LESSON_DIALOG_COLORS.mute,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        mx: 0,
+                      },
+                    }}
                   />
 
                   {activities.length > 0 && (
                     <Box
                       sx={{
-                        p: 1.5,
-                        borderRadius: 2,
-                        backgroundColor: hexToRgba(AI_DIGITAL_COLORS.lime, 0.1),
-                        border: `1px solid ${hexToRgba(AI_DIGITAL_COLORS.lime, 0.28)}`,
+                        p: 1.25,
+                        borderRadius: 1.25,
+                        backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                        border: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
                       }}
                     >
-                      <Typography variant="caption" sx={{ fontWeight: 800, display: 'block', mb: 0.5 }}>
+                      <Typography sx={{ color: LESSON_DIALOG_COLORS.blue, fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', mb: 0.75 }}>
                         Saved activities
                       </Typography>
                       <Stack spacing={0.75}>
                         {activities.slice(0, 3).map((activity) => (
-                          <Typography key={activity.id} variant="body2" color="text.secondary">
+                          <Typography key={activity.id} sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 12, fontWeight: 600 }}>
                             {activity.title || activity.type} - {activity.itemCount} item(s)
                           </Typography>
                         ))}
@@ -1830,9 +2147,22 @@ export default function LessonDetailsDialog({
                     variant="contained"
                     startIcon={<QuizOutlinedIcon />}
                     onClick={handleGenerateActivity}
-                    disabled={!canManageCurrentLesson || isEditing || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity}
+                    disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity}
+                    sx={{
+                      alignSelf: 'flex-start',
+                      minHeight: 36,
+                      px: 2.25,
+                      borderRadius: 999,
+                      boxShadow: 'none',
+                      backgroundColor: LESSON_DIALOG_COLORS.blue,
+                      fontSize: 11,
+                      fontWeight: 800,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      '&:hover': { backgroundColor: LESSON_DIALOG_COLORS.blue, boxShadow: 'none' },
+                    }}
                   >
-                    {isGeneratingActivity ? 'Generating activity...' : 'Generate activity'}
+                    {isGeneratingActivity ? 'Generating...' : 'Generate activity'}
                   </Button>
                 </Stack>
               </DetailPanel>
@@ -1844,15 +2174,17 @@ export default function LessonDetailsDialog({
 
       <DialogActions
         sx={{
-          px: { xs: 2, md: 3 },
-          py: 1.5,
+          px: { xs: 2, md: 3.5 },
+          py: 1.75,
           flex: '0 0 auto',
-          borderTop: '1px solid #e4e8f0',
+          gap: 1,
+          flexWrap: 'wrap',
+          borderTop: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
           backgroundColor: '#fff',
         }}
       >
         {isEditing && (
-          <Stack direction="row" spacing={1} sx={{ mr: 'auto' }}>
+          <Stack direction="row" spacing={1} useFlexGap sx={{ mr: 'auto', flexWrap: 'wrap' }}>
             <Button
               onClick={() => {
                 if (isLessonArchived) {
@@ -1863,13 +2195,10 @@ export default function LessonDetailsDialog({
                 setArchiveError('');
                 setIsConfirmArchiveOpen(true);
               }}
-              color="inherit"
+              variant="outlined"
               startIcon={isLessonArchived ? <UnarchiveOutlinedIcon /> : <ArchiveOutlinedIcon />}
               disabled={!canManageCurrentLesson || (isLessonArchived && lesson.status !== 'ready') || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 850,
-              }}
+              sx={lessonSecondaryButtonSx}
             >
               {isLessonArchived
                 ? isPublishing
@@ -1884,31 +2213,34 @@ export default function LessonDetailsDialog({
                 setDeleteError('');
                 setIsConfirmDeleteOpen(true);
               }}
-              color="error"
+              variant="outlined"
               startIcon={<DeleteOutlineOutlinedIcon />}
               disabled={!canManageCurrentLesson || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
-              sx={{
-                textTransform: 'none',
-                fontWeight: 850,
-              }}
+              sx={lessonDangerButtonSx}
             >
               Delete lesson
             </Button>
           </Stack>
         )}
 
-        {activeView !== 'lesson' ? (
+        {activeView !== 'lesson' && canManageCurrentLesson ? (
           <Button
             onClick={handleSaveActivity}
             variant="contained"
             startIcon={<SaveOutlinedIcon />}
             disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity}
+            sx={lessonPrimaryButtonSx}
           >
             {isSavingActivity ? 'Saving activity...' : 'Save activity'}
           </Button>
         ) : isEditing ? (
           <>
-            <Button onClick={handleCancelEdit} color="inherit" disabled={isSaving || isPublishing || isArchiving || isDeleting || isGeneratingActivity || isSavingActivity}>
+            <Button
+              onClick={handleCancelEdit}
+              variant="outlined"
+              disabled={isSaving || isPublishing || isArchiving || isDeleting || isGeneratingActivity || isSavingActivity}
+              sx={lessonSecondaryButtonSx}
+            >
               Cancel
             </Button>
             <Button
@@ -1916,6 +2248,7 @@ export default function LessonDetailsDialog({
               variant="contained"
               startIcon={<SaveOutlinedIcon />}
               disabled={!canManageCurrentLesson || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+              sx={lessonPrimaryButtonSx}
             >
               {isSaving ? 'Saving...' : 'Save changes'}
             </Button>
@@ -1927,9 +2260,9 @@ export default function LessonDetailsDialog({
                 <Button
                   onClick={handlePublish}
                   variant="contained"
-                  color="success"
                   startIcon={<RocketLaunchOutlinedIcon />}
                   disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity}
+                  sx={lessonDarkButtonSx}
                 >
                   {isPublishing ? 'Publishing...' : 'Publish lesson'}
                 </Button>
@@ -1939,20 +2272,13 @@ export default function LessonDetailsDialog({
                 variant="contained"
                 startIcon={<EditOutlinedIcon />}
                 disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity}
+                sx={lessonPrimaryButtonSx}
               >
                 Edit lesson
               </Button>
             </>
           )
         )}
-        <Button
-          onClick={onClose}
-          color="inherit"
-          startIcon={<LibraryBooksOutlinedIcon />}
-          disabled={isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
-        >
-          Close
-        </Button>
       </DialogActions>
 
       <Dialog

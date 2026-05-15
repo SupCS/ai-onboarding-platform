@@ -6,23 +6,35 @@ import {
   Autocomplete,
   Box,
   Button,
-  Checkbox,
   Chip,
   FormControl,
-  FormControlLabel,
   InputLabel,
   MenuItem,
   Paper,
   Select,
-  ToggleButton,
-  ToggleButtonGroup,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
+import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
+import CheckOutlinedIcon from '@mui/icons-material/CheckOutlined';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import { useTaskTray } from '../providers/TaskTrayProvider';
 import { SimpleEditor } from '../tiptap/tiptap-templates/simple/simple-editor';
 import { normalizeLessonTagInput, suggestedLessonTags } from '../../lib/lessonTags';
+
+const FORM_COLORS = {
+  blue: '#0009DC',
+  ink: '#0B0B0B',
+  slate: '#33344A',
+  mute: '#80808E',
+  blue50: '#F5F5FE',
+  blue100: '#E3E5FF',
+  blue200: '#CBD0FF',
+  bg2: '#F9F9F9',
+  bg3: '#F2F1F3',
+};
 
 const depthOptions = [
   { value: 'intro', label: 'Intro' },
@@ -42,6 +54,66 @@ const formatOptions = [
   { value: 'internal wiki page', label: 'Internal Wiki Page' },
 ];
 
+const sectionLabelSx = {
+  color: FORM_COLORS.mute,
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: '0.08em',
+  lineHeight: 1,
+  textTransform: 'uppercase',
+};
+
+const fieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 1.5,
+    backgroundColor: '#fff',
+    '& fieldset': { borderColor: FORM_COLORS.blue100, borderWidth: 1.5 },
+    '&:hover fieldset': { borderColor: FORM_COLORS.blue200 },
+    '&.Mui-focused fieldset': { borderColor: FORM_COLORS.blue },
+  },
+  '& .MuiInputLabel-root': {
+    color: FORM_COLORS.mute,
+    fontSize: 13,
+    fontWeight: 700,
+  },
+  '& .MuiInputBase-input': {
+    color: FORM_COLORS.ink,
+    fontSize: 14,
+  },
+  '& .MuiFormHelperText-root': {
+    mx: 0,
+    color: FORM_COLORS.mute,
+    fontSize: 11,
+  },
+};
+
+function SectionLabel({ children, optional = false }) {
+  return (
+    <Stack direction="row" spacing={1} sx={{ alignItems: 'baseline', mb: 1.25 }}>
+      <Typography sx={sectionLabelSx}>{children}</Typography>
+      {optional && (
+        <Typography sx={{ color: FORM_COLORS.mute, fontSize: 11, fontWeight: 600 }}>
+          optional
+        </Typography>
+      )}
+    </Stack>
+  );
+}
+
+function FieldGroup({ label, hint, optional, children }) {
+  return (
+    <Box>
+      <SectionLabel optional={optional}>{label}</SectionLabel>
+      {children}
+      {hint && (
+        <Typography sx={{ mt: 0.75, color: FORM_COLORS.mute, fontSize: 11, lineHeight: 1.4 }}>
+          {hint}
+        </Typography>
+      )}
+    </Box>
+  );
+}
+
 export default function LessonPromptForm({
   materials = [],
   onLessonGenerated,
@@ -50,6 +122,7 @@ export default function LessonPromptForm({
   const { addTask, updateTask } = useTaskTray();
   const [mode, setMode] = useState('ai');
   const [selectedMaterialIds, setSelectedMaterialIds] = useState([]);
+  const [materialQuery, setMaterialQuery] = useState('');
   const [userInstructions, setUserInstructions] = useState('');
   const [depth, setDepth] = useState('standard');
   const [tone, setTone] = useState('clear');
@@ -68,6 +141,28 @@ export default function LessonPromptForm({
 
     return materials.filter((material) => selectedIds.has(material.id));
   }, [materials, selectedMaterialIds]);
+
+  const filteredMaterials = useMemo(() => {
+    const normalizedQuery = materialQuery.trim().toLowerCase();
+
+    if (!normalizedQuery) {
+      return materials;
+    }
+
+    return materials.filter((material) => {
+      const searchableText = [
+        material.title,
+        material.description,
+        ...(Array.isArray(material.tags) ? material.tags : []),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+
+      return searchableText.includes(normalizedQuery);
+    });
+  }, [materialQuery, materials]);
+
   const canSubmit = selectedMaterialIds.length > 0 || userInstructions.trim().length > 0;
   const canSubmitManual = manualTitle.trim().length > 0 &&
     manualContentHtml.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().length > 0;
@@ -247,289 +342,462 @@ export default function LessonPromptForm({
       elevation={0}
       onSubmit={handleGenerateLesson}
       sx={{
-        p: 3,
-        borderRadius: 4,
-        border: '1px solid #e5e7eb',
+        display: 'flex',
+        flexDirection: 'column',
+        maxHeight: { xs: 'calc(100vh - 128px)', md: 'calc(100vh - 112px)' },
+        borderRadius: 0,
         backgroundColor: '#fff',
+        overflow: 'hidden',
       }}
     >
-      <Stack spacing={3}>
-        <Box>
-          <Typography variant="h5" sx={{ fontWeight: 800, mb: 0.75 }}>
-            Create lesson
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            Generate a lesson with AI, or paste/write a ready lesson without AI changes.
-          </Typography>
-        </Box>
-
-        <ToggleButtonGroup
-          value={mode}
-          exclusive
-          onChange={(_event, nextMode) => {
-            if (nextMode) {
-              setMode(nextMode);
-              setStatusMessage('');
-              setErrorMessage('');
-            }
-          }}
-          color="primary"
+      <Box sx={{ px: { xs: 2.5, md: 5 }, pt: { xs: 3, md: 4 }, pb: 3 }}>
+        <Typography
+          component="h2"
           sx={{
-            alignSelf: 'flex-start',
-            '& .MuiToggleButton-root': {
-              px: 2,
-              textTransform: 'none',
-              fontWeight: 850,
-            },
+            color: FORM_COLORS.ink,
+            fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+            fontSize: { xs: 34, md: 44 },
+            fontWeight: 900,
+            letterSpacing: 0,
+            lineHeight: 0.95,
           }}
         >
-          <ToggleButton value="ai">Generate with AI</ToggleButton>
-          <ToggleButton value="manual">Ready lesson</ToggleButton>
-        </ToggleButtonGroup>
+          Create lesson
+        </Typography>
+        <Typography sx={{ mt: 1, color: FORM_COLORS.mute, fontSize: 14, lineHeight: 1.45 }}>
+          Generate a lesson with AI, or paste a ready lesson without AI changes.
+        </Typography>
 
+        <Box
+          sx={{
+            mt: 2.5,
+            display: 'inline-flex',
+            p: 0.5,
+            borderRadius: 999,
+            backgroundColor: FORM_COLORS.bg3,
+          }}
+        >
+          {[
+            { value: 'ai', label: 'Generate with AI' },
+            { value: 'manual', label: 'Ready lesson' },
+          ].map((tab) => {
+            const isActive = mode === tab.value;
+
+            return (
+              <Button
+                key={tab.value}
+                type="button"
+                onClick={() => {
+                  setMode(tab.value);
+                  setStatusMessage('');
+                  setErrorMessage('');
+                }}
+                sx={{
+                  minHeight: 34,
+                  px: 2.25,
+                  borderRadius: 999,
+                  color: isActive ? FORM_COLORS.blue : FORM_COLORS.slate,
+                  backgroundColor: isActive ? '#fff' : 'transparent',
+                  boxShadow: isActive ? '0 1px 4px rgba(11, 11, 11, 0.08)' : 'none',
+                  fontSize: 13,
+                  fontWeight: 800,
+                  letterSpacing: '0.02em',
+                  textTransform: 'none',
+                  '&:hover': {
+                    backgroundColor: isActive ? '#fff' : 'rgba(255,255,255,0.5)',
+                    boxShadow: isActive ? '0 1px 4px rgba(11, 11, 11, 0.08)' : 'none',
+                  },
+                }}
+              >
+                {tab.label}
+              </Button>
+            );
+          })}
+        </Box>
+      </Box>
+
+      <Stack
+        spacing={3.25}
+        sx={{
+          flex: '1 1 auto',
+          minHeight: 0,
+          overflow: 'auto',
+          px: { xs: 2.5, md: 5 },
+          pb: 3,
+        }}
+      >
         {errorMessage && <Alert severity="error">{errorMessage}</Alert>}
         {statusMessage && <Alert severity="success">{statusMessage}</Alert>}
 
         {mode === 'manual' ? (
-          <Stack spacing={2}>
-            <TextField
-              label="Title"
-              value={manualTitle}
-              onChange={(event) => setManualTitle(event.target.value)}
-              fullWidth
-              required
-            />
-
-            <TextField
-              label="Description"
-              value={manualDescription}
-              onChange={(event) => setManualDescription(event.target.value)}
-              placeholder="Short summary shown on lesson cards."
-              fullWidth
-              multiline
-              minRows={2}
-            />
-
-            <Autocomplete
-              multiple
-              freeSolo
-              options={suggestedLessonTags}
-              value={tags}
-              onChange={(_event, nextTags) => setTags(normalizeLessonTagInput(nextTags))}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  label="Tags"
-                  placeholder="Add a tag"
-                  helperText="Use tags like Google SEM, Meta, Finance, Invoicing."
-                />
-              )}
-            />
-
-            <Box
-              sx={{
-                height: { xs: 520, md: 620 },
-                border: '1px solid #e5e7eb',
-                borderRadius: 3,
-                overflow: 'hidden',
-                backgroundColor: '#fff',
-              }}
-            >
-              <SimpleEditor
-                content={manualContentHtml}
-                editable
-                onChange={(nextHtml) => setManualContentHtml(nextHtml)}
-                className="manual-lesson-editor"
+          <Stack spacing={2.5}>
+            <FieldGroup label="Lesson title">
+              <TextField
+                value={manualTitle}
+                onChange={(event) => setManualTitle(event.target.value)}
+                placeholder="e.g. Performance Max Campaign Setup"
+                fullWidth
+                required
+                sx={fieldSx}
               />
-            </Box>
+            </FieldGroup>
 
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={isSubmitting || !canSubmitManual}
-              sx={{ alignSelf: 'flex-start' }}
-            >
-              {isSubmitting && submitAction === 'create-manual'
-                ? 'Creating lesson...'
-                : 'Create ready lesson'}
-            </Button>
+            <FieldGroup label="Description" optional hint="Short summary shown on lesson cards.">
+              <TextField
+                value={manualDescription}
+                onChange={(event) => setManualDescription(event.target.value)}
+                placeholder="Short summary shown on lesson cards."
+                fullWidth
+                multiline
+                minRows={2}
+                sx={fieldSx}
+              />
+            </FieldGroup>
+
+            <FieldGroup label="Tags" optional hint="Optional categories for filtering and scanning lessons.">
+              <Autocomplete
+                multiple
+                freeSolo
+                options={suggestedLessonTags}
+                value={tags}
+                onChange={(_event, nextTags) => setTags(normalizeLessonTagInput(nextTags))}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Type a tag and press Enter"
+                    sx={fieldSx}
+                  />
+                )}
+              />
+            </FieldGroup>
+
+            <FieldGroup label="Lesson content" hint="Paste or write. Headings, lists and rich formatting are preserved.">
+              <Box
+                sx={{
+                  height: { xs: 500, md: 600 },
+                  border: `1.5px solid ${FORM_COLORS.blue100}`,
+                  borderRadius: 1.5,
+                  overflow: 'hidden',
+                  backgroundColor: '#fff',
+                }}
+              >
+                <SimpleEditor
+                  content={manualContentHtml}
+                  editable
+                  onChange={(nextHtml) => setManualContentHtml(nextHtml)}
+                  className="manual-lesson-editor"
+                />
+              </Box>
+            </FieldGroup>
           </Stack>
         ) : (
           <>
-        <Stack spacing={1.5}>
-          <Typography variant="subtitle1" sx={{ fontWeight: 700 }}>
-            Source materials optional
-          </Typography>
+            <Box>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1.5}
+                sx={{ alignItems: { xs: 'stretch', sm: 'center' }, justifyContent: 'space-between', mb: 1.5 }}
+              >
+                <SectionLabel optional>Source materials</SectionLabel>
+                <Chip
+                  label={`${selectedMaterials.length} selected`}
+                  onDelete={selectedMaterials.length > 0 ? () => setSelectedMaterialIds([]) : undefined}
+                  sx={{
+                    alignSelf: { xs: 'flex-start', sm: 'center' },
+                    height: 26,
+                    borderRadius: 999,
+                    color: selectedMaterials.length > 0 ? '#fff' : FORM_COLORS.mute,
+                    backgroundColor: selectedMaterials.length > 0 ? FORM_COLORS.blue : FORM_COLORS.bg3,
+                    fontSize: 11,
+                    fontWeight: 800,
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    '& .MuiChip-deleteIcon': {
+                      color: 'rgba(255,255,255,0.75)',
+                      fontSize: 16,
+                      '&:hover': { color: '#fff' },
+                    },
+                  }}
+                />
+              </Stack>
 
-          <Box
-            sx={{
-              display: 'grid',
-              gridTemplateColumns: {
-                xs: '1fr',
-                md: 'repeat(2, minmax(0, 1fr))',
-              },
-              gap: 1.25,
-            }}
-          >
-            {materials.map((material) => (
-              <Paper
-                key={material.id}
-                elevation={0}
+              <Box
                 sx={{
-                  px: 1.5,
-                  py: 1,
-                  borderRadius: 3,
-                  border: '1px solid #eef2f7',
-                  backgroundColor: selectedMaterialIds.includes(material.id)
-                    ? '#eff6ff'
-                    : '#f8fafc',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 1,
+                  mb: 1.5,
+                  px: 1.75,
+                  py: 1.125,
+                  borderRadius: 999,
+                  border: `1px solid ${FORM_COLORS.blue100}`,
+                  backgroundColor: FORM_COLORS.bg2,
                 }}
               >
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={selectedMaterialIds.includes(material.id)}
-                      onChange={() => handleMaterialToggle(material.id)}
-                    />
-                  }
-                  label={
-                    <Box component="span" sx={{ display: 'block', minWidth: 0 }}>
-                      <Typography
-                        component="span"
-                        variant="body2"
-                        sx={{ display: 'block', fontWeight: 700 }}
+                <SearchOutlinedIcon sx={{ color: FORM_COLORS.mute, fontSize: 18 }} />
+                <Box
+                  component="input"
+                  value={materialQuery}
+                  onChange={(event) => setMaterialQuery(event.target.value)}
+                  placeholder="Search materials by title..."
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    border: 0,
+                    outline: 0,
+                    backgroundColor: 'transparent',
+                    color: FORM_COLORS.ink,
+                    font: 'inherit',
+                    fontSize: 13,
+                  }}
+                />
+                <Typography sx={{ color: FORM_COLORS.mute, fontSize: 11, whiteSpace: 'nowrap' }}>
+                  {filteredMaterials.length} of {materials.length}
+                </Typography>
+              </Box>
+
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    md: 'repeat(2, minmax(0, 1fr))',
+                  },
+                  gap: 1.25,
+                }}
+              >
+                {filteredMaterials.map((material) => {
+                  const isSelected = selectedMaterialIds.includes(material.id);
+
+                  return (
+                    <Paper
+                      key={material.id}
+                      component="button"
+                      type="button"
+                      elevation={0}
+                      onClick={() => handleMaterialToggle(material.id)}
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 1.5,
+                        width: '100%',
+                        minHeight: 68,
+                        px: 2,
+                        py: 1.5,
+                        borderRadius: 1.5,
+                        border: `1.5px solid ${isSelected ? FORM_COLORS.blue : FORM_COLORS.blue100}`,
+                        backgroundColor: isSelected ? FORM_COLORS.blue50 : '#fff',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'background-color 120ms ease, border-color 120ms ease',
+                        '&:hover': {
+                          borderColor: isSelected ? FORM_COLORS.blue : FORM_COLORS.blue200,
+                          backgroundColor: isSelected ? FORM_COLORS.blue50 : FORM_COLORS.bg2,
+                        },
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          width: 20,
+                          height: 20,
+                          mt: 0.125,
+                          flex: '0 0 auto',
+                          borderRadius: 0.75,
+                          border: isSelected ? 'none' : `1.5px solid ${FORM_COLORS.blue200}`,
+                          backgroundColor: isSelected ? FORM_COLORS.blue : '#fff',
+                          color: '#fff',
+                          display: 'grid',
+                          placeItems: 'center',
+                        }}
                       >
-                        {material.title}
-                      </Typography>
-                      {material.description && (
+                        {isSelected && <CheckOutlinedIcon sx={{ fontSize: 14 }} />}
+                      </Box>
+                      <Box sx={{ minWidth: 0 }}>
                         <Typography
-                          component="span"
-                          variant="caption"
-                          color="text.secondary"
                           sx={{
+                            color: FORM_COLORS.ink,
+                            fontSize: 13,
+                            fontWeight: 800,
+                            lineHeight: 1.3,
                             display: '-webkit-box',
                             overflow: 'hidden',
-                            WebkitLineClamp: 1,
+                            WebkitLineClamp: 2,
                             WebkitBoxOrient: 'vertical',
                           }}
                         >
-                          {material.description}
+                          {material.title}
                         </Typography>
-                      )}
-                    </Box>
-                  }
-                  sx={{ alignItems: 'flex-start', m: 0, width: '100%' }}
-                />
-              </Paper>
-            ))}
-          </Box>
-        </Stack>
+                        {material.description && (
+                          <Typography
+                            sx={{
+                              mt: 0.25,
+                              color: FORM_COLORS.mute,
+                              fontSize: 12,
+                              lineHeight: 1.35,
+                              display: '-webkit-box',
+                              overflow: 'hidden',
+                              WebkitLineClamp: 1,
+                              WebkitBoxOrient: 'vertical',
+                            }}
+                          >
+                            {material.description}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Paper>
+                  );
+                })}
+              </Box>
+            </Box>
 
-        <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-          <Chip label={`${selectedMaterials.length} selected`} />
-          {selectedMaterials.slice(0, 4).map((material) => (
-            <Chip key={material.id} label={material.title} variant="outlined" />
-          ))}
-        </Stack>
+            <FieldGroup label="Extra instructions" optional hint="Tell the model anything specific: tone, examples to keep, things to skip.">
+              <TextField
+                value={userInstructions}
+                onChange={(event) => setUserInstructions(event.target.value)}
+                placeholder="e.g. Keep the explanation beginner-friendly, expand examples for new joiners..."
+                minRows={3}
+                multiline
+                fullWidth
+                sx={fieldSx}
+              />
+            </FieldGroup>
 
-        <TextField
-          label="Extra instructions"
-          value={userInstructions}
-          onChange={(event) => setUserInstructions(event.target.value)}
-          placeholder="Example: create a beginner-friendly lesson about Google Ads match types. Explain abbreviations and keep it concise..."
-          minRows={4}
-          multiline
-          fullWidth
-        />
+            <FieldGroup label="Tags" optional hint="Optional categories for filtering and scanning lessons.">
+              <Autocomplete
+                multiple
+                freeSolo
+                options={suggestedLessonTags}
+                value={tags}
+                onChange={(_event, nextTags) => setTags(normalizeLessonTagInput(nextTags))}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Type a tag and press Enter"
+                    sx={fieldSx}
+                  />
+                )}
+              />
+            </FieldGroup>
 
-        <Autocomplete
-          multiple
-          freeSolo
-          options={suggestedLessonTags}
-          value={tags}
-          onChange={(_event, nextTags) => setTags(normalizeLessonTagInput(nextTags))}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              label="Tags"
-              placeholder="Add a tag"
-              helperText="Optional categories for filtering and scanning lessons."
-            />
-          )}
-        />
-
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          sx={{ alignItems: 'stretch' }}
-        >
-          <FormControl fullWidth>
-            <InputLabel id="lesson-depth-label">Depth</InputLabel>
-            <Select
-              labelId="lesson-depth-label"
-              value={depth}
-              label="Depth"
-              onChange={(event) => setDepth(event.target.value)}
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
+                gap: 1.75,
+              }}
             >
-              {depthOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              <FieldGroup label="Depth">
+                <FormControl fullWidth sx={fieldSx}>
+                  <InputLabel id="lesson-depth-label">Depth</InputLabel>
+                  <Select
+                    labelId="lesson-depth-label"
+                    value={depth}
+                    label="Depth"
+                    onChange={(event) => setDepth(event.target.value)}
+                  >
+                    {depthOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </FieldGroup>
 
-          <FormControl fullWidth>
-            <InputLabel id="lesson-tone-label">Tone</InputLabel>
-            <Select
-              labelId="lesson-tone-label"
-              value={tone}
-              label="Tone"
-              onChange={(event) => setTone(event.target.value)}
-            >
-              {toneOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+              <FieldGroup label="Tone">
+                <FormControl fullWidth sx={fieldSx}>
+                  <InputLabel id="lesson-tone-label">Tone</InputLabel>
+                  <Select
+                    labelId="lesson-tone-label"
+                    value={tone}
+                    label="Tone"
+                    onChange={(event) => setTone(event.target.value)}
+                  >
+                    {toneOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </FieldGroup>
 
-          <FormControl fullWidth>
-            <InputLabel id="lesson-format-label">Format</InputLabel>
-            <Select
-              labelId="lesson-format-label"
-              value={desiredFormat}
-              label="Format"
-              onChange={(event) => setDesiredFormat(event.target.value)}
-            >
-              {formatOptions.map((option) => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Stack>
-
-        <Box>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-            <Button
-              type="submit"
-              variant="contained"
-              size="large"
-              disabled={isSubmitting || !canSubmit}
-            >
-              {isSubmitting && submitAction === 'generate'
-                ? 'Generating lesson...'
-                : 'Generate lesson'}
-            </Button>
-          </Stack>
-        </Box>
+              <FieldGroup label="Format">
+                <FormControl fullWidth sx={fieldSx}>
+                  <InputLabel id="lesson-format-label">Format</InputLabel>
+                  <Select
+                    labelId="lesson-format-label"
+                    value={desiredFormat}
+                    label="Format"
+                    onChange={(event) => setDesiredFormat(event.target.value)}
+                  >
+                    {formatOptions.map((option) => (
+                      <MenuItem key={option.value} value={option.value}>
+                        {option.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </FieldGroup>
+            </Box>
           </>
         )}
       </Stack>
+
+      <Box
+        sx={{
+          flex: '0 0 auto',
+          px: { xs: 2.5, md: 3.5 },
+          py: 1.75,
+          borderTop: `1px solid ${FORM_COLORS.blue100}`,
+          backgroundColor: FORM_COLORS.bg2,
+          display: 'flex',
+          alignItems: { xs: 'stretch', sm: 'center' },
+          justifyContent: 'space-between',
+          gap: 1.5,
+          flexDirection: { xs: 'column', sm: 'row' },
+        }}
+      >
+        <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center', color: FORM_COLORS.mute }}>
+          <InfoOutlinedIcon sx={{ fontSize: 15 }} />
+          <Typography sx={{ color: 'inherit', fontSize: 12, lineHeight: 1.35 }}>
+            {mode === 'ai'
+              ? `${selectedMaterials.length} source${selectedMaterials.length === 1 ? '' : 's'} selected`
+              : 'Saved directly, no AI processing'}
+          </Typography>
+        </Stack>
+
+        <Button
+          type="submit"
+          variant="contained"
+          startIcon={mode === 'ai' ? <AutoAwesomeOutlinedIcon /> : undefined}
+          disabled={isSubmitting || (mode === 'manual' ? !canSubmitManual : !canSubmit)}
+          sx={{
+            alignSelf: { xs: 'stretch', sm: 'center' },
+            minHeight: 42,
+            px: 2.75,
+            borderRadius: 999,
+            backgroundColor: FORM_COLORS.blue,
+            boxShadow: 'none',
+            fontSize: 12,
+            fontWeight: 800,
+            letterSpacing: '0.06em',
+            textTransform: 'uppercase',
+            '&:hover': {
+              backgroundColor: FORM_COLORS.blue,
+              boxShadow: 'none',
+            },
+          }}
+        >
+          {mode === 'manual'
+            ? isSubmitting && submitAction === 'create-manual'
+              ? 'Creating...'
+              : 'Create lesson'
+            : isSubmitting && submitAction === 'generate'
+              ? 'Generating...'
+              : 'Generate lesson'}
+        </Button>
+      </Box>
     </Paper>
   );
 }

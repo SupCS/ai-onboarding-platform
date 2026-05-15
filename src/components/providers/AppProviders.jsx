@@ -24,6 +24,52 @@ const theme = createTheme({
   typography: {
     fontFamily: 'Arial, sans-serif',
   },
+  components: {
+    MuiButton: {
+      defaultProps: {
+        disableElevation: true,
+      },
+      styleOverrides: {
+        root: {
+          borderRadius: 999,
+          fontSize: 12,
+          fontWeight: 700,
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+        },
+        sizeMedium: {
+          minHeight: 42,
+          padding: '10px 18px',
+        },
+        sizeSmall: {
+          minHeight: 32,
+          padding: '7px 14px',
+          fontSize: 11,
+        },
+        containedPrimary: {
+          backgroundColor: AI_DIGITAL_COLORS.yvesKleinBlue,
+          color: '#fff',
+          '&:hover': {
+            backgroundColor: AI_DIGITAL_COLORS.yvesKleinBlue,
+          },
+        },
+        outlinedPrimary: {
+          borderColor: 'rgba(0, 9, 220, 0.24)',
+          color: AI_DIGITAL_COLORS.yvesKleinBlue,
+          '&:hover': {
+            borderColor: AI_DIGITAL_COLORS.yvesKleinBlue,
+            backgroundColor: 'rgba(0, 9, 220, 0.04)',
+          },
+        },
+        textPrimary: {
+          color: AI_DIGITAL_COLORS.yvesKleinBlue,
+          '&:hover': {
+            backgroundColor: 'rgba(0, 9, 220, 0.04)',
+          },
+        },
+      },
+    },
+  },
 });
 
 export default function AppProviders({ children }) {
