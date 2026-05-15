@@ -572,26 +572,36 @@ function ActivityFeed({ activity }) {
       </Stack>
       <Stack spacing={0.5} sx={scrollAreaSx}>
         {filtered.length === 0 && <Typography sx={{ color: COLORS.mute, fontSize: 13 }}>No activity in this window.</Typography>}
-        {filtered.map((item) => (
-          <Stack key={item.id} direction="row" spacing={1.25} sx={{ py: 1, borderBottom: `1px dashed ${COLORS.blue100}` }}>
-            <Avatar
-              user={{
-                name: item.who,
-                avatarStorageKey: item.avatarStorageKey,
-                avatarColor: item.avatarColor,
-              }}
-              size={30}
-            />
-            <Box sx={{ minWidth: 0, flex: 1 }}>
-              <Typography component="div" sx={{ color: COLORS.ink, fontSize: 13, lineHeight: 1.45 }}>
-                <Box component="strong" sx={{ fontWeight: 900 }}>{item.who}</Box>{' '}
-                <Box component="span" sx={{ color: COLORS.mute }}>{item.action}</Box>{' '}
-                <Chip icon={item.kind === 'quiz' ? <QuizOutlinedIcon /> : <RouteOutlinedIcon />} label={item.what} size="small" sx={{ maxWidth: '100%', height: 23, borderRadius: 999, color: item.kind === 'quiz' ? COLORS.success : COLORS.blue, backgroundColor: '#F2F1F3', fontSize: 12, fontWeight: 800, verticalAlign: 'middle', '& .MuiChip-icon': { color: 'inherit', fontSize: 14 } }} />
-              </Typography>
-              <Typography sx={{ mt: 0.4, color: COLORS.mute, fontSize: 11 }}>{item.when}</Typography>
-            </Box>
-          </Stack>
-        ))}
+        {filtered.map((item) => {
+          const quizPassed = item.passed ?? item.score >= 80;
+          const activityColor = item.kind === 'quiz'
+            ? quizPassed
+              ? COLORS.success
+              : COLORS.orange
+            : COLORS.blue;
+          const activityBg = item.kind === 'quiz' && !quizPassed ? 'rgba(255,100,45,0.12)' : '#F2F1F3';
+
+          return (
+            <Stack key={item.id} direction="row" spacing={1.25} sx={{ py: 1, borderBottom: `1px dashed ${COLORS.blue100}` }}>
+              <Avatar
+                user={{
+                  name: item.who,
+                  avatarStorageKey: item.avatarStorageKey,
+                  avatarColor: item.avatarColor,
+                }}
+                size={30}
+              />
+              <Box sx={{ minWidth: 0, flex: 1 }}>
+                <Typography component="div" sx={{ color: COLORS.ink, fontSize: 13, lineHeight: 1.45 }}>
+                  <Box component="strong" sx={{ fontWeight: 900 }}>{item.who}</Box>{' '}
+                  <Box component="span" sx={{ color: COLORS.mute }}>{item.action}</Box>{' '}
+                  <Chip icon={item.kind === 'quiz' ? <QuizOutlinedIcon /> : <RouteOutlinedIcon />} label={item.what} size="small" sx={{ maxWidth: '100%', height: 23, borderRadius: 999, color: activityColor, backgroundColor: activityBg, fontSize: 12, fontWeight: 800, verticalAlign: 'middle', '& .MuiChip-icon': { color: 'inherit', fontSize: 14 } }} />
+                </Typography>
+                <Typography sx={{ mt: 0.4, color: COLORS.mute, fontSize: 11 }}>{item.when}</Typography>
+              </Box>
+            </Stack>
+          );
+        })}
       </Stack>
     </Widget>
   );

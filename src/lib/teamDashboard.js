@@ -435,7 +435,8 @@ async function getRecentActivity(memberIds) {
           users.avatar_storage_key,
           users.avatar_color,
           lessons.title AS what,
-          NULL::numeric AS score
+          NULL::numeric AS score,
+          NULL::boolean AS passed
         FROM user_lessons
         JOIN users ON users.id = user_lessons.user_id
         JOIN lessons ON lessons.id = user_lessons.lesson_id
@@ -450,7 +451,8 @@ async function getRecentActivity(memberIds) {
           users.avatar_storage_key,
           users.avatar_color,
           lesson_activities.title AS what,
-          user_lesson_activity_attempts.score
+          user_lesson_activity_attempts.score,
+          user_lesson_activity_attempts.passed
         FROM user_lesson_activity_attempts
         JOIN users ON users.id = user_lesson_activity_attempts.user_id
         JOIN lesson_activities ON lesson_activities.id = user_lesson_activity_attempts.activity_id
@@ -478,6 +480,8 @@ async function getRecentActivity(memberIds) {
       what: row.kind === 'quiz' ? `${toNumber(row.score)}% on ${row.what || 'quiz'}` : row.what,
       when: formatRelativeTime(row.happened_at),
       kind: row.kind,
+      score: row.score === null ? null : toNumber(row.score),
+      passed: row.passed,
       avatarBg: row.avatar_color || fallbackColorByUserId.get(row.user_id),
       avatarStorageKey: row.avatar_storage_key || '',
       avatarColor: row.avatar_color || '',
