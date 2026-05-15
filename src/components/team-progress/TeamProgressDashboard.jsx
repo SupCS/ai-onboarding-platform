@@ -42,6 +42,11 @@ const COLORS = {
   success: '#229E5A',
 };
 
+const TYPE = {
+  sans: 'var(--ff-sans), Inter, Arial, sans-serif',
+  display: 'var(--ff-display), "Barlow Semi Condensed", Inter, Arial, sans-serif',
+};
+
 const periodOptions = [
   { id: 'week', label: 'This week' },
   { id: 'month', label: 'This month' },
@@ -107,7 +112,7 @@ function KpiCard({ label, value, sub, accent }) {
     <Widget sx={{ p: { xs: 1.75, md: 2.25 }, minHeight: 124 }}>
       <Typography sx={eyebrowSx}>{label}</Typography>
       <Stack direction="row" spacing={0.85} sx={{ alignItems: 'baseline', mt: 1.5 }}>
-        <Typography sx={{ color: accent || COLORS.ink, fontSize: { xs: 34, md: 42 }, fontWeight: 950, lineHeight: 0.95 }}>
+        <Typography sx={{ color: accent || COLORS.ink, fontFamily: TYPE.display, fontSize: { xs: 38, md: 48 }, fontWeight: 900, lineHeight: 0.95, letterSpacing: 0 }}>
           {value}
         </Typography>
         {sub && <Typography sx={{ color: COLORS.mute, fontSize: 13, fontWeight: 600 }}>{sub}</Typography>}
@@ -129,7 +134,7 @@ function DashboardSelect({ value, onChange, options, icon }) {
           backgroundColor: '#fff',
           color: COLORS.ink,
           fontSize: 13,
-          fontWeight: 800,
+          fontWeight: 700,
           '& .MuiOutlinedInput-notchedOutline': { borderColor: COLORS.blue200 },
           '&:hover .MuiOutlinedInput-notchedOutline': { borderColor: COLORS.blue },
         }}
@@ -167,7 +172,7 @@ function RoadmapProgress({ roadmaps, scope = 'team' }) {
               color: COLORS.blue,
               backgroundColor: COLORS.blue50,
               fontSize: 11,
-              fontWeight: 900,
+              fontWeight: 700,
             }}
           />
         </Tooltip>
@@ -285,7 +290,7 @@ function TeamTable({ rows, onOpen }) {
               <Stack direction="row" spacing={1.5} sx={{ alignItems: 'center', minWidth: 0 }}>
                 <Avatar user={member} size={36} />
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography noWrap sx={{ color: COLORS.ink, fontSize: 14, fontWeight: 900 }}>{member.name}</Typography>
+                  <Typography noWrap sx={{ color: COLORS.ink, fontSize: 14, fontWeight: 700 }}>{member.name}</Typography>
                   <StatusDot status={member.status} />
                 </Box>
               </Stack>
@@ -297,10 +302,10 @@ function TeamTable({ rows, onOpen }) {
                   color={member.status === 'done' ? COLORS.success : COLORS.blue}
                   height={7}
                 />
-                <Typography sx={{ minWidth: 40, textAlign: 'right', color: COLORS.ink, fontSize: 12, fontWeight: 900 }}>{member.progress}%</Typography>
+                <Typography sx={{ minWidth: 40, textAlign: 'right', color: COLORS.ink, fontSize: 12, fontWeight: 700 }}>{member.progress}%</Typography>
               </Stack>
               <Typography noWrap sx={tableBodySx}>{member.lastActive}</Typography>
-              <Typography sx={{ color: member.quiz === null ? COLORS.mute : member.quiz >= 85 ? COLORS.success : member.quiz < 70 ? COLORS.orange : COLORS.ink, fontSize: 13, fontWeight: 900 }}>
+              <Typography sx={{ color: member.quiz === null ? COLORS.mute : member.quiz >= 85 ? COLORS.success : member.quiz < 70 ? COLORS.orange : COLORS.ink, fontSize: 13, fontWeight: 700 }}>
                 {member.quiz === null ? 'N/A' : `${member.quiz}%`}
               </Typography>
               <Button variant="outlined" size="small" onClick={() => onOpen(member.id)} sx={pillButtonSx}>Open</Button>
@@ -335,7 +340,7 @@ function IndividualRoadmapGroups({ groups }) {
           <Box sx={{ p: 2, borderBottom: `1px solid ${COLORS.blue100}`, backgroundColor: '#FAFAFC' }}>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} sx={{ alignItems: { xs: 'stretch', md: 'center' }, justifyContent: 'space-between' }}>
               <Box sx={{ minWidth: 0 }}>
-                <Typography noWrap sx={{ color: COLORS.ink, fontSize: 16, fontWeight: 900 }}>
+                <Typography noWrap sx={{ color: COLORS.ink, fontSize: 16, fontWeight: 700 }}>
                   {group.title}
                 </Typography>
                 <Typography sx={{ mt: 0.35, color: COLORS.mute, fontSize: 12, fontWeight: 700 }}>
@@ -344,7 +349,7 @@ function IndividualRoadmapGroups({ groups }) {
               </Box>
               <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', minWidth: { xs: '100%', md: 260 } }}>
                 <ProgressBar value={group.progress} color={group.progress >= 100 ? COLORS.success : COLORS.blue} height={7} />
-                <Typography sx={{ minWidth: 40, color: COLORS.ink, fontSize: 12, fontWeight: 900, textAlign: 'right' }}>
+                <Typography sx={{ minWidth: 40, color: COLORS.ink, fontSize: 12, fontWeight: 700, textAlign: 'right' }}>
                   {group.progress}%
                 </Typography>
               </Stack>
@@ -361,7 +366,7 @@ function IndividualRoadmapGroups({ groups }) {
             return (
               <Box key={lesson.id} sx={individualRowSx}>
                 <Typography noWrap sx={{ color: COLORS.ink, fontSize: 14, fontWeight: 800 }}>{lesson.title}</Typography>
-                <Chip label={state.label} size="small" sx={{ justifySelf: 'start', height: 25, borderRadius: 999, color: state.color, backgroundColor: state.bg, fontSize: 11, fontWeight: 900, textTransform: 'uppercase' }} />
+                <Chip label={state.label} size="small" sx={{ justifySelf: 'start', height: 25, borderRadius: 999, color: state.color, backgroundColor: state.bg, fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }} />
                 <Typography sx={tableBodySx}>{lesson.score === null ? 'N/A' : `${lesson.score}%`}</Typography>
                 <Typography sx={tableBodySx}>{lesson.when}</Typography>
               </Box>
@@ -389,7 +394,7 @@ function LowConfidenceLessons({ lessons }) {
                 <ErrorOutlineOutlinedIcon fontSize="small" />
               </Box>
               <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography noWrap sx={{ color: COLORS.ink, fontSize: 13, fontWeight: 900 }}>{item.lesson}</Typography>
+                <Typography noWrap sx={{ color: COLORS.ink, fontSize: 13, fontWeight: 700 }}>{item.lesson}</Typography>
                 <Typography sx={{ color: COLORS.mute, fontSize: 12 }}>
                   {item.attempts} attempt{item.attempts === 1 ? '' : 's'} - avg quiz {item.avgScore}%
                 </Typography>
@@ -438,10 +443,10 @@ function QuizAttemptsDialog({ lesson, open, onClose }) {
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="md">
       <DialogTitle sx={{ pr: 7 }}>
-        <Typography sx={{ color: COLORS.mute, fontSize: 11, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <Typography sx={{ color: COLORS.mute, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           Quiz review
         </Typography>
-        <Typography sx={{ color: COLORS.ink, fontSize: 22, fontWeight: 950, lineHeight: 1.15 }}>
+        <Typography sx={{ color: COLORS.ink, fontSize: 22, fontWeight: 700, lineHeight: 1.15 }}>
           {lesson?.lesson || 'Quiz attempts'}
         </Typography>
         <IconButton aria-label="Close quiz review" onClick={onClose} sx={{ position: 'absolute', top: 12, right: 12 }}>
@@ -502,7 +507,7 @@ function QuizAttemptsDialog({ lesson, open, onClose }) {
                     size={34}
                   />
                   <Box sx={{ minWidth: 0 }}>
-                    <Typography noWrap sx={{ color: COLORS.ink, fontSize: 14, fontWeight: 900 }}>
+                    <Typography noWrap sx={{ color: COLORS.ink, fontSize: 14, fontWeight: 700 }}>
                       {attempt.userName}
                     </Typography>
                     <Typography noWrap sx={{ color: COLORS.mute, fontSize: 12 }}>
@@ -520,11 +525,11 @@ function QuizAttemptsDialog({ lesson, open, onClose }) {
                       color: attempt.passed ? COLORS.success : COLORS.orange,
                       backgroundColor: attempt.passed ? 'rgba(34,158,90,0.10)' : 'rgba(255,100,45,0.12)',
                       fontSize: 11,
-                      fontWeight: 900,
+                      fontWeight: 700,
                       textTransform: 'uppercase',
                     }}
                   />
-                  <Typography sx={{ minWidth: 54, color: attempt.score >= 80 ? COLORS.success : COLORS.orange, fontSize: 15, fontWeight: 950, textAlign: 'right' }}>
+                  <Typography sx={{ minWidth: 54, color: attempt.score >= 80 ? COLORS.success : COLORS.orange, fontSize: 15, fontWeight: 700, textAlign: 'right' }}>
                     {attempt.score}%
                   </Typography>
                   <Typography sx={{ minWidth: 70, color: COLORS.mute, fontSize: 12, fontWeight: 700 }}>
@@ -564,7 +569,7 @@ function ActivityFeed({ activity }) {
             ['7d', '7 days'],
             ['30d', '30 days'],
           ].map(([id, label]) => (
-            <Button key={id} onClick={() => setRange(id)} sx={{ minWidth: 0, px: 1.4, py: 0.55, borderRadius: 999, color: range === id ? COLORS.blue : COLORS.slate, backgroundColor: range === id ? '#fff' : 'transparent', fontSize: 11, fontWeight: 900, textTransform: 'none', boxShadow: range === id ? '0 1px 4px rgba(11,11,11,0.08)' : 'none' }}>
+            <Button key={id} onClick={() => setRange(id)} sx={{ minWidth: 0, px: 1.4, py: 0.55, borderRadius: 999, color: range === id ? COLORS.blue : COLORS.slate, backgroundColor: range === id ? '#fff' : 'transparent', fontSize: 11, fontWeight: 700, textTransform: 'none', boxShadow: range === id ? '0 1px 4px rgba(11,11,11,0.08)' : 'none' }}>
               {label}
             </Button>
           ))}
@@ -593,7 +598,7 @@ function ActivityFeed({ activity }) {
               />
               <Box sx={{ minWidth: 0, flex: 1 }}>
                 <Typography component="div" sx={{ color: COLORS.ink, fontSize: 13, lineHeight: 1.45 }}>
-                  <Box component="strong" sx={{ fontWeight: 900 }}>{item.who}</Box>{' '}
+                  <Box component="strong" sx={{ fontWeight: 700 }}>{item.who}</Box>{' '}
                   <Box component="span" sx={{ color: COLORS.mute }}>{item.action}</Box>{' '}
                   <Chip icon={item.kind === 'quiz' ? <QuizOutlinedIcon /> : <RouteOutlinedIcon />} label={item.what} size="small" sx={{ maxWidth: '100%', height: 23, borderRadius: 999, color: activityColor, backgroundColor: activityBg, fontSize: 12, fontWeight: 800, verticalAlign: 'middle', '& .MuiChip-icon': { color: 'inherit', fontSize: 14 } }} />
                 </Typography>
@@ -792,16 +797,16 @@ export default function TeamProgressDashboard({ initialData }) {
           color: ['#0009DC', '#F0348E', '#42B1CF', '#FF642D'][index % 4],
         }));
   return (
-    <Box sx={{ minHeight: 'calc(100vh - 48px)', color: COLORS.ink }}>
+    <Box sx={{ minHeight: 'calc(100vh - 48px)', color: COLORS.ink, fontFamily: TYPE.sans }}>
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2.25} sx={{ justifyContent: 'space-between', alignItems: { xs: 'stretch', lg: 'flex-start' }, mb: 2.5 }}>
         <Box>
-          <Typography sx={{ color: COLORS.blue, fontSize: 12, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase', mb: 1 }}>
+          <Typography sx={{ color: COLORS.blue, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', mb: 1 }}>
             Team progress - {data.teamName}
           </Typography>
-          <Typography component="h1" sx={{ color: COLORS.ink, fontSize: { xs: 36, md: 48 }, fontWeight: 950, lineHeight: 1 }}>
+          <Typography component="h1" sx={{ color: COLORS.ink, fontFamily: TYPE.display, fontSize: { xs: 48, md: 72 }, fontWeight: 900, letterSpacing: 0, lineHeight: 0.92 }}>
             {isTeam ? 'How the team is doing' : selectedMember?.name}
           </Typography>
-          <Typography sx={{ mt: 1.25, color: COLORS.mute, fontSize: 14 }}>
+          <Typography sx={{ mt: 1.25, color: COLORS.slate, fontSize: 15, lineHeight: 1.5 }}>
             {isTeam ? `${members.length} learners across ${activeRoadmapCount} active roadmaps.` : `${selectedMember?.role || 'Member'} - ${selectedMember?.roadmap || 'No roadmap assigned'}`}
           </Typography>
         </Box>
@@ -839,7 +844,7 @@ export default function TeamProgressDashboard({ initialData }) {
                   color: COLORS.slate,
                   '& .MuiFormControlLabel-label': {
                     fontSize: 12,
-                    fontWeight: 900,
+                    fontWeight: 700,
                   },
                 }}
               />
@@ -871,7 +876,7 @@ export default function TeamProgressDashboard({ initialData }) {
               </Button>
             )}
             <Box sx={{ minWidth: 0 }}>
-              <Typography component="h2" sx={{ color: COLORS.ink, fontSize: 18, fontWeight: 900 }}>
+              <Typography component="h2" sx={{ color: COLORS.ink, fontSize: 18, fontWeight: 700 }}>
                 {isTeam ? 'Team members' : 'Roadmaps and lessons'}
               </Typography>
               {!isTeam && (
@@ -895,15 +900,15 @@ export default function TeamProgressDashboard({ initialData }) {
   );
 }
 
-const eyebrowSx = { color: COLORS.mute, fontSize: 11, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' };
-const widgetTitleSx = { mt: 0.5, color: COLORS.ink, fontSize: 16, fontWeight: 900 };
+const eyebrowSx = { color: COLORS.mute, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' };
+const widgetTitleSx = { mt: 0.5, color: COLORS.ink, fontSize: 16, fontWeight: 700 };
 const tableHeaderSx = { display: 'grid', gridTemplateColumns: '2fr 1.1fr 1.55fr 1.6fr 1fr 0.75fr 0.65fr', gap: 1.5, alignItems: 'center', px: 2.25, py: 1.35, borderBottom: `1px solid ${COLORS.blue100}`, backgroundColor: '#FAFAFC' };
 const tableRowSx = { display: 'grid', gridTemplateColumns: '2fr 1.1fr 1.55fr 1.6fr 1fr 0.75fr 0.65fr', gap: 1.5, alignItems: 'center', px: 2.25, py: 1.45, borderBottom: `1px solid ${COLORS.blue100}`, '&:last-of-type': { borderBottom: 0 } };
 const individualHeaderSx = { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 1.5, alignItems: 'center', px: 2.25, py: 1.35, borderBottom: `1px solid ${COLORS.blue100}`, backgroundColor: '#FAFAFC' };
 const individualRowSx = { display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 1.5, alignItems: 'center', px: 2.25, py: 1.45, borderBottom: `1px solid ${COLORS.blue100}`, '&:last-of-type': { borderBottom: 0 } };
-const tableHeadingSx = { color: COLORS.mute, fontSize: 10, fontWeight: 900, letterSpacing: '0.08em', textTransform: 'uppercase' };
+const tableHeadingSx = { color: COLORS.mute, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' };
 const tableBodySx = { color: COLORS.slate, fontSize: 13, fontWeight: 600 };
 const scrollAreaSx = { flex: '1 1 auto', minHeight: 0, overflowY: 'auto', pr: 0.5 };
-const pillButtonSx = { justifySelf: 'end', minWidth: 74, borderRadius: 999, borderColor: COLORS.blue200, color: COLORS.blue, fontSize: 11, fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', '&:hover': { borderColor: COLORS.blue, backgroundColor: COLORS.blue50 } };
-const backButtonSx = { flexShrink: 0, minHeight: 32, borderRadius: 999, borderColor: COLORS.blue200, color: COLORS.blue, px: 1.25, fontSize: 11, fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase', '&:hover': { borderColor: COLORS.blue, backgroundColor: COLORS.blue50 } };
-const primaryButtonSx = { minHeight: 42, borderRadius: 999, backgroundColor: COLORS.blue, px: 2.25, boxShadow: 'none', fontSize: 12, fontWeight: 900, letterSpacing: '0.06em', textTransform: 'uppercase', '&:hover': { backgroundColor: COLORS.blue, boxShadow: 'none' } };
+const pillButtonSx = { justifySelf: 'end', minWidth: 74, borderRadius: 999, borderColor: COLORS.blue200, color: COLORS.blue, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', '&:hover': { borderColor: COLORS.blue, backgroundColor: COLORS.blue50 } };
+const backButtonSx = { flexShrink: 0, minHeight: 32, borderRadius: 999, borderColor: COLORS.blue200, color: COLORS.blue, px: 1.25, fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', '&:hover': { borderColor: COLORS.blue, backgroundColor: COLORS.blue50 } };
+const primaryButtonSx = { minHeight: 42, borderRadius: 999, backgroundColor: COLORS.blue, px: 2.25, boxShadow: 'none', fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', '&:hover': { backgroundColor: COLORS.blue, boxShadow: 'none' } };

@@ -33,6 +33,7 @@ import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import AutoAwesomeOutlinedIcon from '@mui/icons-material/AutoAwesomeOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import RocketLaunchOutlinedIcon from '@mui/icons-material/RocketLaunchOutlined';
@@ -681,6 +682,7 @@ export default function LessonDetailsDialog({
   const [assetError, setAssetError] = useState('');
   const [isAddingAsset, setIsAddingAsset] = useState(false);
   const assetFileInputRef = useRef(null);
+  const coverFileInputRef = useRef(null);
   const initialHtml = useMemo(() => {
     return lesson?.contentHtml || markdownToHtml(lesson?.contentMarkdown || '');
   }, [lesson]);
@@ -691,6 +693,13 @@ export default function LessonDetailsDialog({
   const [draftHtml, setDraftHtml] = useState(initialHtml);
   const [draftTitle, setDraftTitle] = useState(lesson?.title || '');
   const [draftTags, setDraftTags] = useState(() => normalizeLessonTagInput(lesson?.tags || []));
+  const [draftCoverImage, setDraftCoverImage] = useState(() => ({
+    storageKey: lesson?.coverImageStorageKey || '',
+    originalName: lesson?.coverImageOriginalName || '',
+    mimeType: lesson?.coverImageMimeType || '',
+  }));
+  const [coverError, setCoverError] = useState('');
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
 
   useEffect(() => {
@@ -702,6 +711,13 @@ export default function LessonDetailsDialog({
     setDraftHtml(initialHtml);
     setDraftTitle(lesson?.title || '');
     setDraftTags(normalizeLessonTagInput(lesson?.tags || []));
+    setDraftCoverImage({
+      storageKey: lesson?.coverImageStorageKey || '',
+      originalName: lesson?.coverImageOriginalName || '',
+      mimeType: lesson?.coverImageMimeType || '',
+    });
+    setCoverError('');
+    setIsUploadingCover(false);
     setIsPublishing(false);
     setIsArchiving(false);
     setIsRevising(false);
@@ -786,6 +802,9 @@ export default function LessonDetailsDialog({
     ? `Edited ${formatDateTime(lastEditedAt)}`
     : 'Edited date unknown';
   const visibleTags = isEditing ? draftTags : normalizeLessonTagInput(lesson.tags || []);
+  const coverPreviewSrc = draftCoverImage.storageKey
+    ? `/api/files/object?storageKey=${encodeURIComponent(draftCoverImage.storageKey)}`
+    : '';
 
 
   const handleSave = async () => {
@@ -801,6 +820,9 @@ export default function LessonDetailsDialog({
           title: draftTitle.trim(),
           contentHtml: draftHtml,
           tags: draftTags,
+          coverImageStorageKey: draftCoverImage.storageKey,
+          coverImageOriginalName: draftCoverImage.originalName,
+          coverImageMimeType: draftCoverImage.mimeType,
         }),
       });
 
@@ -904,7 +926,68 @@ export default function LessonDetailsDialog({
     setDraftHtml(initialHtml);
     setDraftTitle(lesson.title || '');
     setDraftTags(normalizeLessonTagInput(lesson.tags || []));
+    setDraftCoverImage({
+      storageKey: lesson.coverImageStorageKey || '',
+      originalName: lesson.coverImageOriginalName || '',
+      mimeType: lesson.coverImageMimeType || '',
+    });
+    setCoverError('');
     setIsEditing(false);
+  };
+
+  const handleCoverImageChange = async (file) => {
+    if (!file) {
+      return;
+    }
+
+    if (!file.type?.startsWith('image/')) {
+      setCoverError('Choose an image file.');
+      if (coverFileInputRef.current) {
+        coverFileInputRef.current.value = '';
+      }
+      return;
+    }
+
+    try {
+      setIsUploadingCover(true);
+      setCoverError('');
+
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+
+      const uploadResponse = await fetch('/api/lessons/upload-file', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+      const uploadData = await uploadResponse.json();
+
+      if (!uploadResponse.ok) {
+        throw new Error(uploadData.error || `Failed to upload cover image: ${file.name}`);
+      }
+
+      setDraftCoverImage({
+        storageKey: uploadData.storageKey,
+        originalName: file.name,
+        mimeType: file.type || 'image/*',
+      });
+    } catch (error) {
+      console.error('Failed to upload lesson cover image:', error);
+      setCoverError(error.message || 'Failed to upload cover image.');
+    } finally {
+      setIsUploadingCover(false);
+      if (coverFileInputRef.current) {
+        coverFileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleRemoveCoverImage = () => {
+    setDraftCoverImage({
+      storageKey: '',
+      originalName: '',
+      mimeType: '',
+    });
+    setCoverError('');
   };
 
   const handleAddUrlAsset = async () => {
@@ -1401,6 +1484,85 @@ export default function LessonDetailsDialog({
                   </Typography>
                 </Box>
 
+                {isEditing && (
+                  <>
+                    <Tooltip title={coverError || (coverPreviewSrc ? 'Replace cover image' : 'Upload cover image')}>
+                      <span>
+                        <IconButton
+                          size="small"
+                          aria-label={coverPreviewSrc ? 'Replace lesson cover image' : 'Upload lesson cover image'}
+                          onClick={() => coverFileInputRef.current?.click()}
+                          disabled={!canManageCurrentLesson || isUploadingCover || isSaving || isDeleting}
+                          sx={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: 999,
+                            color: coverPreviewSrc ? '#fff' : LESSON_DIALOG_COLORS.blue,
+                            border: `1px solid ${LESSON_DIALOG_COLORS.blue200}`,
+                            backgroundColor: coverPreviewSrc ? LESSON_DIALOG_COLORS.blue : '#fff',
+                            backgroundImage: coverPreviewSrc ? `url("${coverPreviewSrc}")` : 'none',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
+                            boxShadow: coverPreviewSrc ? 'inset 0 0 0 999px rgba(0, 9, 220, 0.28)' : 'none',
+                            '&:hover': {
+                              color: '#fff',
+                              backgroundColor: LESSON_DIALOG_COLORS.blue,
+                              boxShadow: coverPreviewSrc
+                                ? 'inset 0 0 0 999px rgba(0, 9, 220, 0.38)'
+                                : 'none',
+                            },
+                            '&.Mui-disabled': {
+                              color: LESSON_DIALOG_COLORS.mute,
+                              backgroundColor: '#fff',
+                              backgroundImage: 'none',
+                            },
+                          }}
+                        >
+                          <ImageOutlinedIcon sx={{ fontSize: 17 }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                    {coverPreviewSrc && (
+                      <Tooltip title="Remove cover image">
+                        <span>
+                          <IconButton
+                            size="small"
+                            aria-label="Remove lesson cover image"
+                            onClick={handleRemoveCoverImage}
+                            disabled={!canManageCurrentLesson || isUploadingCover || isSaving || isDeleting}
+                            sx={{
+                              width: 34,
+                              height: 34,
+                              borderRadius: 999,
+                              color: '#D62F2F',
+                              border: '1px solid rgba(214, 47, 47, 0.28)',
+                              backgroundColor: '#fff',
+                              '&:hover': {
+                                borderColor: '#D62F2F',
+                                backgroundColor: 'rgba(214, 47, 47, 0.05)',
+                              },
+                              '&.Mui-disabled': {
+                                color: LESSON_DIALOG_COLORS.mute,
+                                backgroundColor: '#fff',
+                              },
+                            }}
+                          >
+                            <DeleteOutlineOutlinedIcon sx={{ fontSize: 17 }} />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                    )}
+                    <Box
+                      component="input"
+                      type="file"
+                      accept="image/*"
+                      ref={coverFileInputRef}
+                      onChange={(event) => handleCoverImageChange(event.target.files?.[0])}
+                      sx={{ display: 'none' }}
+                    />
+                  </>
+                )}
+
                 <Tooltip title={isRightPanelCollapsed ? 'Show sidebar' : 'Hide sidebar'}>
                   <IconButton
                     size="small"
@@ -1429,7 +1591,7 @@ export default function LessonDetailsDialog({
                     size="small"
                     aria-label="Close lesson details"
                     onClick={onClose}
-                    disabled={isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+                    disabled={isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity || isUploadingCover}
                     sx={{
                       width: 34,
                       height: 34,
@@ -2197,7 +2359,7 @@ export default function LessonDetailsDialog({
               }}
               variant="outlined"
               startIcon={isLessonArchived ? <UnarchiveOutlinedIcon /> : <ArchiveOutlinedIcon />}
-              disabled={!canManageCurrentLesson || (isLessonArchived && lesson.status !== 'ready') || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+              disabled={!canManageCurrentLesson || (isLessonArchived && lesson.status !== 'ready') || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity || isUploadingCover}
               sx={lessonSecondaryButtonSx}
             >
               {isLessonArchived
@@ -2215,7 +2377,7 @@ export default function LessonDetailsDialog({
               }}
               variant="outlined"
               startIcon={<DeleteOutlineOutlinedIcon />}
-              disabled={!canManageCurrentLesson || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+              disabled={!canManageCurrentLesson || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity || isUploadingCover}
               sx={lessonDangerButtonSx}
             >
               Delete lesson
@@ -2228,7 +2390,7 @@ export default function LessonDetailsDialog({
             onClick={handleSaveActivity}
             variant="contained"
             startIcon={<SaveOutlinedIcon />}
-            disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity}
+            disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity || isUploadingCover}
             sx={lessonPrimaryButtonSx}
           >
             {isSavingActivity ? 'Saving activity...' : 'Save activity'}
@@ -2238,7 +2400,7 @@ export default function LessonDetailsDialog({
             <Button
               onClick={handleCancelEdit}
               variant="outlined"
-              disabled={isSaving || isPublishing || isArchiving || isDeleting || isGeneratingActivity || isSavingActivity}
+              disabled={isSaving || isPublishing || isArchiving || isDeleting || isGeneratingActivity || isSavingActivity || isUploadingCover}
               sx={lessonSecondaryButtonSx}
             >
               Cancel
@@ -2247,7 +2409,7 @@ export default function LessonDetailsDialog({
               onClick={handleSave}
               variant="contained"
               startIcon={<SaveOutlinedIcon />}
-              disabled={!canManageCurrentLesson || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity}
+              disabled={!canManageCurrentLesson || isSaving || isPublishing || isArchiving || isDeleting || isRevising || isGeneratingActivity || isSavingActivity || isUploadingCover}
               sx={lessonPrimaryButtonSx}
             >
               {isSaving ? 'Saving...' : 'Save changes'}
@@ -2261,7 +2423,7 @@ export default function LessonDetailsDialog({
                   onClick={handlePublish}
                   variant="contained"
                   startIcon={<RocketLaunchOutlinedIcon />}
-                  disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity}
+                  disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity || isUploadingCover}
                   sx={lessonDarkButtonSx}
                 >
                   {isPublishing ? 'Publishing...' : 'Publish lesson'}
@@ -2271,7 +2433,7 @@ export default function LessonDetailsDialog({
                 onClick={() => setIsEditing(true)}
                 variant="contained"
                 startIcon={<EditOutlinedIcon />}
-                disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity}
+                disabled={!canManageCurrentLesson || isDeleting || isSaving || isPublishing || isArchiving || isRevising || isGeneratingActivity || isSavingActivity || isUploadingCover}
                 sx={lessonPrimaryButtonSx}
               >
                 Edit lesson

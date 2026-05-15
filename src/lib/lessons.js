@@ -12,7 +12,7 @@ export {
   LESSON_STATUSES,
 } from './lessonConstants.js';
 
-const LESSONS_SCHEMA_VERSION = 7;
+const LESSONS_SCHEMA_VERSION = 8;
 
 export async function ensureLessonsSchema(client = db) {
   const globalForLessons = globalThis;
@@ -58,6 +58,9 @@ async function ensureLessonsSchemaUncached(client = db) {
       content_format TEXT NOT NULL DEFAULT 'markdown',
       content_markdown TEXT NOT NULL DEFAULT '',
       content_html TEXT NOT NULL DEFAULT '',
+      cover_image_storage_key TEXT NOT NULL DEFAULT '',
+      cover_image_original_name TEXT NOT NULL DEFAULT '',
+      cover_image_mime_type TEXT NOT NULL DEFAULT '',
       generation_metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
       error_message TEXT NOT NULL DEFAULT '',
       publication_status TEXT NOT NULL DEFAULT 'published',
@@ -76,6 +79,13 @@ async function ensureLessonsSchemaUncached(client = db) {
   await client.query(`
     ALTER TABLE lessons
     ADD COLUMN IF NOT EXISTS content_html TEXT NOT NULL DEFAULT ''
+  `);
+
+  await client.query(`
+    ALTER TABLE lessons
+    ADD COLUMN IF NOT EXISTS cover_image_storage_key TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS cover_image_original_name TEXT NOT NULL DEFAULT '',
+    ADD COLUMN IF NOT EXISTS cover_image_mime_type TEXT NOT NULL DEFAULT ''
   `);
 
   await client.query(`
@@ -252,6 +262,9 @@ function mapLesson(row, materialIds = [], extra = {}) {
     contentFormat: row.content_format,
     contentMarkdown: row.content_markdown,
     contentHtml: row.content_html || '',
+    coverImageStorageKey: row.cover_image_storage_key || '',
+    coverImageOriginalName: row.cover_image_original_name || '',
+    coverImageMimeType: row.cover_image_mime_type || '',
     tags: Array.isArray(row.tags) ? row.tags : [],
     publicationStatus: row.publication_status || 'published',
     isPublished: (row.publication_status || 'published') === 'published',
@@ -559,6 +572,24 @@ export async function updateLessonContent(lessonId, input) {
   if (input.tags !== undefined) {
     fields.push(`tags = $${index}`);
     values.push(JSON.stringify(normalizeLessonTags(input.tags)));
+    index += 1;
+  }
+
+  if (input.coverImageStorageKey !== undefined) {
+    fields.push(`cover_image_storage_key = $${index}`);
+    values.push(input.coverImageStorageKey || '');
+    index += 1;
+  }
+
+  if (input.coverImageOriginalName !== undefined) {
+    fields.push(`cover_image_original_name = $${index}`);
+    values.push(input.coverImageOriginalName || '');
+    index += 1;
+  }
+
+  if (input.coverImageMimeType !== undefined) {
+    fields.push(`cover_image_mime_type = $${index}`);
+    values.push(input.coverImageMimeType || '');
     index += 1;
   }
 

@@ -22,7 +22,7 @@ const theme = createTheme({
     borderRadius: 12,
   },
   typography: {
-    fontFamily: 'Arial, sans-serif',
+    fontFamily: 'var(--ff-sans), Inter, Arial, sans-serif',
   },
   components: {
     MuiButton: {

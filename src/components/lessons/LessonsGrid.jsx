@@ -164,6 +164,12 @@ function getActivityCounts(activities) {
   );
 }
 
+function getLessonCoverImageSrc(lesson) {
+  return lesson.coverImageStorageKey
+    ? `/api/files/object?storageKey=${encodeURIComponent(lesson.coverImageStorageKey)}`
+    : '';
+}
+
 export default function LessonsGrid({
   lessons = [],
   onOpenLesson,
@@ -233,6 +239,7 @@ export default function LessonsGrid({
         const visibleTags = areTagsExpanded ? tags : tags.slice(0, 2);
         const hiddenTagCount = Math.max(tags.length - 2, 0);
         const hasActivities = activityCounts.flashcards > 0 || activityCounts.quizzes > 0;
+        const coverImageSrc = getLessonCoverImageSrc(lesson);
 
         return (
           <Paper
@@ -275,11 +282,24 @@ export default function LessonsGrid({
             sx={{
               aspectRatio: '16 / 8',
               borderRadius: '10px',
-              background: getLessonCoverBackground(lesson),
+              background: coverImageSrc ? CARD_TOKENS.blue50 : getLessonCoverBackground(lesson),
               position: 'relative',
               overflow: 'hidden',
             }}
           >
+            {coverImageSrc && (
+              <Box
+                component="img"
+                src={coverImageSrc}
+                alt=""
+                sx={{
+                  width: '100%',
+                  height: '100%',
+                  display: 'block',
+                  objectFit: 'cover',
+                }}
+              />
+            )}
             <Chip
               label={publicationLabel}
               size="small"

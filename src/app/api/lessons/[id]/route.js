@@ -100,6 +100,18 @@ export async function PUT(request, { params }) {
     const contentHtml = (body.contentHtml || '').trim();
     const title = (body.title || '').trim();
     const tags = normalizeLessonTags(body.tags || []);
+    const coverImageStorageKey =
+      typeof body.coverImageStorageKey === 'string'
+        ? body.coverImageStorageKey.trim()
+        : undefined;
+    const coverImageOriginalName =
+      typeof body.coverImageOriginalName === 'string'
+        ? body.coverImageOriginalName.trim()
+        : undefined;
+    const coverImageMimeType =
+      typeof body.coverImageMimeType === 'string'
+        ? body.coverImageMimeType.trim()
+        : undefined;
 
     if (!id) {
       return Response.json(
@@ -135,6 +147,9 @@ export async function PUT(request, { params }) {
       title,
       contentHtml,
       tags,
+      coverImageStorageKey,
+      coverImageOriginalName,
+      coverImageMimeType,
     });
 
     return Response.json({ lesson: withViewerCapabilities(lesson, user) });
