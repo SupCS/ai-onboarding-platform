@@ -578,10 +578,10 @@ export default function LessonPromptForm({
                       onClick={() => handleMaterialToggle(material.id)}
                       sx={{
                         display: 'flex',
-                        alignItems: 'flex-start',
+                        alignItems: 'center',
                         gap: 1.5,
                         width: '100%',
-                        minHeight: 68,
+                        minHeight: 82,
                         px: 2,
                         py: 1.5,
                         borderRadius: 1.5,
@@ -598,11 +598,10 @@ export default function LessonPromptForm({
                     >
                       <Box
                         sx={{
-                          width: 20,
-                          height: 20,
-                          mt: 0.125,
+                          width: 18,
+                          height: 18,
                           flex: '0 0 auto',
-                          borderRadius: 0.75,
+                          borderRadius: '5px',
                           border: isSelected ? 'none' : `1.5px solid ${FORM_COLORS.blue200}`,
                           backgroundColor: isSelected ? FORM_COLORS.blue : '#fff',
                           color: '#fff',
@@ -610,7 +609,7 @@ export default function LessonPromptForm({
                           placeItems: 'center',
                         }}
                       >
-                        {isSelected && <CheckOutlinedIcon sx={{ fontSize: 14 }} />}
+                        {isSelected && <CheckOutlinedIcon sx={{ fontSize: 13 }} />}
                       </Box>
                       <Box sx={{ minWidth: 0 }}>
                         <Typography

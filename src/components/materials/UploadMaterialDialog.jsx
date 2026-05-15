@@ -10,11 +10,68 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
+import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
+import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import { normalizeLessonTagInput, suggestedLessonTags } from '../../lib/lessonTags';
+
+const FORM_COLORS = {
+  blue: '#0009DC',
+  ink: '#0B0B0B',
+  slate: '#33344A',
+  mute: '#80808E',
+  blue50: '#F5F5FE',
+  blue100: '#E3E5FF',
+  blue200: '#CBD0FF',
+  bg2: '#F9F9F9',
+};
+
+const sectionLabelSx = {
+  mb: 1.25,
+  color: FORM_COLORS.mute,
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: '0.08em',
+  lineHeight: 1,
+  textTransform: 'uppercase',
+};
+
+const fieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 1.5,
+    backgroundColor: '#fff',
+    '& fieldset': { borderColor: FORM_COLORS.blue100, borderWidth: 1.5 },
+    '&:hover fieldset': { borderColor: FORM_COLORS.blue200 },
+    '&.Mui-focused fieldset': { borderColor: FORM_COLORS.blue },
+  },
+  '& .MuiInputLabel-root': {
+    color: FORM_COLORS.mute,
+    fontSize: 13,
+    fontWeight: 700,
+  },
+  '& .MuiInputBase-input': {
+    color: FORM_COLORS.ink,
+    fontSize: 14,
+  },
+  '& .MuiFormHelperText-root': {
+    mx: 0,
+    color: FORM_COLORS.mute,
+    fontSize: 11,
+  },
+};
+
+const actionButtonSx = {
+  minHeight: 40,
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+};
 
 const acceptedFileTypes = [
   '.doc',
@@ -29,30 +86,27 @@ const acceptedFileTypes = [
 ].join(',');
 
 const youtubeChipSx = {
-  color: '#ffffff',
-  fontWeight: 600,
-  border: '1px solid rgba(29, 78, 216, 0.18)',
-  background:
-    'linear-gradient(135deg, #2563eb 0%, #1d4ed8 55%, #1e40af 100%)',
-  boxShadow: '0 10px 24px rgba(37, 99, 235, 0.18)',
-  transition: 'transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease',
+  height: 28,
+  borderRadius: 999,
+  color: FORM_COLORS.blue,
+  fontSize: 12,
+  fontWeight: 700,
+  border: `1px solid ${FORM_COLORS.blue100}`,
+  backgroundColor: FORM_COLORS.blue50,
   '& .MuiChip-label': {
     px: 1.25,
   },
   '& .MuiChip-deleteIcon': {
-    color: 'rgba(255, 255, 255, 0.78)',
-    transition: 'color 0.18s ease, transform 0.18s ease',
+    color: FORM_COLORS.blue,
   },
   '& .MuiChip-deleteIcon:hover': {
-    color: '#ffffff',
-    transform: 'scale(1.08)',
-  },
-  '&:hover': {
-    transform: 'translateY(-1px)',
-    boxShadow: '0 14px 28px rgba(29, 78, 216, 0.28)',
-    filter: 'brightness(1.05)',
+    color: FORM_COLORS.ink,
   },
 };
+
+function SectionLabel({ children }) {
+  return <Typography sx={sectionLabelSx}>{children}</Typography>;
+}
 
 function buildInitialForm(material) {
   return {
@@ -320,13 +374,75 @@ export default function UploadMaterialDialog({
   };
 
   return (
-    <Dialog open={open} onClose={handleDialogClose} fullWidth maxWidth="md">
-      <DialogTitle>
-        {isEditMode ? 'Edit Material' : 'Add Material'}
+    <Dialog
+      open={open}
+      onClose={handleDialogClose}
+      fullWidth
+      maxWidth="md"
+      slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 2.5,
+            overflow: 'hidden',
+          },
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{
+          position: 'relative',
+          px: 3,
+          py: 2,
+          pr: 7,
+          color: FORM_COLORS.mute,
+          borderBottom: `1px solid ${FORM_COLORS.blue100}`,
+          fontSize: 13,
+          fontWeight: 700,
+          lineHeight: 1,
+        }}
+      >
+        {isEditMode ? 'Edit material' : 'Add material'}
+        <IconButton
+          aria-label="Close material dialog"
+          onClick={handleDialogClose}
+          disabled={isSaving}
+          sx={{
+            position: 'absolute',
+            right: 16,
+            top: 10,
+            width: 32,
+            height: 32,
+            border: `1px solid ${FORM_COLORS.blue200}`,
+            color: FORM_COLORS.slate,
+            backgroundColor: '#fff',
+            '&:hover': { backgroundColor: FORM_COLORS.blue50 },
+          }}
+        >
+          <CloseOutlinedIcon sx={{ fontSize: 17 }} />
+        </IconButton>
       </DialogTitle>
 
-      <DialogContent sx={{ pt: 2 }}>
-        <Stack spacing={3} sx={{ mt: 1 }}>
+      <DialogContent sx={{ p: 0 }}>
+        <Box sx={{ px: { xs: 2.5, md: 4 }, pt: { xs: 3, md: 4 }, pb: 2.5 }}>
+          <Typography
+            component="h2"
+            sx={{
+              color: FORM_COLORS.ink,
+              fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+              fontSize: { xs: 34, md: 44 },
+              fontWeight: 900,
+              letterSpacing: 0,
+              lineHeight: 0.95,
+            }}
+          >
+            {isEditMode ? 'Edit material' : 'Add material'}
+          </Typography>
+          <Typography sx={{ mt: 1, color: FORM_COLORS.mute, fontSize: 14, lineHeight: 1.45 }}>
+            Add source content for lessons: videos, links, files, images, or text notes.
+          </Typography>
+        </Box>
+
+        <Stack spacing={3} sx={{ px: { xs: 2.5, md: 4 }, pb: 3 }}>
           <Stack spacing={2}>
             <TextField
               label="Title"
@@ -335,6 +451,7 @@ export default function UploadMaterialDialog({
               onChange={handleChange('title')}
               error={Boolean(errors.title)}
               helperText={errors.title}
+              sx={fieldSx}
             />
 
             <TextField
@@ -344,6 +461,7 @@ export default function UploadMaterialDialog({
               minRows={2}
               value={form.description}
               onChange={handleChange('description')}
+              sx={fieldSx}
             />
 
             <Autocomplete
@@ -371,15 +489,14 @@ export default function UploadMaterialDialog({
                   label="Tags"
                   placeholder="Add a tag"
                   helperText="Optional categories for filtering and scanning materials."
+                  sx={fieldSx}
                 />
               )}
             />
           </Stack>
 
           <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-              YouTube Videos
-            </Typography>
+            <SectionLabel>YouTube videos</SectionLabel>
 
             <TextField
               label="Paste YouTube URL and press Enter"
@@ -394,6 +511,7 @@ export default function UploadMaterialDialog({
                 errors.youtubeInput ||
                 'A YouTube link will be added automatically on Enter, space, blur, or save.'
               }
+              sx={fieldSx}
             />
 
             {form.youtubeUrls.length > 0 && (
@@ -419,9 +537,7 @@ export default function UploadMaterialDialog({
           </Box>
 
           <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-              Links
-            </Typography>
+            <SectionLabel>Links</SectionLabel>
 
             <TextField
               label="One link per line"
@@ -431,13 +547,12 @@ export default function UploadMaterialDialog({
               placeholder={'https://example.com\nhttps://docs.example.com'}
               value={form.links}
               onChange={handleChange('links')}
+              sx={fieldSx}
             />
           </Box>
 
           <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-              Text
-            </Typography>
+            <SectionLabel>Text</SectionLabel>
 
             <TextField
               label="Text Content"
@@ -446,15 +561,28 @@ export default function UploadMaterialDialog({
               minRows={5}
               value={form.text}
               onChange={handleChange('text')}
+              sx={fieldSx}
             />
           </Box>
 
           <Box>
-            <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 1 }}>
-              Files and Images
-            </Typography>
+            <SectionLabel>Files and images</SectionLabel>
 
-            <Button variant="outlined" component="label">
+            <Button
+              variant="outlined"
+              component="label"
+              startIcon={<AttachFileOutlinedIcon />}
+              sx={{
+                ...actionButtonSx,
+                borderColor: FORM_COLORS.blue200,
+                color: FORM_COLORS.blue,
+                backgroundColor: '#fff',
+                '&:hover': {
+                  borderColor: FORM_COLORS.blue,
+                  backgroundColor: FORM_COLORS.blue50,
+                },
+              }}
+            >
               {isEditMode ? 'Add More Files' : 'Choose Files'}
               <input
                 hidden
@@ -513,12 +641,41 @@ export default function UploadMaterialDialog({
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3 }}>
-        <Button onClick={handleDialogClose} color="inherit" disabled={isSaving}>
+      <DialogActions
+        sx={{
+          px: { xs: 2.5, md: 3.5 },
+          py: 1.75,
+          gap: 1,
+          borderTop: `1px solid ${FORM_COLORS.blue100}`,
+          backgroundColor: FORM_COLORS.bg2,
+        }}
+      >
+        <Button
+          onClick={handleDialogClose}
+          disabled={isSaving}
+          sx={{
+            ...actionButtonSx,
+            border: `1px solid ${FORM_COLORS.blue200}`,
+            color: FORM_COLORS.slate,
+            backgroundColor: 'transparent',
+            '&:hover': { backgroundColor: '#fff' },
+          }}
+        >
           Cancel
         </Button>
 
-        <Button variant="contained" onClick={handleSubmit} disabled={isSaving}>
+        <Button
+          variant="contained"
+          onClick={handleSubmit}
+          disabled={isSaving}
+          sx={{
+            ...actionButtonSx,
+            px: 2.75,
+            backgroundColor: FORM_COLORS.blue,
+            boxShadow: 'none',
+            '&:hover': { backgroundColor: FORM_COLORS.blue, boxShadow: 'none' },
+          }}
+        >
           {isSaving
             ? isEditMode
               ? 'Saving changes...'

@@ -17,8 +17,67 @@ import {
 } from '@mui/material';
 import ArrowDownwardOutlinedIcon from '@mui/icons-material/ArrowDownwardOutlined';
 import ArrowUpwardOutlinedIcon from '@mui/icons-material/ArrowUpwardOutlined';
+import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { normalizeLessonTagInput, suggestedLessonTags } from '../../lib/lessonTags';
+
+const FORM_COLORS = {
+  blue: '#0009DC',
+  ink: '#0B0B0B',
+  slate: '#33344A',
+  mute: '#80808E',
+  blue50: '#F5F5FE',
+  blue100: '#E3E5FF',
+  blue200: '#CBD0FF',
+  bg2: '#F9F9F9',
+};
+
+const sectionLabelSx = {
+  mb: 1.25,
+  color: FORM_COLORS.mute,
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: '0.08em',
+  lineHeight: 1,
+  textTransform: 'uppercase',
+};
+
+const fieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: 1.5,
+    backgroundColor: '#fff',
+    '& fieldset': { borderColor: FORM_COLORS.blue100, borderWidth: 1.5 },
+    '&:hover fieldset': { borderColor: FORM_COLORS.blue200 },
+    '&.Mui-focused fieldset': { borderColor: FORM_COLORS.blue },
+  },
+  '& .MuiInputLabel-root': {
+    color: FORM_COLORS.mute,
+    fontSize: 13,
+    fontWeight: 700,
+  },
+  '& .MuiInputBase-input': {
+    color: FORM_COLORS.ink,
+    fontSize: 14,
+  },
+  '& .MuiFormHelperText-root': {
+    mx: 0,
+    color: FORM_COLORS.mute,
+    fontSize: 11,
+  },
+};
+
+const actionButtonSx = {
+  minHeight: 40,
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 800,
+  letterSpacing: '0.06em',
+  textTransform: 'uppercase',
+};
+
+function SectionLabel({ children }) {
+  return <Typography sx={sectionLabelSx}>{children}</Typography>;
+}
 
 function buildInitialForm(initialRoadmap = null, lessons = []) {
   if (initialRoadmap) {
@@ -190,15 +249,72 @@ export default function RoadmapFormDialog({
       fullWidth
       maxWidth="md"
       slotProps={{
+        paper: {
+          sx: {
+            borderRadius: 2.5,
+            overflow: 'hidden',
+          },
+        },
         transition: {
           onExited: handleExited,
         },
       }}
     >
-      <DialogTitle>{isEditMode ? 'Edit Roadmap' : 'Create Roadmap'}</DialogTitle>
+      <DialogTitle
+        sx={{
+          position: 'relative',
+          px: 3,
+          py: 2,
+          pr: 7,
+          color: FORM_COLORS.mute,
+          borderBottom: `1px solid ${FORM_COLORS.blue100}`,
+          fontSize: 13,
+          fontWeight: 700,
+          lineHeight: 1,
+        }}
+      >
+        {isEditMode ? 'Edit roadmap' : 'Create roadmap'}
+        <IconButton
+          aria-label="Close roadmap dialog"
+          onClick={handleDialogClose}
+          disabled={isSaving || isDeleting}
+          sx={{
+            position: 'absolute',
+            right: 16,
+            top: 10,
+            width: 32,
+            height: 32,
+            border: `1px solid ${FORM_COLORS.blue200}`,
+            color: FORM_COLORS.slate,
+            backgroundColor: '#fff',
+            '&:hover': { backgroundColor: FORM_COLORS.blue50 },
+          }}
+        >
+          <CloseOutlinedIcon sx={{ fontSize: 17 }} />
+        </IconButton>
+      </DialogTitle>
 
-      <DialogContent sx={{ pt: 2 }}>
-        <Stack spacing={3} sx={{ mt: 1 }}>
+      <DialogContent sx={{ p: 0 }}>
+        <Box sx={{ px: { xs: 2.5, md: 4 }, pt: { xs: 3, md: 4 }, pb: 2.5 }}>
+          <Typography
+            component="h2"
+            sx={{
+              color: FORM_COLORS.ink,
+              fontFamily: '"Barlow Semi Condensed", Inter, Arial, sans-serif',
+              fontSize: { xs: 34, md: 44 },
+              fontWeight: 900,
+              letterSpacing: 0,
+              lineHeight: 0.95,
+            }}
+          >
+            {isEditMode ? 'Edit roadmap' : 'Create roadmap'}
+          </Typography>
+          <Typography sx={{ mt: 1, color: FORM_COLORS.mute, fontSize: 14, lineHeight: 1.45 }}>
+            Assemble a learning path from ready lessons and set the order learners will follow.
+          </Typography>
+        </Box>
+
+        <Stack spacing={3} sx={{ px: { xs: 2.5, md: 4 }, pb: 3 }}>
           <TextField
             label="Title"
             fullWidth
@@ -206,6 +322,7 @@ export default function RoadmapFormDialog({
             onChange={handleChange('title')}
             error={Boolean(errors.title)}
             helperText={errors.title}
+            sx={fieldSx}
           />
 
           <TextField
@@ -216,6 +333,7 @@ export default function RoadmapFormDialog({
             value={form.description}
             onChange={handleChange('description')}
             placeholder="Describe what this roadmap helps people learn."
+            sx={fieldSx}
           />
 
           <Autocomplete
@@ -243,15 +361,14 @@ export default function RoadmapFormDialog({
                 label="Tags"
                 placeholder="Add tags"
                 helperText="Roadmap tags merge with tags from added lessons."
+                sx={fieldSx}
               />
             )}
           />
 
           {form.selectedLessons.length > 0 && (
             <Stack spacing={1}>
-              <Typography variant="subtitle2" sx={{ fontWeight: 850 }}>
-                Lesson order
-              </Typography>
+              <SectionLabel>Lesson order</SectionLabel>
 
               <Stack spacing={0.75}>
                 {form.selectedLessons.map((lesson, index) => (
@@ -262,18 +379,26 @@ export default function RoadmapFormDialog({
                       gridTemplateColumns: '32px minmax(0, 1fr) auto',
                       gap: 1,
                       alignItems: 'center',
-                      p: 1,
-                      borderRadius: 2,
-                      border: '1px solid #e5e7eb',
+                      px: 1.25,
+                      py: 1,
+                      borderRadius: 1.5,
+                      border: `1.5px solid ${FORM_COLORS.blue100}`,
                       backgroundColor: '#fff',
                     }}
                   >
                     <Chip
                       label={index + 1}
                       size="small"
-                      sx={{ fontWeight: 900 }}
+                      sx={{
+                        width: 26,
+                        height: 26,
+                        borderRadius: 999,
+                        color: FORM_COLORS.blue,
+                        backgroundColor: FORM_COLORS.blue50,
+                        fontWeight: 900,
+                      }}
                     />
-                    <Typography variant="body2" noWrap sx={{ fontWeight: 750 }}>
+                    <Typography variant="body2" noWrap sx={{ color: FORM_COLORS.ink, fontWeight: 800 }}>
                       {lesson.title}
                     </Typography>
                     <Stack direction="row" spacing={0.5}>
@@ -296,9 +421,9 @@ export default function RoadmapFormDialog({
                       <IconButton
                         aria-label="Remove lesson"
                         size="small"
-                        color="error"
                         onClick={() => removeSelectedLesson(lesson.id)}
                         disabled={isSaving || isDeleting}
+                        sx={{ color: '#D62F2F' }}
                       >
                         <DeleteOutlineOutlinedIcon fontSize="small" />
                       </IconButton>
@@ -328,6 +453,7 @@ export default function RoadmapFormDialog({
                   errors.selectedLessons ||
                   'Selected lessons are added to the end of the roadmap.'
                 }
+                sx={fieldSx}
               />
             )}
           />
@@ -340,23 +466,43 @@ export default function RoadmapFormDialog({
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ px: 3, pb: 3 }}>
+      <DialogActions
+        sx={{
+          px: { xs: 2.5, md: 3.5 },
+          py: 1.75,
+          gap: 1,
+          borderTop: `1px solid ${FORM_COLORS.blue100}`,
+          backgroundColor: FORM_COLORS.bg2,
+        }}
+      >
         {isEditMode && (
           <Button
             onClick={() => onDelete?.(initialRoadmap)}
-            color="error"
             disabled={isSaving || isDeleting}
             sx={{
               mr: 'auto',
-              textTransform: 'none',
-              fontWeight: 800,
+              ...actionButtonSx,
+              border: '1px solid rgba(214, 47, 47, 0.28)',
+              color: '#D62F2F',
+              backgroundColor: '#fff',
+              '&:hover': { backgroundColor: 'rgba(214, 47, 47, 0.05)' },
             }}
           >
             {isDeleting ? 'Deleting...' : 'Delete Roadmap'}
           </Button>
         )}
 
-        <Button onClick={handleDialogClose} color="inherit" disabled={isSaving || isDeleting}>
+        <Button
+          onClick={handleDialogClose}
+          disabled={isSaving || isDeleting}
+          sx={{
+            ...actionButtonSx,
+            border: `1px solid ${FORM_COLORS.blue200}`,
+            color: FORM_COLORS.slate,
+            backgroundColor: 'transparent',
+            '&:hover': { backgroundColor: '#fff' },
+          }}
+        >
           Cancel
         </Button>
 
@@ -364,6 +510,13 @@ export default function RoadmapFormDialog({
           variant="contained"
           onClick={handleSubmit}
           disabled={isSaving || isDeleting || readyLessons.length === 0}
+          sx={{
+            ...actionButtonSx,
+            px: 2.75,
+            backgroundColor: FORM_COLORS.blue,
+            boxShadow: 'none',
+            '&:hover': { backgroundColor: FORM_COLORS.blue, boxShadow: 'none' },
+          }}
         >
           {isSaving
             ? isEditMode ? 'Saving...' : 'Creating...'

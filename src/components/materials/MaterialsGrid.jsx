@@ -39,32 +39,6 @@ function formatDate(isoString) {
   }
 }
 
-function getMaterialBadges(material) {
-  const badges = [];
-
-if (material.youtubeUrls?.length) {
-  badges.push('YouTube');
-}
-
-  if (material.links?.length) {
-    badges.push('Links');
-  }
-
-  if (material.text) {
-    badges.push('Text');
-  }
-
-  if (material.attachments?.some((item) => item.kind === 'file')) {
-    badges.push('Files');
-  }
-
-  if (material.attachments?.some((item) => item.kind === 'image')) {
-    badges.push('Images');
-  }
-
-  return badges;
-}
-
 function extractYoutubeVideoId(url) {
   try {
     const parsedUrl = new URL(url);
@@ -117,7 +91,7 @@ function getMaterialMetaItems(material) {
     items.push({
       key: 'youtube',
       icon: <SmartDisplayOutlinedIcon fontSize="small" color="action" />,
-      label: `${material.youtubeUrls.length} YouTube video(s)`,
+      label: `${material.youtubeUrls.length} YouTube`,
     });
   }
 
@@ -125,7 +99,7 @@ function getMaterialMetaItems(material) {
     items.push({
       key: 'links',
       icon: <LinkOutlinedIcon fontSize="small" color="action" />,
-      label: `${material.links.length} link(s)`,
+      label: `${material.links.length} link${material.links.length === 1 ? '' : 's'}`,
     });
   }
 
@@ -133,7 +107,7 @@ function getMaterialMetaItems(material) {
     items.push({
       key: 'text',
       icon: <TextSnippetOutlinedIcon fontSize="small" color="action" />,
-      label: 'Text included',
+      label: 'Text',
     });
   }
 
@@ -141,7 +115,7 @@ function getMaterialMetaItems(material) {
     items.push({
       key: 'files',
       icon: <DescriptionOutlinedIcon fontSize="small" color="action" />,
-      label: 'File attached',
+      label: 'Files',
     });
   }
 
@@ -149,7 +123,7 @@ function getMaterialMetaItems(material) {
     items.push({
       key: 'images',
       icon: <ImageOutlinedIcon fontSize="small" color="action" />,
-      label: 'Image attached',
+      label: 'Images',
     });
   }
 
@@ -194,7 +168,6 @@ export default function MaterialsGrid({
       }}
     >
       {materials.map((material) => {
-        const badges = getMaterialBadges(material);
         const tags = Array.isArray(material.tags) ? material.tags : [];
         const areTagsExpanded = expandedTagMaterialIds.has(material.id);
         const visibleTags = areTagsExpanded ? tags : tags.slice(0, 2);
@@ -483,34 +456,6 @@ export default function MaterialsGrid({
                       }}
                     />
                   )}
-                </Stack>
-              )}
-
-              {badges.length > 0 && (
-                <Stack
-                  direction="row"
-                  spacing={0.75}
-                  useFlexGap
-                  sx={{
-                    flexWrap: 'wrap',
-                    px: 0.5,
-                  }}
-                >
-                  {badges.map((badge) => (
-                    <Chip
-                      key={badge}
-                      label={badge}
-                      size="small"
-                      sx={{
-                        height: 24,
-                        borderRadius: 999,
-                        backgroundColor: CARD_TOKENS.blue50,
-                        color: CARD_TOKENS.blue,
-                        fontSize: 11,
-                        fontWeight: 600,
-                      }}
-                    />
-                  ))}
                 </Stack>
               )}
 
