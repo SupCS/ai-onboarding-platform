@@ -12,6 +12,17 @@ export const AI_DIGITAL_COLORS = {
   coolGray: '#231F20',
 };
 
+export const AI_DIGITAL_AVATAR_COLORS = [
+  AI_DIGITAL_COLORS.yvesKleinBlue,
+  AI_DIGITAL_COLORS.pink,
+  AI_DIGITAL_COLORS.brightAqua,
+  AI_DIGITAL_COLORS.neonAzure,
+  AI_DIGITAL_COLORS.violetPulse,
+  AI_DIGITAL_COLORS.lime,
+  AI_DIGITAL_COLORS.digitalLilac,
+  AI_DIGITAL_COLORS.midnightCharcoal,
+];
+
 const LESSON_COVER_PALETTES = [
   ['#0009DC', '#8EE7F1', '#AEF33E'],
   ['#0009DC', '#FF7CF5', '#DDA7EF'],

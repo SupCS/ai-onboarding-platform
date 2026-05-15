@@ -10,6 +10,7 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
+  IconButton,
   Stack,
   TextField,
   Typography,
@@ -17,6 +18,7 @@ import {
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import UserAvatar from '../ui/UserAvatar';
+import { AI_DIGITAL_AVATAR_COLORS } from '../../lib/brandColors';
 
 export default function ProfileDialog({
   open,
@@ -27,6 +29,7 @@ export default function ProfileDialog({
   const [name, setName] = useState('');
   const [position, setPosition] = useState('');
   const [avatarStorageKey, setAvatarStorageKey] = useState('');
+  const [avatarColor, setAvatarColor] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
   const [avatarPreviewUrl, setAvatarPreviewUrl] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -40,6 +43,7 @@ export default function ProfileDialog({
     setName(user?.name || '');
     setPosition(user?.position || '');
     setAvatarStorageKey(user?.avatarStorageKey || '');
+    setAvatarColor(user?.avatarColor || AI_DIGITAL_AVATAR_COLORS[0]);
     setAvatarFile(null);
     setAvatarPreviewUrl('');
     setError('');
@@ -63,8 +67,9 @@ export default function ProfileDialog({
       name,
       position,
       avatarStorageKey,
+      avatarColor,
     }),
-    [avatarStorageKey, name, position, user]
+    [avatarColor, avatarStorageKey, name, position, user]
   );
 
   const handleAvatarChange = (event) => {
@@ -124,6 +129,7 @@ export default function ProfileDialog({
           name: normalizedName,
           position: position.trim(),
           avatarStorageKey: nextAvatarStorageKey || null,
+          avatarColor,
         }),
       });
       const data = await response.json();
@@ -204,6 +210,43 @@ export default function ProfileDialog({
               )}
             </Stack>
           </Stack>
+
+          <Box>
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+              Default avatar color
+            </Typography>
+            <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+              {AI_DIGITAL_AVATAR_COLORS.map((color) => {
+                const isSelected = avatarColor === color;
+
+                return (
+                  <IconButton
+                    key={color}
+                    type="button"
+                    aria-label={`Use avatar color ${color}`}
+                    disabled={isSaving}
+                    onClick={() => setAvatarColor(color)}
+                    sx={{
+                      minWidth: 0,
+                      width: 32,
+                      height: 32,
+                      flex: '0 0 32px',
+                      p: 0,
+                      borderRadius: '50%',
+                      border: isSelected ? '2px solid #0B0B0B' : '1px solid rgba(0, 9, 220, 0.18)',
+                      backgroundColor: color,
+                      aspectRatio: '1 / 1',
+                      boxShadow: isSelected ? '0 0 0 3px rgba(0, 9, 220, 0.12)' : 'none',
+                      '&:hover': {
+                        backgroundColor: color,
+                        boxShadow: '0 0 0 3px rgba(0, 9, 220, 0.12)',
+                      },
+                    }}
+                  />
+                );
+              })}
+            </Stack>
+          </Box>
 
           <TextField
             label="Name"

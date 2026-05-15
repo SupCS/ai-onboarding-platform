@@ -20,7 +20,7 @@ export default function UserAvatar({ user = {}, sx, ...props }) {
       src={getUserAvatarSrc(user)}
       alt={user.name || user.email || 'User'}
       sx={{
-        bgcolor: AI_DIGITAL_COLORS.yvesKleinBlue,
+        bgcolor: user.avatarColor || AI_DIGITAL_COLORS.yvesKleinBlue,
         color: '#fff',
         fontWeight: 800,
         ...sx,

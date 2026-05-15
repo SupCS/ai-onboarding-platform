@@ -21,6 +21,7 @@ import SchoolOutlinedIcon from '@mui/icons-material/SchoolOutlined';
 import RouteOutlinedIcon from '@mui/icons-material/RouteOutlined';
 import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
+import QueryStatsOutlinedIcon from '@mui/icons-material/QueryStatsOutlined';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import { AI_DIGITAL_COLORS } from '../../lib/brandColors';
 import ProfileDialog from '../profile/ProfileDialog';
@@ -44,6 +45,11 @@ const sidebarItems = [
     label: 'My Roadmaps',
     href: '/roadmaps',
     icon: <RouteOutlinedIcon />,
+  },
+  {
+    label: 'Team progress',
+    href: '/team-progress',
+    icon: <QueryStatsOutlinedIcon />,
   },
   {
     label: 'Teams',

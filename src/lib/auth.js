@@ -14,6 +14,7 @@ const PASSWORD_KEY_LENGTH = 32;
 const PASSWORD_DIGEST = 'sha256';
 
 const globalForAuth = globalThis;
+const AUTH_PROFILE_COLUMNS_VERSION = 2;
 
 export async function ensureAuthSchema(client = db) {
   let schemaPromise = globalForAuth.authSchemaPromise;
@@ -77,19 +78,26 @@ async function ensureAuthSchemaUncached(client = db) {
 }
 
 async function ensureAuthProfileColumns(client = db) {
-  if (client === db && globalForAuth.authProfileColumnsPromise) {
+  if (
+    client === db &&
+    globalForAuth.authProfileColumnsPromise &&
+    globalForAuth.authProfileColumnsVersion === AUTH_PROFILE_COLUMNS_VERSION
+  ) {
     return globalForAuth.authProfileColumnsPromise;
   }
 
   const profileColumnsPromise = client.query(`
     ALTER TABLE users
     ADD COLUMN IF NOT EXISTS position TEXT,
-    ADD COLUMN IF NOT EXISTS avatar_storage_key TEXT
+    ADD COLUMN IF NOT EXISTS avatar_storage_key TEXT,
+    ADD COLUMN IF NOT EXISTS avatar_color TEXT
   `);
 
   if (client === db) {
+    globalForAuth.authProfileColumnsVersion = AUTH_PROFILE_COLUMNS_VERSION;
     globalForAuth.authProfileColumnsPromise = profileColumnsPromise.catch((error) => {
       globalForAuth.authProfileColumnsPromise = null;
+      globalForAuth.authProfileColumnsVersion = null;
       throw error;
     });
 
@@ -150,6 +158,7 @@ function mapUser(row) {
     role: row.role,
     position: row.position || '',
     avatarStorageKey: row.avatar_storage_key || '',
+    avatarColor: row.avatar_color || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -163,7 +172,7 @@ export async function createUser({ name, email, password }) {
     `
       INSERT INTO users (id, name, email, password_hash)
       VALUES ($1, $2, $3, $4)
-      RETURNING id, name, email, role, position, avatar_storage_key, created_at, updated_at
+      RETURNING id, name, email, role, position, avatar_storage_key, avatar_color, created_at, updated_at
     `,
     [crypto.randomUUID(), name.trim(), normalizedEmail, hashPassword(password)]
   );
@@ -178,7 +187,7 @@ export async function authenticateUser({ email, password }) {
   const result = await db.query(
     `
       SELECT id, name, email, password_hash, role, created_at, updated_at
-      , position, avatar_storage_key
+      , position, avatar_storage_key, avatar_color
       FROM users
       WHERE email = $1
     `,
@@ -225,7 +234,7 @@ export async function getUserBySessionToken(token) {
   const result = await db.query(
     `
       SELECT users.id, users.name, users.email, users.role, users.created_at, users.updated_at
-        , users.position, users.avatar_storage_key
+        , users.position, users.avatar_storage_key, users.avatar_color
       FROM auth_sessions
       JOIN users ON users.id = auth_sessions.user_id
       WHERE auth_sessions.token_hash = $1
@@ -247,6 +256,10 @@ export async function updateUserProfile(userId, input = {}) {
     input.avatarStorageKey === null
       ? null
       : String(input.avatarStorageKey || '').trim();
+  const avatarColor =
+    input.avatarColor === null
+      ? null
+      : String(input.avatarColor || '').trim();
 
   if (!name) {
     throw new Error('Name is required.');
@@ -258,11 +271,12 @@ export async function updateUserProfile(userId, input = {}) {
       SET name = $2,
           position = NULLIF($3, ''),
           avatar_storage_key = $4,
+          avatar_color = NULLIF($5, ''),
           updated_at = NOW()
       WHERE id = $1
-      RETURNING id, name, email, role, position, avatar_storage_key, created_at, updated_at
+      RETURNING id, name, email, role, position, avatar_storage_key, avatar_color, created_at, updated_at
     `,
-    [userId, name, position, avatarStorageKey || null]
+    [userId, name, position, avatarStorageKey || null, avatarColor || null]
   );
 
   return mapUser(result.rows[0]);

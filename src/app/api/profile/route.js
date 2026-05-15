@@ -19,6 +19,10 @@ export async function PATCH(request) {
         Object.prototype.hasOwnProperty.call(body, 'avatarStorageKey')
           ? body.avatarStorageKey
           : user.avatarStorageKey,
+      avatarColor:
+        Object.prototype.hasOwnProperty.call(body, 'avatarColor')
+          ? body.avatarColor
+          : user.avatarColor,
     });
 
     return Response.json({ user: updatedUser });

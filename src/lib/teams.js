@@ -54,6 +54,7 @@ function mapUser(row, prefix = '') {
     role: row[`${prefix}role`],
     position: row[`${prefix}position`] || '',
     avatarStorageKey: row[`${prefix}avatar_storage_key`] || '',
+    avatarColor: row[`${prefix}avatar_color`] || '',
   };
 }
 
@@ -98,7 +99,7 @@ export async function getAllUsers() {
   await ensureTeamsSchema();
 
   const result = await db.query(`
-    SELECT id, name, email, role, position, avatar_storage_key
+    SELECT id, name, email, role, position, avatar_storage_key, avatar_color
     FROM users
     ORDER BY
       CASE role
@@ -124,12 +125,14 @@ export async function getTeams() {
       leads.role AS lead_role,
       leads.position AS lead_position,
       leads.avatar_storage_key AS lead_avatar_storage_key,
+      leads.avatar_color AS lead_avatar_color,
       members.id AS member_id,
       members.name AS member_name,
       members.email AS member_email,
       members.role AS member_role,
       members.position AS member_position,
-      members.avatar_storage_key AS member_avatar_storage_key
+      members.avatar_storage_key AS member_avatar_storage_key,
+      members.avatar_color AS member_avatar_color
     FROM users leads
     LEFT JOIN team_members
       ON team_members.lead_user_id = leads.id
@@ -167,7 +170,7 @@ export async function getUserByEmail(email) {
 
   const result = await db.query(
     `
-      SELECT id, name, email, role, position, avatar_storage_key
+      SELECT id, name, email, role, position, avatar_storage_key, avatar_color
       FROM users
       WHERE email = $1
       LIMIT 1
@@ -189,7 +192,7 @@ export async function getUserByEmailOrName(value) {
 
   const result = await db.query(
     `
-      SELECT id, name, email, role, position, avatar_storage_key
+      SELECT id, name, email, role, position, avatar_storage_key, avatar_color
       FROM users
       WHERE email = $1
         OR LOWER(name) = LOWER($2)
@@ -210,7 +213,7 @@ export async function getUserById(userId) {
 
   const result = await db.query(
     `
-      SELECT id, name, email, role, position, avatar_storage_key
+      SELECT id, name, email, role, position, avatar_storage_key, avatar_color
       FROM users
       WHERE id = $1
       LIMIT 1
@@ -230,7 +233,7 @@ export async function setTeamLeadByEmail(email) {
       SET role = CASE WHEN role = 'admin' THEN 'admin' ELSE 'teamlead' END,
           updated_at = NOW()
       WHERE email = $1
-      RETURNING id, name, email, role, position, avatar_storage_key
+      RETURNING id, name, email, role, position, avatar_storage_key, avatar_color
     `,
     [normalizeEmail(email)]
   );
@@ -253,7 +256,7 @@ export async function removeTeamLeadByEmail(email) {
             updated_at = NOW()
         WHERE email = $1
           AND role = 'teamlead'
-        RETURNING id, name, email, role, position, avatar_storage_key
+        RETURNING id, name, email, role, position, avatar_storage_key, avatar_color
       `,
       [normalizeEmail(email)]
     );
