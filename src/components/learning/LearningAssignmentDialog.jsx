@@ -1,7 +1,6 @@
 'use client';
 
 import {
-  Avatar,
   Button,
   Checkbox,
   Dialog,
@@ -17,16 +16,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-
-function getInitials(user) {
-  const source = user?.name || user?.email || '?';
-  return source
-    .split(/\s+/)
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-}
+import UserAvatar from '../ui/UserAvatar';
 
 export default function LearningAssignmentDialog({
   open,
@@ -87,9 +77,7 @@ export default function LearningAssignmentDialog({
                   <ListItem key={user.id} disablePadding divider>
                     <ListItemButton onClick={() => onToggleUser(user.id)} disabled={isSaving}>
                       <ListItemAvatar>
-                        <Avatar sx={{ width: 34, height: 34, fontSize: 13, fontWeight: 800 }}>
-                          {getInitials(user)}
-                        </Avatar>
+                        <UserAvatar user={user} sx={{ width: 34, height: 34, fontSize: 13 }} />
                       </ListItemAvatar>
                       <ListItemText
                         primary={user.name || user.email}

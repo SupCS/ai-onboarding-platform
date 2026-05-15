@@ -8,6 +8,7 @@ import ArrowForwardOutlinedIcon from '@mui/icons-material/ArrowForwardOutlined';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined';
 import NotesOutlinedIcon from '@mui/icons-material/NotesOutlined';
+import UserAvatar from '../ui/UserAvatar';
 
 function slugify(value, fallback) {
   const slug = (value || '')
@@ -17,18 +18,6 @@ function slugify(value, fallback) {
     .replace(/^-+|-+$/g, '');
 
   return slug || fallback;
-}
-
-function getInitials(name) {
-  const parts = (name || 'AI Digital')
-    .split(/\s+/)
-    .map((part) => part.trim())
-    .filter(Boolean);
-
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || 'AI';
 }
 
 function formatDate(value) {
@@ -482,22 +471,10 @@ export default function LessonReadingChrome({
               borderBottom: '1px solid rgba(0, 9, 220, 0.16)',
             }}
           >
-            <Box
-              sx={{
-                width: 44,
-                height: 44,
-                flex: '0 0 auto',
-                display: 'grid',
-                placeItems: 'center',
-                borderRadius: '50%',
-                backgroundColor: '#0B0B0B',
-                color: '#fff',
-                fontSize: 14,
-                fontWeight: 800,
-              }}
-            >
-              {getInitials(authorName)}
-            </Box>
+            <UserAvatar
+              user={{ name: authorName }}
+              sx={{ width: 44, height: 44, flex: '0 0 auto', fontSize: 14 }}
+            />
             <Stack spacing={0.25} sx={{ minWidth: 0, flex: 1 }}>
               <Typography sx={{ color: '#0B0B0B', fontSize: 14, fontWeight: 800 }}>
                 {authorName}

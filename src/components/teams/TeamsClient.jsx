@@ -7,7 +7,6 @@ import {
   AccordionSummary,
   Alert,
   Autocomplete,
-  Avatar,
   Box,
   Button,
   Chip,
@@ -25,6 +24,7 @@ import ExpandMoreOutlinedIcon from '@mui/icons-material/ExpandMoreOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import PermissionMatrixDialog from '../permissions/PermissionMatrixDialog';
 import EmptyState from '../ui/EmptyState';
+import UserAvatar from '../ui/UserAvatar';
 
 const teamLeadPermissionDenylist = [
   'admin.manage_roles',
@@ -33,11 +33,6 @@ const teamLeadPermissionDenylist = [
   'teams.manage_members',
   'learning.assign',
 ];
-
-function getInitials(name = '', email = '') {
-  const source = name || email;
-  return source.charAt(0).toUpperCase();
-}
 
 export default function TeamsClient({
   initialTeams = [],
@@ -209,11 +204,7 @@ export default function TeamsClient({
                     spacing={1.5}
                     sx={{ alignItems: 'center', minWidth: 0, width: '100%' }}
                   >
-                    <Avatar
-                      sx={{ bgcolor: 'primary.main', color: '#fff', fontWeight: 700 }}
-                    >
-                      {getInitials(lead.name, lead.email)}
-                    </Avatar>
+                    <UserAvatar user={lead} />
                     <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                       <Typography sx={{ fontWeight: 900 }} noWrap>
                         {lead.name}
@@ -271,18 +262,14 @@ export default function TeamsClient({
                             return (
                               <Box component="li" key={key} {...optionProps}>
                                 <Stack direction="row" spacing={1.25} sx={{ alignItems: 'center', width: '100%' }}>
-                                  <Avatar
+                                  <UserAvatar
+                                    user={option}
                                     sx={{
                                       width: 30,
                                       height: 30,
-                                      bgcolor: 'primary.main',
-                                      color: '#fff',
-                                      fontWeight: 700,
                                       fontSize: 13,
                                     }}
-                                  >
-                                    {getInitials(option.name, option.email)}
-                                  </Avatar>
+                                  />
                                   <Box sx={{ minWidth: 0, flex: 1 }}>
                                     <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>
                                       {option.name}
@@ -351,17 +338,13 @@ export default function TeamsClient({
                                 spacing={1.5}
                                 sx={{ alignItems: 'center' }}
                               >
-                                <Avatar
+                                <UserAvatar
+                                  user={member}
                                   sx={{
                                     width: 34,
                                     height: 34,
-                                    bgcolor: 'primary.main',
-                                    color: '#fff',
-                                    fontWeight: 700,
                                   }}
-                                >
-                                  {getInitials(member.name, member.email)}
-                                </Avatar>
+                                />
                                 <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                                   <Typography variant="body2" sx={{ fontWeight: 800 }} noWrap>
                                     {member.name}

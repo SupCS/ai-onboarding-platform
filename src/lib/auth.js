@@ -16,11 +16,14 @@ const PASSWORD_DIGEST = 'sha256';
 const globalForAuth = globalThis;
 
 export async function ensureAuthSchema(client = db) {
-  if (client === db && globalForAuth.authSchemaPromise) {
-    return globalForAuth.authSchemaPromise;
+  let schemaPromise = globalForAuth.authSchemaPromise;
+
+  if (client === db && schemaPromise) {
+    await schemaPromise;
+    return ensureAuthProfileColumns(client);
   }
 
-  const schemaPromise = ensureAuthSchemaUncached(client);
+  schemaPromise = ensureAuthSchemaUncached(client);
 
   if (client === db) {
     globalForAuth.authSchemaPromise = schemaPromise.catch((error) => {
@@ -28,10 +31,12 @@ export async function ensureAuthSchema(client = db) {
       throw error;
     });
 
-    return globalForAuth.authSchemaPromise;
+    await globalForAuth.authSchemaPromise;
+    return ensureAuthProfileColumns(client);
   }
 
-  return schemaPromise;
+  await schemaPromise;
+  return ensureAuthProfileColumns(client);
 }
 
 async function ensureAuthSchemaUncached(client = db) {
@@ -46,6 +51,8 @@ async function ensureAuthSchemaUncached(client = db) {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+
+  await ensureAuthProfileColumns(client);
 
   await client.query(`
     CREATE TABLE IF NOT EXISTS auth_sessions (
@@ -67,6 +74,29 @@ async function ensureAuthSchemaUncached(client = db) {
     ON auth_sessions(expires_at)
   `);
 
+}
+
+async function ensureAuthProfileColumns(client = db) {
+  if (client === db && globalForAuth.authProfileColumnsPromise) {
+    return globalForAuth.authProfileColumnsPromise;
+  }
+
+  const profileColumnsPromise = client.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS position TEXT,
+    ADD COLUMN IF NOT EXISTS avatar_storage_key TEXT
+  `);
+
+  if (client === db) {
+    globalForAuth.authProfileColumnsPromise = profileColumnsPromise.catch((error) => {
+      globalForAuth.authProfileColumnsPromise = null;
+      throw error;
+    });
+
+    return globalForAuth.authProfileColumnsPromise;
+  }
+
+  return profileColumnsPromise;
 }
 
 export function normalizeEmail(email = '') {
@@ -118,6 +148,8 @@ function mapUser(row) {
     name: row.name,
     email: row.email,
     role: row.role,
+    position: row.position || '',
+    avatarStorageKey: row.avatar_storage_key || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -131,7 +163,7 @@ export async function createUser({ name, email, password }) {
     `
       INSERT INTO users (id, name, email, password_hash)
       VALUES ($1, $2, $3, $4)
-      RETURNING id, name, email, role, created_at, updated_at
+      RETURNING id, name, email, role, position, avatar_storage_key, created_at, updated_at
     `,
     [crypto.randomUUID(), name.trim(), normalizedEmail, hashPassword(password)]
   );
@@ -146,6 +178,7 @@ export async function authenticateUser({ email, password }) {
   const result = await db.query(
     `
       SELECT id, name, email, password_hash, role, created_at, updated_at
+      , position, avatar_storage_key
       FROM users
       WHERE email = $1
     `,
@@ -192,6 +225,7 @@ export async function getUserBySessionToken(token) {
   const result = await db.query(
     `
       SELECT users.id, users.name, users.email, users.role, users.created_at, users.updated_at
+        , users.position, users.avatar_storage_key
       FROM auth_sessions
       JOIN users ON users.id = auth_sessions.user_id
       WHERE auth_sessions.token_hash = $1
@@ -199,6 +233,36 @@ export async function getUserBySessionToken(token) {
       LIMIT 1
     `,
     [hashSessionToken(token)]
+  );
+
+  return mapUser(result.rows[0]);
+}
+
+export async function updateUserProfile(userId, input = {}) {
+  await ensureAuthSchema();
+
+  const name = String(input.name || '').trim();
+  const position = String(input.position || '').trim();
+  const avatarStorageKey =
+    input.avatarStorageKey === null
+      ? null
+      : String(input.avatarStorageKey || '').trim();
+
+  if (!name) {
+    throw new Error('Name is required.');
+  }
+
+  const result = await db.query(
+    `
+      UPDATE users
+      SET name = $2,
+          position = NULLIF($3, ''),
+          avatar_storage_key = $4,
+          updated_at = NOW()
+      WHERE id = $1
+      RETURNING id, name, email, role, position, avatar_storage_key, created_at, updated_at
+    `,
+    [userId, name, position, avatarStorageKey || null]
   );
 
   return mapUser(result.rows[0]);

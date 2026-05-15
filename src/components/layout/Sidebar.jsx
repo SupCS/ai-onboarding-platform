@@ -3,8 +3,8 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { useState } from 'react';
 import {
-  Avatar,
   Box,
   Button,
   Divider,
@@ -23,6 +23,8 @@ import LogoutOutlinedIcon from '@mui/icons-material/LogoutOutlined';
 import GroupsOutlinedIcon from '@mui/icons-material/GroupsOutlined';
 import AdminPanelSettingsOutlinedIcon from '@mui/icons-material/AdminPanelSettingsOutlined';
 import { AI_DIGITAL_COLORS } from '../../lib/brandColors';
+import ProfileDialog from '../profile/ProfileDialog';
+import UserAvatar from '../ui/UserAvatar';
 
 const EXPANDED_WIDTH = 280;
 const COLLAPSED_WIDTH = 84;
@@ -53,11 +55,15 @@ const sidebarItems = [
 export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
   const pathname = usePathname();
   const router = useRouter();
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileUser, setProfileUser] = useState(currentUser);
 
-  const user = currentUser || {
+  const user = profileUser || {
     name: 'User',
     email: '',
     role: 'member',
+    position: '',
+    avatarStorageKey: '',
   };
   const visibleSidebarItems =
     currentUserPermissions['admin.manage_roles']
@@ -81,47 +87,48 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
   };
 
   return (
-    <Paper
-      elevation={0}
-      sx={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        zIndex: 1300,
-        width: COLLAPSED_WIDTH,
-        height: '100vh',
-        borderRadius: 0,
-        borderRight: '1px solid rgba(0, 9, 220, 0.18)',
-        backgroundColor: '#fff',
-        p: 1.5,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 2,
-        overflow: 'hidden',
-        transition: 'width 0.25s ease',
-        '&:hover': {
-          width: EXPANDED_WIDTH,
-          boxShadow: '0 8px 30px rgba(11, 11, 11, 0.08)',
-        },
-        '&:hover .sidebar-text': {
-          opacity: 1,
-          width: 'auto',
-          transform: 'translateX(0)',
-          pointerEvents: 'auto',
-        },
-        '&:hover .sidebar-user-details': {
-          opacity: 1,
-          maxWidth: '200px',
-          transform: 'translateX(0)',
-          pointerEvents: 'auto',
-        },
-        '&:hover .sidebar-logout-text': {
-          opacity: 1,
-          width: 'auto',
-          transform: 'translateX(0)',
-        },
-      }}
-    >
+    <>
+      <Paper
+        elevation={0}
+        sx={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          zIndex: 1300,
+          width: COLLAPSED_WIDTH,
+          height: '100vh',
+          borderRadius: 0,
+          borderRight: '1px solid rgba(0, 9, 220, 0.18)',
+          backgroundColor: '#fff',
+          p: 1.5,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+          overflow: 'hidden',
+          transition: 'width 0.25s ease',
+          '&:hover': {
+            width: EXPANDED_WIDTH,
+            boxShadow: '0 8px 30px rgba(11, 11, 11, 0.08)',
+          },
+          '&:hover .sidebar-text': {
+            opacity: 1,
+            width: 'auto',
+            transform: 'translateX(0)',
+            pointerEvents: 'auto',
+          },
+          '&:hover .sidebar-user-details': {
+            opacity: 1,
+            maxWidth: '200px',
+            transform: 'translateX(0)',
+            pointerEvents: 'auto',
+          },
+          '&:hover .sidebar-logout-text': {
+            opacity: 1,
+            width: 'auto',
+            transform: 'translateX(0)',
+          },
+        }}
+      >
       <Box
         className="sidebar-header"
         sx={{
@@ -281,15 +288,25 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
 
       <Divider />
 
-      <Box
+      <Button
         className="sidebar-user"
+        onClick={() => setProfileOpen(true)}
         sx={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'flex-start',
           px: 1.25,
           pt: 1,
+          pb: 1,
           minHeight: 56,
+          width: '100%',
+          borderRadius: 1.25,
+          color: 'inherit',
+          textAlign: 'left',
+          textTransform: 'none',
+          '&:hover': {
+            backgroundColor: 'rgba(0, 9, 220, 0.04)',
+          },
         }}
       >
         <Box
@@ -301,15 +318,7 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
             flexShrink: 0,
           }}
         >
-          <Avatar
-            sx={{
-              bgcolor: AI_DIGITAL_COLORS.yvesKleinBlue,
-              color: '#fff',
-              fontWeight: 800,
-            }}
-          >
-            {user.name.charAt(0)}
-          </Avatar>
+          <UserAvatar user={user} />
         </Box>
 
         <Box
@@ -342,10 +351,10 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
             variant="caption"
             sx={{ color: AI_DIGITAL_COLORS.yvesKleinBlue, textTransform: 'capitalize' }}
           >
-            {user.role}
+            {user.position || user.role}
           </Typography>
         </Box>
-      </Box>
+      </Button>
 
       <Tooltip title="Log out" placement="right" arrow>
         <Button
@@ -396,6 +405,17 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
           </Box>
         </Button>
       </Tooltip>
-    </Paper>
+      </Paper>
+
+      <ProfileDialog
+        open={profileOpen}
+        user={user}
+        onClose={() => setProfileOpen(false)}
+        onSaved={(updatedUser) => {
+          setProfileUser(updatedUser);
+          router.refresh();
+        }}
+      />
+    </>
   );
 }

@@ -3,7 +3,6 @@
 import { useMemo, useState } from 'react';
 import {
   Alert,
-  Avatar,
   Box,
   Button,
   Chip,
@@ -19,16 +18,12 @@ import AddModeratorOutlinedIcon from '@mui/icons-material/AddModeratorOutlined';
 import PersonRemoveOutlinedIcon from '@mui/icons-material/PersonRemoveOutlined';
 import PermissionMatrixDialog from '../permissions/PermissionMatrixDialog';
 import EmptyState from '../ui/EmptyState';
+import UserAvatar from '../ui/UserAvatar';
 
 const adminOnlyPermissionKeys = [
   'admin.manage_roles',
   'permissions.manage_teamleads',
 ];
-
-function initials(name = '', email = '') {
-  const source = name || email;
-  return source.charAt(0).toUpperCase();
-}
 
 export default function AdminClient({
   initialUsers = [],
@@ -258,11 +253,7 @@ export default function AdminClient({
                         spacing={1.5}
                         sx={{ alignItems: 'center', minWidth: 0, flexGrow: 1 }}
                       >
-                        <Avatar
-                          sx={{ bgcolor: 'primary.main', color: '#fff', fontWeight: 700 }}
-                        >
-                          {initials(user.name, user.email)}
-                        </Avatar>
+                        <UserAvatar user={user} />
                         <Box sx={{ minWidth: 0, flexGrow: 1 }}>
                           <Typography sx={{ fontWeight: 800 }} noWrap>
                             {user.name}
@@ -333,11 +324,7 @@ export default function AdminClient({
                 <Chip
                   key={admin.id}
                   avatar={
-                    <Avatar
-                      sx={{ bgcolor: 'primary.main', color: '#fff', fontWeight: 700 }}
-                    >
-                      {initials(admin.name, admin.email)}
-                    </Avatar>
+                    <UserAvatar user={admin} />
                   }
                   label={admin.email}
                   color="primary"
