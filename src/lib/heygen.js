@@ -95,6 +95,7 @@ export function buildTeacherVideoPrompt(lesson) {
   return [
     'Create a concise teacher-led onboarding video.',
     `Target duration: ${TEACHER_VIDEO_MIN_SECONDS}-${TEACHER_VIDEO_MAX_SECONDS} seconds. Do not exceed ${TEACHER_VIDEO_MAX_SECONDS} seconds.`,
+    'Format: 16:9 landscape video with chest-up presenter framing.',
     'Use a professional teacher avatar speaking directly to camera in a clear, practical, corporate training tone.',
     'Write the narration as a tight 120-145 word script.',
     'Cover only the most important learning points: what the lesson is about, 3-4 key ideas, and one practical takeaway.',
@@ -117,6 +118,7 @@ export async function createTeacherVideoForLesson(lesson) {
     method: 'POST',
     body: JSON.stringify({
       prompt,
+      orientation: 'landscape',
       ...(avatarConfig.avatarId ? { avatar_id: avatarConfig.avatarId } : {}),
       ...(avatarConfig.voiceId ? { voice_id: avatarConfig.voiceId } : {}),
     }),
