@@ -35,6 +35,7 @@ import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
+import OndemandVideoOutlinedIcon from '@mui/icons-material/OndemandVideoOutlined';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import RocketLaunchOutlinedIcon from '@mui/icons-material/RocketLaunchOutlined';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
@@ -74,6 +75,8 @@ const activityTypeOptions = [
   { value: 'quiz', label: 'Quiz', min: 3, max: 20, defaultCount: 8 },
   { value: 'flashcards', label: 'Flashcards', min: 5, max: 40, defaultCount: 12 },
 ];
+
+const teacherVideoActiveStatuses = new Set(['pending', 'processing', 'generating']);
 
 const LESSON_DIALOG_COLORS = {
   blue: '#0009DC',
@@ -673,6 +676,10 @@ export default function LessonDetailsDialog({
   const [activityCount, setActivityCount] = useState(8);
   const [activityError, setActivityError] = useState('');
   const [activitySuccess, setActivitySuccess] = useState('');
+  const [teacherVideoError, setTeacherVideoError] = useState('');
+  const [teacherVideoSuccess, setTeacherVideoSuccess] = useState('');
+  const [isGeneratingTeacherVideo, setIsGeneratingTeacherVideo] = useState(false);
+  const [isCheckingTeacherVideo, setIsCheckingTeacherVideo] = useState(false);
   const [activeView, setActiveView] = useState('lesson');
   const [activityDrafts, setActivityDrafts] = useState({});
   const [activitySaveError, setActivitySaveError] = useState('');
@@ -701,6 +708,8 @@ export default function LessonDetailsDialog({
   const [coverError, setCoverError] = useState('');
   const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
+  const teacherVideoPollingStatus = lesson?.generationMetadata?.teacherVideo?.status;
+  const teacherVideoPollingVideoId = lesson?.generationMetadata?.teacherVideo?.videoId;
 
   useEffect(() => {
     setIsEditing(false);
@@ -728,6 +737,10 @@ export default function LessonDetailsDialog({
     setActivityCount(8);
     setActivityError('');
     setActivitySuccess('');
+    setTeacherVideoError('');
+    setTeacherVideoSuccess('');
+    setIsGeneratingTeacherVideo(false);
+    setIsCheckingTeacherVideo(false);
     setActiveView('lesson');
     setActivityDrafts({});
     setActivitySaveError('');
@@ -746,6 +759,59 @@ export default function LessonDetailsDialog({
       setIsRightPanelCollapsed(false);
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      !teacherVideoPollingVideoId ||
+      !teacherVideoActiveStatuses.has(teacherVideoPollingStatus)
+    ) {
+      return undefined;
+    }
+
+    let isCancelled = false;
+
+    const refreshTeacherVideo = async () => {
+      try {
+        setIsCheckingTeacherVideo(true);
+        const response = await fetch(`/api/lessons/${lesson.id}/teacher-video`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to refresh teacher video.');
+        }
+
+        if (!isCancelled) {
+          await onLessonUpdated?.(data.lesson);
+          if (data.teacherVideo?.status === 'completed') {
+            setTeacherVideoSuccess('Teacher video is ready.');
+          }
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('Failed to refresh teacher video:', error);
+          setTeacherVideoError(error.message || 'Failed to refresh teacher video.');
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsCheckingTeacherVideo(false);
+        }
+      }
+    };
+
+    const intervalId = window.setInterval(refreshTeacherVideo, 10000);
+
+    return () => {
+      isCancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [
+    lesson?.id,
+    onLessonUpdated,
+    open,
+    teacherVideoPollingStatus,
+    teacherVideoPollingVideoId,
+  ]);
 
   useEffect(() => {
     const nextActivities = Array.isArray(lesson?.activities) ? lesson.activities : [];
@@ -767,6 +833,7 @@ export default function LessonDetailsDialog({
   }
 
   const metadata = lesson.generationMetadata || {};
+  const teacherVideo = metadata.teacherVideo || {};
   const preparedMaterials = metadata.preparedMaterials || {};
   const sourceReferences = preparedMaterials.sourceReferences || [];
   const sourceAttachments = getSourceAttachments(sourceReferences);
@@ -778,6 +845,7 @@ export default function LessonDetailsDialog({
   const lastRevision = revisionHistory[revisionHistory.length - 1] || null;
   const activities = Array.isArray(lesson.activities) ? lesson.activities : [];
   const canManageCurrentLesson = Boolean(lesson.viewerCanManage);
+  const canGenerateTeacherVideo = Boolean(lesson.viewerCanGenerateTeacherVideo);
   const quizActivity = activities.find((activity) => activity.type === 'quiz') || null;
   const flashcardsActivity = activities.find((activity) => activity.type === 'flashcards') || null;
   const activeActivity = canManageCurrentLesson && activeView === 'quiz'
@@ -805,6 +873,10 @@ export default function LessonDetailsDialog({
   const coverPreviewSrc = draftCoverImage.storageKey
     ? `/api/files/object?storageKey=${encodeURIComponent(draftCoverImage.storageKey)}`
     : '';
+  const isTeacherVideoActive = teacherVideoActiveStatuses.has(teacherVideo.status);
+  const teacherVideoStatusLabel = teacherVideo.status
+    ? teacherVideo.status.replace(/_/g, ' ')
+    : 'not generated';
 
 
   const handleSave = async () => {
@@ -1273,6 +1345,59 @@ export default function LessonDetailsDialog({
       setActivityError(error.message || 'Failed to generate activity.');
     } finally {
       setIsGeneratingActivity(false);
+    }
+  };
+
+  const handleGenerateTeacherVideo = async () => {
+    try {
+      setIsGeneratingTeacherVideo(true);
+      setTeacherVideoError('');
+      setTeacherVideoSuccess('');
+
+      const response = await fetch(`/api/lessons/${lesson.id}/teacher-video`, {
+        method: 'POST',
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to generate teacher video.');
+      }
+
+      setTeacherVideoSuccess('Teacher video generation started. Status will refresh automatically.');
+      await onLessonUpdated?.(data.lesson);
+    } catch (error) {
+      console.error('Failed to generate teacher video:', error);
+      setTeacherVideoError(error.message || 'Failed to generate teacher video.');
+    } finally {
+      setIsGeneratingTeacherVideo(false);
+    }
+  };
+
+  const handleRefreshTeacherVideo = async () => {
+    if (!teacherVideo.videoId) {
+      return;
+    }
+
+    try {
+      setIsCheckingTeacherVideo(true);
+      setTeacherVideoError('');
+
+      const response = await fetch(`/api/lessons/${lesson.id}/teacher-video`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to refresh teacher video.');
+      }
+
+      if (data.teacherVideo?.status === 'completed') {
+        setTeacherVideoSuccess('Teacher video is ready.');
+      }
+      await onLessonUpdated?.(data.lesson);
+    } catch (error) {
+      console.error('Failed to refresh teacher video:', error);
+      setTeacherVideoError(error.message || 'Failed to refresh teacher video.');
+    } finally {
+      setIsCheckingTeacherVideo(false);
     }
   };
 
@@ -1880,6 +2005,110 @@ export default function LessonDetailsDialog({
                 </Stack>
               )}
             </Box>
+
+            {isEditing && canGenerateTeacherVideo && lesson.status !== 'failed' && (
+              <DetailPanel title="Teacher video">
+                <Stack spacing={1.25}>
+                  <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 13, lineHeight: 1.45 }}>
+                    Generate a short 45-60 second teacher avatar summary for this lesson.
+                  </Typography>
+
+                  {teacherVideoError && <Alert severity="error">{teacherVideoError}</Alert>}
+                  {teacherVideoSuccess && <Alert severity="success">{teacherVideoSuccess}</Alert>}
+
+                  <Box
+                    sx={{
+                      p: 1.25,
+                      borderRadius: 1.25,
+                      backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                      border: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
+                    }}
+                  >
+                    <Typography sx={{ color: LESSON_DIALOG_COLORS.blue, fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', mb: 0.5 }}>
+                      Status
+                    </Typography>
+                    <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 12, fontWeight: 700, textTransform: 'capitalize' }}>
+                      {isCheckingTeacherVideo ? 'Checking status...' : teacherVideoStatusLabel}
+                    </Typography>
+                    {teacherVideo.duration && (
+                      <Typography sx={{ mt: 0.35, color: LESSON_DIALOG_COLORS.mute, fontSize: 11, fontWeight: 600 }}>
+                        Duration: {Math.round(teacherVideo.duration)} sec
+                      </Typography>
+                    )}
+                    {teacherVideo.videoUrl && (
+                      <Button
+                        href={teacherVideo.videoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        size="small"
+                        sx={{
+                          mt: 1,
+                          minHeight: 28,
+                          px: 1.25,
+                          borderRadius: 999,
+                          color: LESSON_DIALOG_COLORS.blue,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          letterSpacing: '0.04em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        Open video
+                      </Button>
+                    )}
+                  </Box>
+
+                  <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                    <Button
+                      variant="contained"
+                      startIcon={<OndemandVideoOutlinedIcon />}
+                      onClick={handleGenerateTeacherVideo}
+                      disabled={
+                        !canGenerateTeacherVideo ||
+                        !canManageCurrentLesson ||
+                        isDeleting ||
+                        isSaving ||
+                        isPublishing ||
+                        isArchiving ||
+                        isRevising ||
+                        isGeneratingActivity ||
+                        isGeneratingTeacherVideo ||
+                        isTeacherVideoActive
+                      }
+                      sx={{
+                        minHeight: 36,
+                        px: 2.25,
+                        borderRadius: 999,
+                        boxShadow: 'none',
+                        backgroundColor: LESSON_DIALOG_COLORS.blue,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        '&:hover': { backgroundColor: LESSON_DIALOG_COLORS.blue, boxShadow: 'none' },
+                      }}
+                    >
+                      {isGeneratingTeacherVideo
+                        ? 'Starting...'
+                        : teacherVideo.videoId
+                          ? 'Regenerate video'
+                          : 'Generate video'}
+                    </Button>
+
+                    {teacherVideo.videoId && (
+                      <Button
+                        variant="outlined"
+                        onClick={handleRefreshTeacherVideo}
+                        disabled={isCheckingTeacherVideo || isGeneratingTeacherVideo}
+                        sx={lessonSecondaryButtonSx}
+                      >
+                        Refresh
+                      </Button>
+                    )}
+                  </Stack>
+                </Stack>
+              </DetailPanel>
+            )}
 
             <Box>
               <Typography

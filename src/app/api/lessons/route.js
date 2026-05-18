@@ -17,6 +17,7 @@ import {
   uploadMaterialFileToOpenAI,
 } from '../../../lib/openaiFiles';
 import { requireApiUser } from '../../../lib/apiAuth';
+import { USER_ROLES } from '../../../lib/auth';
 import { PERMISSIONS, requirePermission, userHasPermission } from '../../../lib/permissions';
 
 export const runtime = 'nodejs';
@@ -145,6 +146,7 @@ export async function GET() {
     const lessons = (await getAllLessons(user)).map((lesson) => ({
       ...lesson,
       viewerCanManage: Boolean(lesson.viewerCanManage && canManageLessons),
+      viewerCanGenerateTeacherVideo: user.role === USER_ROLES.ADMIN,
     }));
 
     return Response.json({ lessons });
@@ -223,7 +225,11 @@ export async function POST(request) {
       });
 
       return Response.json({
-        lesson: readyLesson,
+        lesson: {
+          ...readyLesson,
+          viewerCanManage: true,
+          viewerCanGenerateTeacherVideo: user.role === USER_ROLES.ADMIN,
+        },
       }, { status: 201 });
     }
 
@@ -300,7 +306,10 @@ export async function POST(request) {
         });
 
         return Response.json({
-          lesson: readyLesson,
+          lesson: {
+            ...readyLesson,
+            viewerCanGenerateTeacherVideo: user.role === USER_ROLES.ADMIN,
+          },
           prompt,
           preparedMaterials: serializePreparedMaterials(preparedMaterials),
         });

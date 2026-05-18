@@ -1,4 +1,5 @@
 import { requireApiUser } from '../../../../lib/apiAuth';
+import { USER_ROLES } from '../../../../lib/auth';
 import {
   archiveLesson,
   deleteLessonById,
@@ -78,6 +79,7 @@ function withViewerCapabilities(lesson, user) {
     ...lesson,
     viewerCanAccessPrivate: true,
     viewerCanManage: canManageExistingLesson(user, lesson),
+    viewerCanGenerateTeacherVideo: user?.role === USER_ROLES.ADMIN,
   };
 }
 
