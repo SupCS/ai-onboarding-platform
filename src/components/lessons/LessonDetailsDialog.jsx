@@ -7,6 +7,7 @@ import {
   Box,
   Button,
   Chip,
+  CircularProgress,
   Dialog,
   DialogActions,
   DialogContent,
@@ -782,7 +783,7 @@ export default function LessonDetailsDialog({
         }
 
         if (!isCancelled) {
-          await onLessonUpdated?.(data.lesson);
+          await onLessonUpdated?.(data.lesson, { silent: true });
           if (data.teacherVideo?.status === 'completed') {
             setTeacherVideoSuccess('Teacher video is ready.');
           }
@@ -1364,7 +1365,7 @@ export default function LessonDetailsDialog({
       }
 
       setTeacherVideoSuccess('Teacher video generation started. Status will refresh automatically.');
-      await onLessonUpdated?.(data.lesson);
+      await onLessonUpdated?.(data.lesson, { silent: true });
     } catch (error) {
       console.error('Failed to generate teacher video:', error);
       setTeacherVideoError(error.message || 'Failed to generate teacher video.');
@@ -1392,7 +1393,7 @@ export default function LessonDetailsDialog({
       if (data.teacherVideo?.status === 'completed') {
         setTeacherVideoSuccess('Teacher video is ready.');
       }
-      await onLessonUpdated?.(data.lesson);
+      await onLessonUpdated?.(data.lesson, { silent: true });
     } catch (error) {
       console.error('Failed to refresh teacher video:', error);
       setTeacherVideoError(error.message || 'Failed to refresh teacher video.');
@@ -2006,110 +2007,6 @@ export default function LessonDetailsDialog({
               )}
             </Box>
 
-            {isEditing && canGenerateTeacherVideo && lesson.status !== 'failed' && (
-              <DetailPanel title="Teacher video">
-                <Stack spacing={1.25}>
-                  <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 13, lineHeight: 1.45 }}>
-                    Generate a short 45-60 second teacher avatar summary for this lesson.
-                  </Typography>
-
-                  {teacherVideoError && <Alert severity="error">{teacherVideoError}</Alert>}
-                  {teacherVideoSuccess && <Alert severity="success">{teacherVideoSuccess}</Alert>}
-
-                  <Box
-                    sx={{
-                      p: 1.25,
-                      borderRadius: 1.25,
-                      backgroundColor: LESSON_DIALOG_COLORS.blue50,
-                      border: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
-                    }}
-                  >
-                    <Typography sx={{ color: LESSON_DIALOG_COLORS.blue, fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', mb: 0.5 }}>
-                      Status
-                    </Typography>
-                    <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 12, fontWeight: 700, textTransform: 'capitalize' }}>
-                      {isCheckingTeacherVideo ? 'Checking status...' : teacherVideoStatusLabel}
-                    </Typography>
-                    {teacherVideo.duration && (
-                      <Typography sx={{ mt: 0.35, color: LESSON_DIALOG_COLORS.mute, fontSize: 11, fontWeight: 600 }}>
-                        Duration: {Math.round(teacherVideo.duration)} sec
-                      </Typography>
-                    )}
-                    {teacherVideo.videoUrl && (
-                      <Button
-                        href={teacherVideo.videoUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        size="small"
-                        sx={{
-                          mt: 1,
-                          minHeight: 28,
-                          px: 1.25,
-                          borderRadius: 999,
-                          color: LESSON_DIALOG_COLORS.blue,
-                          fontSize: 11,
-                          fontWeight: 800,
-                          letterSpacing: '0.04em',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        Open video
-                      </Button>
-                    )}
-                  </Box>
-
-                  <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                    <Button
-                      variant="contained"
-                      startIcon={<OndemandVideoOutlinedIcon />}
-                      onClick={handleGenerateTeacherVideo}
-                      disabled={
-                        !canGenerateTeacherVideo ||
-                        !canManageCurrentLesson ||
-                        isDeleting ||
-                        isSaving ||
-                        isPublishing ||
-                        isArchiving ||
-                        isRevising ||
-                        isGeneratingActivity ||
-                        isGeneratingTeacherVideo ||
-                        isTeacherVideoActive
-                      }
-                      sx={{
-                        minHeight: 36,
-                        px: 2.25,
-                        borderRadius: 999,
-                        boxShadow: 'none',
-                        backgroundColor: LESSON_DIALOG_COLORS.blue,
-                        fontSize: 11,
-                        fontWeight: 800,
-                        letterSpacing: '0.06em',
-                        textTransform: 'uppercase',
-                        '&:hover': { backgroundColor: LESSON_DIALOG_COLORS.blue, boxShadow: 'none' },
-                      }}
-                    >
-                      {isGeneratingTeacherVideo
-                        ? 'Starting...'
-                        : teacherVideo.videoId
-                          ? 'Regenerate video'
-                          : 'Generate video'}
-                    </Button>
-
-                    {teacherVideo.videoId && (
-                      <Button
-                        variant="outlined"
-                        onClick={handleRefreshTeacherVideo}
-                        disabled={isCheckingTeacherVideo || isGeneratingTeacherVideo}
-                        sx={lessonSecondaryButtonSx}
-                      >
-                        Refresh
-                      </Button>
-                    )}
-                  </Stack>
-                </Stack>
-              </DetailPanel>
-            )}
-
             <Box>
               <Typography
                 sx={{
@@ -2555,6 +2452,124 @@ export default function LessonDetailsDialog({
                   >
                     {isGeneratingActivity ? 'Generating...' : 'Generate activity'}
                   </Button>
+                </Stack>
+              </DetailPanel>
+            )}
+
+            {isEditing && canGenerateTeacherVideo && lesson.status !== 'failed' && (
+              <DetailPanel title="Teacher video">
+                <Stack spacing={1.25}>
+                  <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 13, lineHeight: 1.45 }}>
+                    Generate a short 45-60 second teacher avatar summary for this lesson.
+                  </Typography>
+
+                  {teacherVideoError && <Alert severity="error">{teacherVideoError}</Alert>}
+                  {teacherVideoSuccess && <Alert severity="success">{teacherVideoSuccess}</Alert>}
+
+                  <Box
+                    sx={{
+                      p: 1.25,
+                      borderRadius: 1.25,
+                      backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                      border: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
+                    }}
+                  >
+                    <Typography sx={{ color: LESSON_DIALOG_COLORS.blue, fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', mb: 0.5 }}>
+                      Status
+                    </Typography>
+                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                      {(isTeacherVideoActive || isCheckingTeacherVideo) && (
+                        <CircularProgress size={14} thickness={5} sx={{ color: LESSON_DIALOG_COLORS.blue }} />
+                      )}
+                      <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 12, fontWeight: 700, textTransform: 'capitalize' }}>
+                        {isCheckingTeacherVideo
+                          ? 'Checking status...'
+                          : isTeacherVideoActive
+                            ? `${teacherVideoStatusLabel}...`
+                            : teacherVideoStatusLabel}
+                      </Typography>
+                    </Stack>
+                    {isTeacherVideoActive && (
+                      <Typography sx={{ mt: 0.5, color: LESSON_DIALOG_COLORS.mute, fontSize: 11, fontWeight: 600, lineHeight: 1.35 }}>
+                        Rendering can take a few minutes. You can close this lesson and come back later.
+                      </Typography>
+                    )}
+                    {teacherVideo.duration && (
+                      <Typography sx={{ mt: 0.35, color: LESSON_DIALOG_COLORS.mute, fontSize: 11, fontWeight: 600 }}>
+                        Duration: {Math.round(teacherVideo.duration)} sec
+                      </Typography>
+                    )}
+                    {teacherVideo.videoUrl && (
+                      <Button
+                        href={teacherVideo.videoUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        size="small"
+                        sx={{
+                          mt: 1,
+                          minHeight: 28,
+                          px: 1.25,
+                          borderRadius: 999,
+                          color: LESSON_DIALOG_COLORS.blue,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          letterSpacing: '0.04em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        Open video
+                      </Button>
+                    )}
+                  </Box>
+
+                  <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
+                    <Button
+                      variant="contained"
+                      startIcon={<OndemandVideoOutlinedIcon />}
+                      onClick={handleGenerateTeacherVideo}
+                      disabled={
+                        !canGenerateTeacherVideo ||
+                        !canManageCurrentLesson ||
+                        isDeleting ||
+                        isSaving ||
+                        isPublishing ||
+                        isArchiving ||
+                        isRevising ||
+                        isGeneratingActivity ||
+                        isGeneratingTeacherVideo ||
+                        isTeacherVideoActive
+                      }
+                      sx={{
+                        minHeight: 36,
+                        px: 2.25,
+                        borderRadius: 999,
+                        boxShadow: 'none',
+                        backgroundColor: LESSON_DIALOG_COLORS.blue,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        letterSpacing: '0.06em',
+                        textTransform: 'uppercase',
+                        '&:hover': { backgroundColor: LESSON_DIALOG_COLORS.blue, boxShadow: 'none' },
+                      }}
+                    >
+                      {isGeneratingTeacherVideo
+                        ? 'Starting...'
+                        : teacherVideo.videoId
+                          ? 'Regenerate video'
+                          : 'Generate video'}
+                    </Button>
+
+                    {teacherVideo.videoId && (
+                      <Button
+                        variant="outlined"
+                        onClick={handleRefreshTeacherVideo}
+                        disabled={isCheckingTeacherVideo || isGeneratingTeacherVideo}
+                        sx={lessonSecondaryButtonSx}
+                      >
+                        Refresh
+                      </Button>
+                    )}
+                  </Stack>
                 </Stack>
               </DetailPanel>
             )}

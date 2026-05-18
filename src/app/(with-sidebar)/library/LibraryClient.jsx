@@ -613,13 +613,17 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
     });
   };
 
-  const handleLessonUpdated = async (updatedLesson) => {
+  const handleLessonUpdated = async (updatedLesson, options = {}) => {
     setLessons((prev) =>
       prev.map((lesson) =>
         lesson.id === updatedLesson.id ? updatedLesson : lesson
       )
     );
     setSelectedLesson(updatedLesson);
+
+    if (options.silent) {
+      return;
+    }
 
     setToast({
       open: true,
