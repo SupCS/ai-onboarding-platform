@@ -538,7 +538,7 @@ export default function LessonsGrid({
                 sx={{
                   minWidth: 0,
                   flex: '1 1 auto',
-                  maxWidth: 'calc(100% - 132px)',
+                  maxWidth: 'calc(100% - 116px)',
                   alignItems: 'center',
                   color: CARD_TOKENS.mute,
                   fontSize: 11,
@@ -578,7 +578,7 @@ export default function LessonsGrid({
                 sx={{
                   flex: '0 0 auto',
                   justifyContent: 'flex-end',
-                  maxWidth: 126,
+                  maxWidth: 110,
                 }}
               >
               {showEnrollmentAction && canAssignLearning && (
@@ -605,7 +605,7 @@ export default function LessonsGrid({
                   }}
                   sx={{
                     flexShrink: 0,
-                    maxWidth: 126,
+                    maxWidth: 110,
                     borderRadius: 999,
                     borderColor: lesson.isEnrolled ? CARD_TOKENS.blue200 : 'transparent',
                     backgroundColor: lesson.isEnrolled ? 'transparent' : CARD_TOKENS.blue,
@@ -708,7 +708,7 @@ export default function LessonsGrid({
                     },
                   }}
                 >
-                  Remove from My Lessons
+                  Remove
                 </Button>
               )}
               </Stack>
