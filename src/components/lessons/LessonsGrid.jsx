@@ -538,9 +538,11 @@ export default function LessonsGrid({
                 sx={{
                   minWidth: 0,
                   flex: '1 1 auto',
+                  maxWidth: 'calc(100% - 132px)',
                   alignItems: 'center',
                   color: CARD_TOKENS.mute,
                   fontSize: 11,
+                  overflow: 'hidden',
                 }}
               >
                 <Tooltip title={lesson.createdBy || 'AI Onboarding'} enterDelay={400}>
@@ -570,6 +572,15 @@ export default function LessonsGrid({
                 </Typography>
               </Stack>
 
+              <Stack
+                direction="row"
+                spacing={1}
+                sx={{
+                  flex: '0 0 auto',
+                  justifyContent: 'flex-end',
+                  maxWidth: 126,
+                }}
+              >
               {showEnrollmentAction && canAssignLearning && (
                 <Button
                   variant={lesson.isEnrolled ? 'outlined' : 'contained'}
@@ -594,6 +605,7 @@ export default function LessonsGrid({
                   }}
                   sx={{
                     flexShrink: 0,
+                    maxWidth: 126,
                     borderRadius: 999,
                     borderColor: lesson.isEnrolled ? CARD_TOKENS.blue200 : 'transparent',
                     backgroundColor: lesson.isEnrolled ? 'transparent' : CARD_TOKENS.blue,
@@ -605,6 +617,8 @@ export default function LessonsGrid({
                     fontWeight: lesson.isEnrolled ? 600 : 700,
                     letterSpacing: lesson.isEnrolled ? '0.02em' : '0.04em',
                     textTransform: 'none',
+                    '& .MuiButton-startIcon': { mr: 0.5 },
+                    '& .MuiButton-endIcon': { ml: 0.35 },
                     '&:hover': {
                       borderColor: lesson.isEnrolled ? CARD_TOKENS.blue200 : 'transparent',
                       backgroundColor: lesson.isEnrolled ? CARD_TOKENS.blue50 : '#0007B8',
@@ -641,6 +655,7 @@ export default function LessonsGrid({
                   }}
                   sx={{
                     flexShrink: 0,
+                    maxWidth: 126,
                     borderRadius: 999,
                     borderColor: lesson.isEnrolled ? CARD_TOKENS.blue200 : 'transparent',
                     backgroundColor: lesson.isEnrolled ? 'transparent' : CARD_TOKENS.blue,
@@ -652,6 +667,7 @@ export default function LessonsGrid({
                     fontWeight: lesson.isEnrolled ? 600 : 700,
                     letterSpacing: lesson.isEnrolled ? '0.02em' : '0.04em',
                     textTransform: 'none',
+                    '& .MuiButton-startIcon': { mr: 0.5 },
                     '&:hover': {
                       borderColor: lesson.isEnrolled ? CARD_TOKENS.blue200 : 'transparent',
                       backgroundColor: lesson.isEnrolled ? CARD_TOKENS.blue50 : '#0007B8',
@@ -676,6 +692,7 @@ export default function LessonsGrid({
                   }}
                   sx={{
                     flexShrink: 0,
+                    maxWidth: 126,
                     borderRadius: 999,
                     borderColor: CARD_TOKENS.blue200,
                     color: CARD_TOKENS.mute,
@@ -684,6 +701,7 @@ export default function LessonsGrid({
                     fontSize: 11,
                     fontWeight: 600,
                     textTransform: 'none',
+                    '& .MuiButton-startIcon': { mr: 0.5 },
                     '&:hover': {
                       borderColor: CARD_TOKENS.blue200,
                       backgroundColor: CARD_TOKENS.blue50,
@@ -693,6 +711,7 @@ export default function LessonsGrid({
                   Remove from My Lessons
                 </Button>
               )}
+              </Stack>
             </Stack>
           </Paper>
         );
