@@ -108,6 +108,7 @@ export default async function LessonReadPage({ params }) {
             createdAt: lesson.createdAt ? new Date(lesson.createdAt).toISOString() : '',
             updatedAt: lesson.updatedAt ? new Date(lesson.updatedAt).toISOString() : '',
             publishedAt: lesson.publishedAt ? new Date(lesson.publishedAt).toISOString() : '',
+            teacherVideo: lesson.generationMetadata?.teacherVideo || null,
           }}
           roadmapContext={roadmapContext}
           lessonNavigation={{

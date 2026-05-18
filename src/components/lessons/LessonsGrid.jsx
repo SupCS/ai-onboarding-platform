@@ -15,6 +15,7 @@ import {
 import Link from 'next/link';
 import ArrowDropDownOutlinedIcon from '@mui/icons-material/ArrowDropDownOutlined';
 import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
+import OndemandVideoOutlinedIcon from '@mui/icons-material/OndemandVideoOutlined';
 import PlaylistAddOutlinedIcon from '@mui/icons-material/PlaylistAddOutlined';
 import QuizOutlinedIcon from '@mui/icons-material/QuizOutlined';
 import RemoveCircleOutlineOutlinedIcon from '@mui/icons-material/RemoveCircleOutlineOutlined';
@@ -239,6 +240,7 @@ export default function LessonsGrid({
         const visibleTags = areTagsExpanded ? tags : tags.slice(0, 2);
         const hiddenTagCount = Math.max(tags.length - 2, 0);
         const hasActivities = activityCounts.flashcards > 0 || activityCounts.quizzes > 0;
+        const hasTeacherVideo = Boolean(lesson.generationMetadata?.teacherVideo?.videoUrl);
         const coverImageSrc = getLessonCoverImageSrc(lesson);
 
         return (
@@ -490,6 +492,29 @@ export default function LessonsGrid({
                     }}
                   />
                 )}
+              </Stack>
+            )}
+
+            {hasTeacherVideo && (
+              <Stack direction="row" spacing={0.75} useFlexGap sx={{ flexWrap: 'wrap', px: 0.5 }}>
+                <Chip
+                  icon={<OndemandVideoOutlinedIcon sx={{ fontSize: 13 }} />}
+                  label="Teacher video"
+                  size="small"
+                  sx={{
+                    height: 24,
+                    borderRadius: 999,
+                    backgroundColor: 'rgba(242, 53, 168, 0.10)',
+                    color: '#C02686',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    '& .MuiChip-icon': {
+                      color: 'inherit',
+                      ml: 0.9,
+                      mr: -0.4,
+                    },
+                  }}
+                />
               </Stack>
             )}
 

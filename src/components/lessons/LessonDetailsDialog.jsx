@@ -681,6 +681,7 @@ export default function LessonDetailsDialog({
   const [teacherVideoSuccess, setTeacherVideoSuccess] = useState('');
   const [isGeneratingTeacherVideo, setIsGeneratingTeacherVideo] = useState(false);
   const [isCheckingTeacherVideo, setIsCheckingTeacherVideo] = useState(false);
+  const [isDeletingTeacherVideo, setIsDeletingTeacherVideo] = useState(false);
   const [activeView, setActiveView] = useState('lesson');
   const [activityDrafts, setActivityDrafts] = useState({});
   const [activitySaveError, setActivitySaveError] = useState('');
@@ -742,6 +743,7 @@ export default function LessonDetailsDialog({
     setTeacherVideoSuccess('');
     setIsGeneratingTeacherVideo(false);
     setIsCheckingTeacherVideo(false);
+    setIsDeletingTeacherVideo(false);
     setActiveView('lesson');
     setActivityDrafts({});
     setActivitySaveError('');
@@ -1399,6 +1401,35 @@ export default function LessonDetailsDialog({
       setTeacherVideoError(error.message || 'Failed to refresh teacher video.');
     } finally {
       setIsCheckingTeacherVideo(false);
+    }
+  };
+
+  const handleDeleteTeacherVideo = async () => {
+    if (!teacherVideo.videoId && !teacherVideo.videoUrl) {
+      return;
+    }
+
+    try {
+      setIsDeletingTeacherVideo(true);
+      setTeacherVideoError('');
+      setTeacherVideoSuccess('');
+
+      const response = await fetch(`/api/lessons/${lesson.id}/teacher-video`, {
+        method: 'DELETE',
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to remove teacher video.');
+      }
+
+      setTeacherVideoSuccess('Teacher video removed from this lesson.');
+      await onLessonUpdated?.(data.lesson, { silent: true });
+    } catch (error) {
+      console.error('Failed to remove teacher video:', error);
+      setTeacherVideoError(error.message || 'Failed to remove teacher video.');
+    } finally {
+      setIsDeletingTeacherVideo(false);
     }
   };
 
@@ -2456,120 +2487,163 @@ export default function LessonDetailsDialog({
               </DetailPanel>
             )}
 
-            {isEditing && canGenerateTeacherVideo && lesson.status !== 'failed' && (
+            {(teacherVideo.videoUrl || (isEditing && canGenerateTeacherVideo && lesson.status !== 'failed')) && (
               <DetailPanel title="Teacher video">
                 <Stack spacing={1.25}>
-                  <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 13, lineHeight: 1.45 }}>
-                    Generate a short 45-60 second teacher avatar summary for this lesson.
-                  </Typography>
+                  {teacherVideo.videoUrl ? (
+                    <Box
+                      sx={{
+                        overflow: 'hidden',
+                        borderRadius: 1.25,
+                        border: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
+                        backgroundColor: '#000',
+                      }}
+                    >
+                      <Box
+                        component="video"
+                        src={teacherVideo.videoUrl}
+                        poster={teacherVideo.thumbnailUrl || undefined}
+                        controls
+                        playsInline
+                        preload="metadata"
+                        sx={{
+                          width: '100%',
+                          aspectRatio: '16 / 9',
+                          display: 'block',
+                          backgroundColor: '#000',
+                        }}
+                      />
+                    </Box>
+                  ) : (
+                    <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 13, lineHeight: 1.45 }}>
+                      Generate a short 45-60 second teacher avatar summary for this lesson.
+                    </Typography>
+                  )}
 
                   {teacherVideoError && <Alert severity="error">{teacherVideoError}</Alert>}
                   {teacherVideoSuccess && <Alert severity="success">{teacherVideoSuccess}</Alert>}
 
-                  <Box
-                    sx={{
-                      p: 1.25,
-                      borderRadius: 1.25,
-                      backgroundColor: LESSON_DIALOG_COLORS.blue50,
-                      border: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
-                    }}
-                  >
-                    <Typography sx={{ color: LESSON_DIALOG_COLORS.blue, fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', mb: 0.5 }}>
-                      Status
-                    </Typography>
-                    <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                      {(isTeacherVideoActive || isCheckingTeacherVideo) && (
-                        <CircularProgress size={14} thickness={5} sx={{ color: LESSON_DIALOG_COLORS.blue }} />
-                      )}
-                      <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 12, fontWeight: 700, textTransform: 'capitalize' }}>
-                        {isCheckingTeacherVideo
-                          ? 'Checking status...'
-                          : isTeacherVideoActive
-                            ? `${teacherVideoStatusLabel}...`
-                            : teacherVideoStatusLabel}
-                      </Typography>
-                    </Stack>
-                    {isTeacherVideoActive && (
-                      <Typography sx={{ mt: 0.5, color: LESSON_DIALOG_COLORS.mute, fontSize: 11, fontWeight: 600, lineHeight: 1.35 }}>
-                        Rendering can take a few minutes. You can close this lesson and come back later.
-                      </Typography>
-                    )}
-                    {teacherVideo.duration && (
-                      <Typography sx={{ mt: 0.35, color: LESSON_DIALOG_COLORS.mute, fontSize: 11, fontWeight: 600 }}>
-                        Duration: {Math.round(teacherVideo.duration)} sec
-                      </Typography>
-                    )}
-                    {teacherVideo.videoUrl && (
-                      <Button
-                        href={teacherVideo.videoUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        size="small"
-                        sx={{
-                          mt: 1,
-                          minHeight: 28,
-                          px: 1.25,
-                          borderRadius: 999,
-                          color: LESSON_DIALOG_COLORS.blue,
-                          fontSize: 11,
-                          fontWeight: 800,
-                          letterSpacing: '0.04em',
-                          textTransform: 'uppercase',
-                        }}
-                      >
-                        Open video
-                      </Button>
-                    )}
-                  </Box>
-
-                  <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
-                    <Button
-                      variant="contained"
-                      startIcon={<OndemandVideoOutlinedIcon />}
-                      onClick={handleGenerateTeacherVideo}
-                      disabled={
-                        !canGenerateTeacherVideo ||
-                        !canManageCurrentLesson ||
-                        isDeleting ||
-                        isSaving ||
-                        isPublishing ||
-                        isArchiving ||
-                        isRevising ||
-                        isGeneratingActivity ||
-                        isGeneratingTeacherVideo ||
-                        isTeacherVideoActive
-                      }
+                  {(teacherVideo.videoId || isEditing) && (
+                    <Box
                       sx={{
-                        minHeight: 36,
-                        px: 2.25,
-                        borderRadius: 999,
-                        boxShadow: 'none',
-                        backgroundColor: LESSON_DIALOG_COLORS.blue,
-                        fontSize: 11,
-                        fontWeight: 800,
-                        letterSpacing: '0.06em',
-                        textTransform: 'uppercase',
-                        '&:hover': { backgroundColor: LESSON_DIALOG_COLORS.blue, boxShadow: 'none' },
+                        p: 1.25,
+                        borderRadius: 1.25,
+                        backgroundColor: LESSON_DIALOG_COLORS.blue50,
+                        border: `1px solid ${LESSON_DIALOG_COLORS.blue100}`,
                       }}
                     >
-                      {isGeneratingTeacherVideo
-                        ? 'Starting...'
-                        : teacherVideo.videoId
-                          ? 'Regenerate video'
-                          : 'Generate video'}
-                    </Button>
+                      <Typography sx={{ color: LESSON_DIALOG_COLORS.blue, fontSize: 10, fontWeight: 800, letterSpacing: '0.08em', textTransform: 'uppercase', mb: 0.5 }}>
+                        Status
+                      </Typography>
+                      <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
+                        {(isTeacherVideoActive || isCheckingTeacherVideo) && (
+                          <CircularProgress size={14} thickness={5} sx={{ color: LESSON_DIALOG_COLORS.blue }} />
+                        )}
+                        <Typography sx={{ color: LESSON_DIALOG_COLORS.slate, fontSize: 12, fontWeight: 700, textTransform: 'capitalize' }}>
+                          {isCheckingTeacherVideo
+                            ? 'Checking status...'
+                            : isTeacherVideoActive
+                              ? `${teacherVideoStatusLabel}...`
+                              : teacherVideoStatusLabel}
+                        </Typography>
+                      </Stack>
+                      {isTeacherVideoActive && (
+                        <Typography sx={{ mt: 0.5, color: LESSON_DIALOG_COLORS.mute, fontSize: 11, fontWeight: 600, lineHeight: 1.35 }}>
+                          Rendering can take a few minutes. You can close this lesson and come back later.
+                        </Typography>
+                      )}
+                      {teacherVideo.duration && (
+                        <Typography sx={{ mt: 0.35, color: LESSON_DIALOG_COLORS.mute, fontSize: 11, fontWeight: 600 }}>
+                          Duration: {Math.round(teacherVideo.duration)} sec
+                        </Typography>
+                      )}
+                      {teacherVideo.videoUrl && (
+                        <Button
+                          href={teacherVideo.videoUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          size="small"
+                          sx={{
+                            mt: 1,
+                            minHeight: 28,
+                            px: 1.25,
+                            borderRadius: 999,
+                            color: LESSON_DIALOG_COLORS.blue,
+                            fontSize: 11,
+                            fontWeight: 800,
+                            letterSpacing: '0.04em',
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Open video
+                        </Button>
+                      )}
+                    </Box>
+                  )}
 
-                    {teacherVideo.videoId && (
+                  {isEditing && canGenerateTeacherVideo && lesson.status !== 'failed' && (
+                    <Stack direction="row" spacing={1} useFlexGap sx={{ flexWrap: 'wrap' }}>
                       <Button
-                        variant="outlined"
-                        onClick={handleRefreshTeacherVideo}
-                        disabled={isCheckingTeacherVideo || isGeneratingTeacherVideo}
-                        sx={lessonSecondaryButtonSx}
+                        variant="contained"
+                        startIcon={<OndemandVideoOutlinedIcon />}
+                        onClick={handleGenerateTeacherVideo}
+                        disabled={
+                          !canGenerateTeacherVideo ||
+                          !canManageCurrentLesson ||
+                          isDeleting ||
+                          isSaving ||
+                          isPublishing ||
+                          isArchiving ||
+                          isRevising ||
+                          isGeneratingActivity ||
+                          isGeneratingTeacherVideo ||
+                          isDeletingTeacherVideo ||
+                          isTeacherVideoActive
+                        }
+                        sx={{
+                          minHeight: 36,
+                          px: 2.25,
+                          borderRadius: 999,
+                          boxShadow: 'none',
+                          backgroundColor: LESSON_DIALOG_COLORS.blue,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          letterSpacing: '0.06em',
+                          textTransform: 'uppercase',
+                          '&:hover': { backgroundColor: LESSON_DIALOG_COLORS.blue, boxShadow: 'none' },
+                        }}
                       >
-                        Refresh
+                        {isGeneratingTeacherVideo
+                          ? 'Starting...'
+                          : teacherVideo.videoId
+                            ? 'Regenerate video'
+                            : 'Generate video'}
                       </Button>
-                    )}
-                  </Stack>
+
+                      {teacherVideo.videoId && (
+                        <Button
+                          variant="outlined"
+                          onClick={handleRefreshTeacherVideo}
+                          disabled={isCheckingTeacherVideo || isGeneratingTeacherVideo || isDeletingTeacherVideo}
+                          sx={lessonSecondaryButtonSx}
+                        >
+                          Refresh
+                        </Button>
+                      )}
+
+                      {(teacherVideo.videoId || teacherVideo.videoUrl) && (
+                        <Button
+                          variant="outlined"
+                          color="error"
+                          onClick={handleDeleteTeacherVideo}
+                          disabled={isDeletingTeacherVideo || isCheckingTeacherVideo || isGeneratingTeacherVideo}
+                          sx={lessonDangerButtonSx}
+                        >
+                          {isDeletingTeacherVideo ? 'Removing...' : 'Remove video'}
+                        </Button>
+                      )}
+                    </Stack>
+                  )}
                 </Stack>
               </DetailPanel>
             )}

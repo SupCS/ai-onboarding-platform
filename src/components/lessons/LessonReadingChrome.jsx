@@ -8,6 +8,7 @@ import ArrowForwardOutlinedIcon from '@mui/icons-material/ArrowForwardOutlined';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import GridViewOutlinedIcon from '@mui/icons-material/GridViewOutlined';
 import NotesOutlinedIcon from '@mui/icons-material/NotesOutlined';
+import OndemandVideoOutlinedIcon from '@mui/icons-material/OndemandVideoOutlined';
 import UserAvatar from '../ui/UserAvatar';
 
 function slugify(value, fallback) {
@@ -61,6 +62,8 @@ export default function LessonReadingChrome({
   const [progress, setProgress] = useState(0);
 
   const authorName = lesson.createdBy || 'AI Digital';
+  const teacherVideo = lesson.teacherVideo || {};
+  const hasTeacherVideo = Boolean(teacherVideo.videoUrl);
   const updatedDate = formatDate(lesson.updatedAt || lesson.publishedAt || lesson.createdAt);
   const eyebrow = roadmapContext
     ? `Lesson - ${String(roadmapContext.lessonNumber).padStart(2, '0')} of ${roadmapContext.title}`
@@ -314,6 +317,34 @@ export default function LessonReadingChrome({
         </Typography>
 
         <Stack component="nav" spacing={0.25} sx={{ flex: 1, minHeight: 0, overflowY: 'auto', px: 1.25 }}>
+          {hasTeacherVideo && (
+            <Button
+              onClick={() => scrollToSection('teacher-video')}
+              startIcon={<OndemandVideoOutlinedIcon sx={{ fontSize: 15 }} />}
+              sx={{
+                justifyContent: 'flex-start',
+                gap: 0.75,
+                minHeight: 34,
+                px: 1.25,
+                borderRadius: 1.5,
+                color: activeId === 'teacher-video' ? '#0009DC' : '#C02686',
+                backgroundColor: activeId === 'teacher-video' ? 'rgba(0, 9, 220, 0.08)' : 'rgba(242, 53, 168, 0.08)',
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: 0,
+                textTransform: 'none',
+                '& .MuiButton-startIcon': {
+                  mr: 0.25,
+                  color: 'inherit',
+                },
+                '&:hover': {
+                  backgroundColor: activeId === 'teacher-video' ? 'rgba(0, 9, 220, 0.1)' : 'rgba(242, 53, 168, 0.12)',
+                },
+              }}
+            >
+              Teacher video
+            </Button>
+          )}
           {sectionItems.length === 0 ? (
             <Typography sx={{ px: 1, py: 1, color: '#80808E', fontSize: 12 }}>
               Sections will appear here.
@@ -497,6 +528,35 @@ export default function LessonReadingChrome({
               }}
             />
           </Stack>
+
+          {hasTeacherVideo && (
+            <Box
+              id="teacher-video"
+              sx={{
+                mb: { xs: 4, md: 6 },
+                overflow: 'hidden',
+                borderRadius: { xs: 2, md: 3 },
+                border: '1px solid rgba(0, 9, 220, 0.12)',
+                backgroundColor: '#000',
+                boxShadow: '0 18px 48px rgba(15, 23, 42, 0.16)',
+              }}
+            >
+              <Box
+                component="video"
+                src={teacherVideo.videoUrl}
+                poster={teacherVideo.thumbnailUrl || undefined}
+                controls
+                playsInline
+                preload="metadata"
+                sx={{
+                  width: '100%',
+                  aspectRatio: '16 / 9',
+                  display: 'block',
+                  backgroundColor: '#000',
+                }}
+              />
+            </Box>
+          )}
 
           {children}
 

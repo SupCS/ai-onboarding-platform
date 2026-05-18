@@ -191,3 +191,54 @@ export async function GET(_request, { params }) {
     );
   }
 }
+
+export async function DELETE(_request, { params }) {
+  try {
+    const { user, response } = await requireApiUser();
+
+    if (response) {
+      return response;
+    }
+
+    const forbidden = await requirePermission(user, PERMISSIONS.LESSONS_MANAGE);
+
+    if (forbidden) {
+      return forbidden;
+    }
+
+    if (!canGenerateTeacherVideo(user)) {
+      return Response.json(
+        { error: 'Only administrators can remove teacher videos.' },
+        { status: 403 }
+      );
+    }
+
+    const { id } = await params;
+    const lesson = await getLessonById(id);
+
+    if (!lesson) {
+      return Response.json(
+        { error: 'Lesson not found.' },
+        { status: 404 }
+      );
+    }
+
+    const metadata = { ...(lesson.generationMetadata || {}) };
+    delete metadata.teacherVideo;
+
+    const updatedLesson = await updateLessonContent(lesson.id, {
+      generationMetadata: metadata,
+    });
+
+    return Response.json({
+      lesson: withViewerCapabilities(updatedLesson, user),
+    });
+  } catch (error) {
+    console.error('DELETE /api/lessons/[id]/teacher-video failed:', error);
+
+    return Response.json(
+      { error: error.message || 'Failed to remove teacher video.' },
+      { status: 500 }
+    );
+  }
+}
