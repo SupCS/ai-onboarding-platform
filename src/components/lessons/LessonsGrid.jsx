@@ -229,7 +229,8 @@ export default function LessonsGrid({
         const hiddenTagCount = Math.max(tags.length - 2, 0);
         const hasActivities = activityCounts.flashcards > 0 || activityCounts.quizzes > 0;
         const hasTeacherVideo = Boolean(lesson.generationMetadata?.teacherVideo?.videoUrl);
-        const footerActionMaxWidth = showUnenrollAction ? 98 : 138;
+        const isCompactEnrollmentAction = showEnrollmentAction && !canAssignLearning;
+        const footerActionMaxWidth = showUnenrollAction ? 98 : isCompactEnrollmentAction ? 208 : 138;
         const coverImageSrc = getLessonCoverImageSrc(lesson);
 
         return (
@@ -527,7 +528,9 @@ export default function LessonsGrid({
                 sx={{
                   minWidth: 0,
                   flex: '1 1 auto',
-                  maxWidth: `calc(100% - ${footerActionMaxWidth + 6}px)`,
+                  maxWidth: isCompactEnrollmentAction
+                    ? { xs: 44, sm: 56 }
+                    : `calc(100% - ${footerActionMaxWidth + 6}px)`,
                   alignItems: 'center',
                   color: CARD_TOKENS.mute,
                   fontSize: 11,
@@ -557,7 +560,9 @@ export default function LessonsGrid({
                 sx={{
                   flex: '0 0 auto',
                   justifyContent: 'flex-end',
-                  maxWidth: footerActionMaxWidth,
+                  maxWidth: isCompactEnrollmentAction
+                    ? `calc(100% - 28px)`
+                    : footerActionMaxWidth,
                 }}
               >
               {showEnrollmentAction && canAssignLearning && (
@@ -656,6 +661,9 @@ export default function LessonsGrid({
                     '& .MuiButton-startIcon': {
                       flexShrink: 0,
                       mr: 0.5,
+                    },
+                    '& .MuiButton-icon': {
+                      flexShrink: 0,
                     },
                     '&:hover': {
                       borderColor: lesson.isEnrolled ? CARD_TOKENS.blue200 : 'transparent',

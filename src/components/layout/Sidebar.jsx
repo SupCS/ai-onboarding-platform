@@ -50,6 +50,7 @@ const sidebarItems = [
     label: 'Team progress',
     href: '/team-progress',
     icon: <QueryStatsOutlinedIcon />,
+    teamLeadOnly: true,
   },
   {
     label: 'Teams',
@@ -71,17 +72,18 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
     position: '',
     avatarStorageKey: '',
   };
-  const visibleSidebarItems =
-    currentUserPermissions['admin.manage_roles']
+  const visibleSidebarItems = [
+    ...sidebarItems.filter((item) => !item.teamLeadOnly || user.role === 'teamlead'),
+    ...(currentUserPermissions['admin.manage_roles']
       ? [
-          ...sidebarItems,
           {
             label: 'Admin',
             href: '/admin',
             icon: <AdminPanelSettingsOutlinedIcon />,
           },
         ]
-      : sidebarItems;
+      : []),
+  ];
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', {

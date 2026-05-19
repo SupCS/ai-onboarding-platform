@@ -40,7 +40,7 @@ Runtime source of truth:
 | `permissions.manage_teamleads` | Yes | No | No |
 | `permissions.manage_team_members` | Yes | Yes | No |
 | `teams.manage_members` | Yes | Yes | No |
-| `materials.create` | Yes | Yes | No |
+| `materials.create` | Yes | Yes | Yes |
 | `materials.edit` | Yes | Yes | No |
 | `materials.delete` | Yes | Yes | No |
 | `lessons.create` | Yes | Yes | No |
