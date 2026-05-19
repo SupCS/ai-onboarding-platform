@@ -8,7 +8,6 @@ import {
   Button,
   Chip,
   FormControl,
-  InputLabel,
   MenuItem,
   Paper,
   Select,
@@ -223,10 +222,31 @@ export default function LessonPromptForm({
         }),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data = {};
+
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        data = {
+          error: responseText,
+        };
+      }
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to build prompt.');
+        const fallbackMessage =
+          action === 'generate'
+            ? 'Failed to generate lesson.'
+            : 'Failed to build prompt.';
+        const statusPrefix = response.status ? `HTTP ${response.status}` : 'Request failed';
+        const detail = typeof data.error === 'string' && data.error.trim()
+          ? data.error.trim()
+          : fallbackMessage;
+        const requestError = new Error(`${statusPrefix}: ${detail}`);
+
+        requestError.lesson = data.lesson || null;
+
+        throw requestError;
       }
 
       console.group('Theoretical lesson prompt');
@@ -264,6 +284,9 @@ export default function LessonPromptForm({
     } catch (error) {
       console.error('Lesson request failed:', error);
       setErrorMessage(error.message || 'Lesson request failed.');
+      if (action === 'generate' && error.lesson && onLessonGenerated) {
+        await onLessonGenerated(error.lesson);
+      }
       if (action === 'generate') {
         updateTask(taskId, {
           status: 'error',
@@ -687,11 +710,9 @@ export default function LessonPromptForm({
             >
               <FieldGroup label="Depth">
                 <FormControl fullWidth sx={fieldSx}>
-                  <InputLabel id="lesson-depth-label">Depth</InputLabel>
                   <Select
-                    labelId="lesson-depth-label"
                     value={depth}
-                    label="Depth"
+                    inputProps={{ 'aria-label': 'Depth' }}
                     onChange={(event) => setDepth(event.target.value)}
                   >
                     {depthOptions.map((option) => (
@@ -705,11 +726,9 @@ export default function LessonPromptForm({
 
               <FieldGroup label="Tone">
                 <FormControl fullWidth sx={fieldSx}>
-                  <InputLabel id="lesson-tone-label">Tone</InputLabel>
                   <Select
-                    labelId="lesson-tone-label"
                     value={tone}
-                    label="Tone"
+                    inputProps={{ 'aria-label': 'Tone' }}
                     onChange={(event) => setTone(event.target.value)}
                   >
                     {toneOptions.map((option) => (
@@ -723,11 +742,9 @@ export default function LessonPromptForm({
 
               <FieldGroup label="Format">
                 <FormControl fullWidth sx={fieldSx}>
-                  <InputLabel id="lesson-format-label">Format</InputLabel>
                   <Select
-                    labelId="lesson-format-label"
                     value={desiredFormat}
-                    label="Format"
+                    inputProps={{ 'aria-label': 'Format' }}
                     onChange={(event) => setDesiredFormat(event.target.value)}
                   >
                     {formatOptions.map((option) => (

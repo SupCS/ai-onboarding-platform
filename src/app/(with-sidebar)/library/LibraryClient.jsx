@@ -379,6 +379,22 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
     setRoadmapEnrollmentFilter('all');
   };
 
+  const showCreatedLessonInFilters = (lesson) => {
+    if (!lesson) {
+      return;
+    }
+
+    const isArchived = lesson.publicationStatus === 'archived' || lesson.isArchived;
+    const isVisibleAsReady = lesson.status === 'ready' && lesson.isPublished && !isArchived;
+
+    setActiveTab('lessons');
+    setLessonSearchQuery('');
+    setLessonSelectedTags([]);
+    setLessonActivityFilter('all');
+    setLessonEnrollmentFilter('all');
+    setLessonStatusFilter(isVisibleAsReady ? 'ready' : 'pending');
+  };
+
   const loadMaterials = async () => {
     try {
       setIsLoadingMaterials(true);
@@ -602,8 +618,9 @@ export default function LibraryClient({ currentUserPermissions = {} }) {
     setSelectedMaterial(material);
   };
 
-  const handleLessonGenerated = async () => {
+  const handleLessonGenerated = async (lesson) => {
     await loadLessons();
+    showCreatedLessonInFilters(lesson);
     setIsLessonDialogOpen(false);
 
     setToast({
