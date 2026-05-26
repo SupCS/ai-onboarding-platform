@@ -78,6 +78,36 @@ const activityTypeOptions = [
 ];
 
 const teacherVideoActiveStatuses = new Set(['pending', 'processing', 'generating']);
+const teacherVideoRefreshBufferMs = 6 * 60 * 60 * 1000;
+
+function getSignedUrlExpiresAt(url = '') {
+  if (!url) {
+    return null;
+  }
+
+  try {
+    const expires = new URL(url).searchParams.get('Expires');
+    const expiresSeconds = Number.parseInt(expires || '', 10);
+
+    return Number.isFinite(expiresSeconds) ? expiresSeconds * 1000 : null;
+  } catch {
+    return null;
+  }
+}
+
+function shouldRefreshTeacherVideoUrl(teacherVideo = {}) {
+  if (!teacherVideo.videoId || teacherVideoActiveStatuses.has(teacherVideo.status)) {
+    return false;
+  }
+
+  if (!teacherVideo.videoUrl) {
+    return true;
+  }
+
+  const expiresAt = getSignedUrlExpiresAt(teacherVideo.videoUrl);
+
+  return expiresAt !== null && expiresAt <= Date.now() + teacherVideoRefreshBufferMs;
+}
 
 const LESSON_DIALOG_COLORS = {
   blue: '#0009DC',
@@ -712,6 +742,9 @@ export default function LessonDetailsDialog({
   const [isRightPanelCollapsed, setIsRightPanelCollapsed] = useState(false);
   const teacherVideoPollingStatus = lesson?.generationMetadata?.teacherVideo?.status;
   const teacherVideoPollingVideoId = lesson?.generationMetadata?.teacherVideo?.videoId;
+  const teacherVideoAutoRefreshStatus = lesson?.generationMetadata?.teacherVideo?.status;
+  const teacherVideoAutoRefreshVideoId = lesson?.generationMetadata?.teacherVideo?.videoId;
+  const teacherVideoAutoRefreshVideoUrl = lesson?.generationMetadata?.teacherVideo?.videoUrl;
 
   useEffect(() => {
     setIsEditing(false);
@@ -814,6 +847,63 @@ export default function LessonDetailsDialog({
     open,
     teacherVideoPollingStatus,
     teacherVideoPollingVideoId,
+  ]);
+
+  useEffect(() => {
+    if (
+      !open ||
+      isCheckingTeacherVideo ||
+      !shouldRefreshTeacherVideoUrl({
+        status: teacherVideoAutoRefreshStatus,
+        videoId: teacherVideoAutoRefreshVideoId,
+        videoUrl: teacherVideoAutoRefreshVideoUrl,
+      })
+    ) {
+      return undefined;
+    }
+
+    let isCancelled = false;
+
+    const refreshTeacherVideo = async () => {
+      try {
+        setIsCheckingTeacherVideo(true);
+        setTeacherVideoError('');
+
+        const response = await fetch(`/api/lessons/${lesson.id}/teacher-video`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to refresh teacher video.');
+        }
+
+        if (!isCancelled) {
+          await onLessonUpdated?.(data.lesson, { silent: true });
+        }
+      } catch (error) {
+        if (!isCancelled) {
+          console.error('Failed to refresh expiring teacher video URL:', error);
+          setTeacherVideoError(error.message || 'Failed to refresh teacher video.');
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsCheckingTeacherVideo(false);
+        }
+      }
+    };
+
+    refreshTeacherVideo();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [
+    isCheckingTeacherVideo,
+    lesson?.id,
+    onLessonUpdated,
+    open,
+    teacherVideoAutoRefreshStatus,
+    teacherVideoAutoRefreshVideoId,
+    teacherVideoAutoRefreshVideoUrl,
   ]);
 
   useEffect(() => {

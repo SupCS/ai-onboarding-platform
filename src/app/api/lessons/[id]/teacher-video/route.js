@@ -1,8 +1,9 @@
 import { USER_ROLES } from '../../../../../lib/auth';
 import { requireApiUser } from '../../../../../lib/apiAuth';
-import { createTeacherVideoForLesson, getHeyGenVideo } from '../../../../../lib/heygen';
+import { createTeacherVideoForLesson } from '../../../../../lib/heygen';
 import { getLessonById, updateLessonContent } from '../../../../../lib/lessons';
 import { PERMISSIONS, requirePermission } from '../../../../../lib/permissions';
+import { refreshTeacherVideoForLessonIfNeeded } from '../../../../../lib/teacherVideos';
 
 export const runtime = 'nodejs';
 
@@ -162,21 +163,10 @@ export async function GET(_request, { params }) {
       );
     }
 
-    const video = await getHeyGenVideo(teacherVideo.videoId);
-    const nextTeacherVideo = {
-      ...teacherVideo,
-      status: video.status,
-      videoUrl: video.videoUrl || teacherVideo.videoUrl || '',
-      thumbnailUrl: video.thumbnailUrl || teacherVideo.thumbnailUrl || '',
-      duration: video.duration || teacherVideo.duration || null,
-      completedAt: video.status === 'completed'
-        ? teacherVideo.completedAt || new Date().toISOString()
-        : teacherVideo.completedAt || null,
-      failedAt: video.status === 'failed'
-        ? teacherVideo.failedAt || new Date().toISOString()
-        : teacherVideo.failedAt || null,
-    };
-    const updatedLesson = await saveTeacherVideoMetadata(lesson, nextTeacherVideo);
+    const {
+      lesson: updatedLesson,
+      teacherVideo: nextTeacherVideo,
+    } = await refreshTeacherVideoForLessonIfNeeded(lesson, { force: true });
 
     return Response.json({
       teacherVideo: normalizeStoredTeacherVideo(nextTeacherVideo),

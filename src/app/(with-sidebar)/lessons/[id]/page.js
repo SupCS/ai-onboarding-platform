@@ -16,6 +16,7 @@ import {
   getLessonsForUser,
 } from '../../../../lib/lessons';
 import { getRoadmapContextForLesson } from '../../../../lib/roadmaps';
+import { refreshTeacherVideoForLessonIfNeeded } from '../../../../lib/teacherVideos';
 
 export const metadata = {
   title: 'Lesson',
@@ -70,10 +71,17 @@ export default async function LessonReadPage({ params }) {
     notFound();
   }
 
-  const lesson = await getLessonById(id);
+  let lesson = await getLessonById(id);
 
   if (!lesson || lesson.status !== 'ready' || !lesson.isPublished) {
     notFound();
+  }
+
+  try {
+    const result = await refreshTeacherVideoForLessonIfNeeded(lesson);
+    lesson = result.lesson;
+  } catch (error) {
+    console.error('Failed to refresh teacher video URL for lesson reader:', error);
   }
 
   const html = lesson.contentHtml || markdownToHtml(lesson.contentMarkdown || '');
