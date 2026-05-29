@@ -73,7 +73,12 @@ export default function Sidebar({ currentUser, currentUserPermissions = {} }) {
     avatarStorageKey: '',
   };
   const visibleSidebarItems = [
-    ...sidebarItems.filter((item) => !item.teamLeadOnly || user.role === 'teamlead'),
+    ...sidebarItems.filter(
+      (item) =>
+        !item.teamLeadOnly ||
+        user.role === 'teamlead' ||
+        user.role === 'admin'
+    ),
     ...(currentUserPermissions['admin.manage_roles']
       ? [
           {

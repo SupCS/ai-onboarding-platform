@@ -12,7 +12,10 @@ export const metadata = {
 export default async function TeamProgressPage() {
   const currentUser = await getCurrentUser();
 
-  if (currentUser?.role !== USER_ROLES.TEAMLEAD) {
+  if (
+    currentUser?.role !== USER_ROLES.TEAMLEAD &&
+    currentUser?.role !== USER_ROLES.ADMIN
+  ) {
     redirect('/library');
   }
 
